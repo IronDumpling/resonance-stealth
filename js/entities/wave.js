@@ -827,7 +827,7 @@ function handleWavePlayerInteraction(w, oldR, waveIndex) {
 }
 
 // 处理波纹与墙壁的碰撞
-function handleWaveWallCollision(w, oldR, waveIndex) {
+function handleWaveWallInteraction(w, oldR, waveIndex) {
     for (let wall of state.entities.walls) {
         const collision = checkWaveWallCollision(w, wall);
         if (collision.hit) {
@@ -865,7 +865,7 @@ function checkWaveItemCollisions(w) {
 }
 
 // 处理波纹与敌人碰撞（分割波纹）
-function handleWaveEnemyCollision(w, oldR, waveIndex) {
+function handleWaveEnemyInteraction(w, oldR, waveIndex) {
     for (let enemy of state.entities.enemies) {
         if(w.ownerId === enemy.id) continue;
         
@@ -1031,7 +1031,7 @@ function updateWave(w, i) {
     }
     
     // 先检测与敌人的碰撞（分割波纹）
-    const enemyCollisionResult = handleWaveEnemyCollision(w, oldR, i);
+    const enemyCollisionResult = handleWaveEnemyInteraction(w, oldR, i);
     if (enemyCollisionResult === 'bounced' || enemyCollisionResult === 'penetrated') {
         // 波纹已被分割，标记删除
         w._toRemove = true;
@@ -1046,7 +1046,7 @@ function updateWave(w, i) {
     }
     
     // 检测与墙壁的碰撞
-    const wallCollisionResult = handleWaveWallCollision(w, oldR, i);
+    const wallCollisionResult = handleWaveWallInteraction(w, oldR, i);
     if (wallCollisionResult === 'bounced' || wallCollisionResult === 'penetrated') {
         w._toRemove = true;
         return;

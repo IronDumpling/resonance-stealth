@@ -42,7 +42,12 @@ function spawnEnemy() {
 function createAnalyzerUI() {
     const div = document.createElement('div');
     div.className = 'analyzer-tag';
-    div.innerHTML = `<div style="text-align:center;margin-bottom:2px;">FREQ ANALYSIS</div><div class="analyzer-bar"><div class="analyzer-center"></div><div class="analyzer-pip" style="left:50%"></div></div><div class="analyzer-text" style="color:#aaa;">UNKNOWN</div>`;
+    div.innerHTML = `<div style="text-align:center;margin-bottom:2px;">FREQ ANALYSIS</div>
+                    <div class="analyzer-bar">
+                        <div class="analyzer-center"></div>
+                        <div class="analyzer-pip" style="left:50%"></div>
+                    </div>
+                    <div class="analyzer-text" style="color:#aaa;">UNKNOWN</div>`;
     uiContainer.appendChild(div);
     return div;
 }
