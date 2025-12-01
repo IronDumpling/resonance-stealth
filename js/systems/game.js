@@ -1,7 +1,7 @@
 // 主游戏逻辑
 
 // 全局变量（在HTML中初始化）
-let canvas, ctx, uiContainer, pickupHint, screenFlash;
+let canvas, ctx, uiContainer, pickupHint, screenFlash, edgeGlow;
 
 // 初始化全局变量
 function initGlobals() {
@@ -10,6 +10,7 @@ function initGlobals() {
     uiContainer = document.getElementById('world-ui-container');
     pickupHint = document.getElementById('pickup-hint');
     screenFlash = document.getElementById('screen-flash');
+    edgeGlow = document.getElementById('edge-glow');
     
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -17,12 +18,25 @@ function initGlobals() {
 
 // --- 游戏状态 ---
 const state = {
-    p: { x: 0, y: 0, a: 0, hp: CFG.maxHp, en: CFG.maxEnergy, reserveEn: 0, invuln: 0, resCool: 0 },
-    keys: { w:0, a:0, s:0, d:0, space:0, f:0, r:0 },
+    p: { 
+        x: 0, 
+        y: 0, 
+        a: 0, 
+        isGrabbed: false,
+        grabberEnemy: null,      // 抓取玩家的敌人引用
+        struggleProgress: 0,      // 挣脱进度 (0-100)
+        isCharging: false,
+        en: CFG.maxEnergy, 
+        reserveEn: 0, 
+        invuln: 0,
+        resCool: 0, 
+    },
+    edgeGlowIntensity: 0,         // 红色边缘发光强度 (0-1)
+    keys: { w:0, a:0, s:0, d:0, space:0, f:0, r:0, e:0 },
     mouse: { x:0, y:0 },
     freq: 150,
     focusLevel: 0,
-    isCharging: false,
+    
     camera: { x: 0, y: 0 },
     entities: {
         walls: [], enemies: [], waves: [], echoes: [], particles: [], items: [], wallEchoes: [], instructions: []
@@ -114,8 +128,11 @@ function init() {
     // 初始化玩家位置
     state.p.x = canvas.width/2;
     state.p.y = canvas.height/2;
-    state.p.hp = CFG.maxHp;
     state.p.en = CFG.maxEnergy;
+    state.p.isGrabbed = false;
+    state.p.grabberEnemy = null;
+    state.p.struggleProgress = 0;
+    state.edgeGlowIntensity = 0;
     
     state.entities.walls = [];
     state.entities.items = [];
@@ -283,6 +300,7 @@ function updateParticlesAndEchoes() {
 // 主更新函数
 function update() {
     updatePlayer();
+    checkPlayerDeath(); // 检查能量归零死亡
     updateCamera();
     updateItemsVisibility();
 
@@ -300,6 +318,12 @@ function update() {
     updateInteractionHints(hasPickupTarget);
     
     updateParticlesAndEchoes();
+    
+    // 边缘红光衰减
+    if(state.edgeGlowIntensity > 0) {
+        state.edgeGlowIntensity = Math.max(0, state.edgeGlowIntensity - 0.05);
+    }
+    
     updateUI();
 }
 

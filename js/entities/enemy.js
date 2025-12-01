@@ -30,13 +30,15 @@ function spawnEnemy() {
         freq: Math.floor(rand(CFG.freqMin, CFG.freqMax)),
         state: 'patrol', timer: 0, angle: rand(0, Math.PI*2),
         resCool: 0,
+        grabCooldown: 0,           // 抓取冷却时间
         lastPingTime: 0, pingType: null,
         targetX: null, targetY: null,
         searchTimer: 0,
         waypoints: waypoints,
         currentWPIndex: 0,
         uiElement: createAnalyzerUI(),
-        executeHintElement: createExecuteHintUI()
+        executeHintElement: createExecuteHintUI(),
+        struggleHintElement: createStruggleHintUI()
     });
 }
 
@@ -61,6 +63,14 @@ function createExecuteHintUI() {
     return div;
 }
 
+function createStruggleHintUI() {
+    const div = document.createElement('div');
+    div.className = 'interact-hint struggle-hint';
+    div.innerHTML = '[F] STRUGGLE';
+    uiContainer.appendChild(div);
+    return div;
+}
+
 // 敌人感知到玩家位置（统一触发入口）
 function onEnemySensesPlayer(enemy, playerX, playerY) {
     if (!enemy || enemy.state === 'stunned') return;
@@ -74,6 +84,7 @@ function onEnemySensesPlayer(enemy, playerX, playerY) {
 function updateEnemyUI(e) {
     const ui = e.uiElement;
     const execHint = e.executeHintElement;
+    const struggleHint = e.struggleHintElement;
     
     // analyze UI 只在 idle, patrol, alert, searching 状态中显示
     const canShowAnalyze = (e.state === 'idle' || e.state === 'patrol' || e.state === 'alert' || e.state === 'searching');
@@ -121,12 +132,27 @@ function updateEnemyUI(e) {
     } else {
         execHint.style.display = 'none';
     }
+    
+    // struggle hint UI 只在 grabbing 状态时显示
+    if (e.state === 'grabbing' && state.p.isGrabbed && state.p.grabberEnemy === e) {
+        const screenPos = worldToScreen(e.x, e.y - 40);
+        struggleHint.style.display = 'block';
+        struggleHint.style.left = screenPos.x + 'px';
+        struggleHint.style.top = screenPos.y + 'px';
+    } else {
+        struggleHint.style.display = 'none';
+    }
 }
 
 // 更新敌人移动
 function updateEnemyMovement(e) {
-    // STUNNED 和 DETONATING 状态在 updateEnemies 中处理，这里直接返回
-    if (e.state === 'stunned' || e.state === 'detonating') return;
+    // STUNNED、DETONATING 和 GRABBING 状态在 updateEnemies 中处理，这里直接返回
+    if (e.state === 'stunned' || e.state === 'detonating' || e.state === 'grabbing') return;
+    
+    // 检查玩家是否挣脱（如果敌人处于 grabbing 状态但玩家已挣脱）
+    if (e.state === 'grabbing' && (!state.p.isGrabbed || state.p.grabberEnemy !== e)) {
+        e.state = 'alert';
+    }
     
     // 搜寻状态：原地停顿并在中途发出搜索波
     if (e.state === 'searching') {
@@ -239,10 +265,20 @@ function updateEnemies() {
     
     state.entities.enemies.forEach(e => {
         if(e.resCool > 0) e.resCool--;
+        if(e.grabCooldown > 0) e.grabCooldown--;
         
         const dToP = dist(e.x, e.y, state.p.x, state.p.y);
         
-        if(e.state === 'stunned') {
+        if(e.state === 'grabbing') {
+            // 抓取状态：停止移动，检查玩家是否挣脱
+            if (!state.p.isGrabbed || state.p.grabberEnemy !== e) {
+                // 玩家已挣脱，恢复正常状态
+                e.state = 'alert';
+                e.grabCooldown = CFG.dmgCD; // 设置抓取冷却
+            }
+            // 抓取状态下不移动，不更新其他逻辑
+            return;
+        } else if(e.state === 'stunned') {
             e.timer--;
             
             // stun状态不发出任何波，也不造成伤害
@@ -291,7 +327,17 @@ function updateEnemies() {
                 }
             }
         } else {
-            if(dToP < 25) takeDamage(CFG.dmgVal);
+            // 碰撞检测：抓取玩家（移除攻击伤害）
+            if(dToP < 25 && !state.p.isGrabbed && e.grabCooldown <= 0 && 
+               e.state !== 'stunned' && e.state !== 'detonating') {
+                // 抓取玩家
+                state.p.isGrabbed = true;
+                state.p.grabberEnemy = e;
+                state.p.struggleProgress = 0;
+                e.state = 'grabbing';
+                e.grabCooldown = CFG.dmgCD; // 设置抓取冷却
+                logMsg("GRABBED!");
+            }
             updateEnemyMovement(e);
         }
     });
@@ -306,6 +352,7 @@ function updateEnemies() {
         state.entities.enemies = state.entities.enemies.filter(x => x !== e);
         if(e.uiElement) e.uiElement.remove();
         if(e.executeHintElement) e.executeHintElement.remove();
+        if(e.struggleHintElement) e.struggleHintElement.remove();
     });
 }
 

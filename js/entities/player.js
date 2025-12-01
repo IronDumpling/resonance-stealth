@@ -3,11 +3,11 @@
 // 聚焦逻辑
 function updateFocus() {
     if(state.keys.space) {
-        if(!state.isCharging) {
-            state.isCharging = true;
+        if(!state.p.isCharging) {
+            state.p.isCharging = true;
             state.focusLevel = 0;
         }
-        if(state.isCharging) {
+        if(state.p.isCharging) {
             state.focusLevel = Math.min(1, state.focusLevel + 0.02);
         }
     }
@@ -15,7 +15,7 @@ function updateFocus() {
 
 // 释放扫描
 function releaseScan() {
-    if(!state.isCharging) return;
+    if(!state.p.isCharging) return;
     
     // 计算当前角度（弧度）
     const currentSpread = lerp(CFG.maxSpread, CFG.minSpread, state.focusLevel);
@@ -29,7 +29,7 @@ function releaseScan() {
     // 检查能量是否足够（检查最大消耗长按能量）
     if(state.p.en < energyCost) {
         logMsg("LOW ENERGY - CANNOT EMIT");
-        state.isCharging = false;
+        state.p.isCharging = false;
         state.focusLevel = 0;
         return;
     }
@@ -38,7 +38,7 @@ function releaseScan() {
     
     emitWave(state.p.x, state.p.y, state.p.a, currentSpread, state.freq, 'player');
     
-    state.isCharging = false; 
+    state.p.isCharging = false; 
     state.focusLevel = 0; 
     updateUI();
 }
@@ -110,8 +110,9 @@ function tryInteract() {
     if(items.length > 0) {
         const item = items[0];
         if(item.type === 'energy') {
-            gainEnergy(CFG.energyFlaskVal);
-            logMsg(`ENERGY RESTORED (+${CFG.energyFlaskVal})`);
+            // 能量瓶直接补充到备用能量
+            state.p.reserveEn += CFG.energyFlaskVal;
+            logMsg(`RESERVE ENERGY RESTORED (+${CFG.energyFlaskVal})`);
             spawnParticles(item.x, item.y, '#00ff00', 20);
             // 移除物品
             state.entities.items = state.entities.items.filter(i => i !== item);
@@ -121,12 +122,37 @@ function tryInteract() {
     }
 }
 
-// 玩家治疗
-function updateHeal() {
-    if(state.keys.f && state.p.hp < CFG.maxHp && state.p.en >= CFG.healCost) {
-        state.p.en -= CFG.healCost; state.p.hp = Math.min(CFG.maxHp, state.p.hp + CFG.healVal);
-        state.keys.f = false; spawnParticles(state.p.x, state.p.y, '#00ff00', 15);
-        logMsg("SYSTEM REPAIRED"); updateUI();
+// 挣脱系统
+function updateStruggle() {
+    if (!state.p.isGrabbed) {
+        state.p.struggleProgress = 0;
+        return;
+    }
+    
+    // 每帧衰减进度（每秒值转换为每帧值，假设60fps）
+    state.p.struggleProgress = Math.max(0, state.p.struggleProgress - CFG.struggleProgressDecay);
+    
+    // 按F增加进度
+    if (state.keys.f) {
+        state.p.struggleProgress = Math.min(CFG.struggleProgressMax, state.p.struggleProgress + CFG.struggleProgressGain);
+        state.keys.f = false; // 防止连续触发
+    }
+    
+    // 进度满时挣脱
+    if (state.p.struggleProgress >= CFG.struggleProgressMax) {
+        state.p.isGrabbed = false;
+        state.p.grabberEnemy = null;
+        state.p.struggleProgress = 0;
+        logMsg("BREAK FREE");
+        spawnParticles(state.p.x, state.p.y, '#00ffff', 20);
+    }
+    
+    // 被抓取时持续流失能量（每秒值转换为每帧值，假设60fps）
+    state.p.en = Math.max(0, state.p.en - CFG.grabEnergyDrainRate);
+    
+    // 能量归零时死亡
+    if (state.p.en <= 0) {
+        // Death will be handled by checkPlayerDeath()
     }
 }
 
@@ -147,19 +173,22 @@ function updateReserveEnergy() {
 // 更新玩家状态
 function updatePlayer() {
     updateFocus(); 
-    updateHeal();
+    updateStruggle();
     updateReserveEnergy();
     
-    // 移动
-    let dx=0, dy=0;
-    if(state.keys.w) dy-=1; if(state.keys.s) dy+=1;
-    if(state.keys.a) dx-=1; if(state.keys.d) dx+=1;
-    if(dx||dy) {
-        const len = Math.hypot(dx,dy);
-        const spd = state.isCharging ? CFG.pSpeed * 0.3 : CFG.pSpeed;
-        const nx = state.p.x + (dx/len)*spd; const ny = state.p.y + (dy/len)*spd;
-        if(!checkWall(nx, state.p.y)) state.p.x = nx;
-        if(!checkWall(state.p.x, ny)) state.p.y = ny;
+    // 被抓取时无法移动
+    if (!state.p.isGrabbed) {
+        // 移动
+        let dx=0, dy=0;
+        if(state.keys.w) dy-=1; if(state.keys.s) dy+=1;
+        if(state.keys.a) dx-=1; if(state.keys.d) dx+=1;
+        if(dx||dy) {
+            const len = Math.hypot(dx,dy);
+            const spd = state.p.isCharging ? CFG.pSpeed * 0.3 : CFG.pSpeed;
+            const nx = state.p.x + (dx/len)*spd; const ny = state.p.y + (dy/len)*spd;
+            if(!checkWall(nx, state.p.y)) state.p.x = nx;
+            if(!checkWall(state.p.x, ny)) state.p.y = ny;
+        }
     }
     
     // 角度跟随鼠标

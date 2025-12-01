@@ -5,11 +5,9 @@ const CFG = {
     pViewDist: 280,
     pViewAngle: Math.PI / 2.5,
     playerRadius: 14,          // 玩家碰撞半径（用于波纹命中与分割）
-    maxHp: 60,
-    maxEnergy: 100,         // 主能量上限
-    healCost: 30,
-    healVal: 30,
-    energyFlaskVal: 50, // 能量瓶恢复量
+    maxEnergy: 100,         // 能量上限
+    
+    energyFlaskVal: 40, // 能量瓶恢复量
     
     // 扫描与波
     forcedWaveCost: 15,
@@ -32,17 +30,22 @@ const CFG = {
     // 敌人
     eSpeedPatrol: 0.6,
     eSpeedChase: 1.5,
-    stunTime: 400, 
-    dmgVal: 20,
-    dmgCD: 60,
+    stunTime: 600, 
+    dmgCD: 60,          // 抓取冷却时间（帧数）
     resCooldown: 120,
+    
+    // 抓取与挣脱
+    struggleProgressMax: 100,      // 挣脱进度最大值
+    struggleProgressDecay: 0.2,      // 挣脱进度每帧衰减量
+    struggleProgressGain: 15,      // 每次按F增加的挣脱进度
+    grabEnergyDrainRate: 0.2,        // 被抓取时每帧能量流失量
     
     // 波纹能量
     baseWaveEnergy: 10000,   // 波纹固定基础能量N
     energyThreshold: 0.1,    // 过载能量阈值比例
-    initialRadius: 5,         // 初始半径
+    initialRadius: 5,        // 初始半径
     
-    // 信息等级阈值（基于totalEnergy）
+    // 波纹信息显示等级阈值
     infoLevelClear: 500,      // 高于此值：清晰轮廓（低于则为模糊轮廓）
     infoLevelAnalyze: 2000,   // 高于此值：显示分析UI
     infoLevelLong: 8000,      // 高于此值：长期显示（低于则为短暂显示）
@@ -69,8 +72,8 @@ const INSTRUCTIONS = [
     { id: 3, text: "转动鼠标滚轮调整频率\n频率越高，消耗能量越大", distance: 350 },
     { id: 4, text: "低频会穿过\n高频会阻挡\n同频会共振", distance: 400 },
     { id: 5, text: "聚焦共振波能够使波纹生物过载\n利用这个机会靠近并解决它们", distance: 500 },
-    { id: 6, text: "生物共振后会受迫释放波纹\n先消耗能量，然后是生命", distance: 600 },
+    { id: 6, text: "生物共振后会受迫释放波纹\n消耗能量", distance: 600 },
     { id: 7, text: "随时捡起能量瓶\n按R使用备用能量", distance: 650 },
-    { id: 8, text: "在危急时刻\n按F消耗能量，恢复生命", distance: 750 },
+    { id: 8, text: "被抓住时\n持续按F挣脱", distance: 750 },
 ];
 

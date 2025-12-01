@@ -775,7 +775,7 @@ function handleWavePlayerInteraction(w, oldR, waveIndex) {
         }
     }
     
-    // 伤害 / 过载与受迫共振：只在发生共振且冷却就绪时触发
+    // 受迫共振：只在发生共振且冷却就绪时触发
     if (isNormalResonance && state.p.resCool <= 0) {
         // 估算击中玩家的总能量
         const playerDiameter = CFG.playerRadius * 2;
@@ -784,29 +784,22 @@ function handleWavePlayerInteraction(w, oldR, waveIndex) {
         const totalEnergyOnPlayer = w.energyPerPoint * coveredArcLength;
         
         let energyCost = CFG.forcedWaveCost;
-        let damage = 0;
         
-        // 能量不足时，造成过载伤害
+        // 消耗能量（能量不足时归零）
         if (state.p.en < energyCost) {
-            damage = (energyCost - state.p.en) * CFG.overloadDmgRatio;
             state.p.en = 0;
-            takeDamage(damage);
-            logMsg(`CRITICAL OVERLOAD (-${Math.floor(damage)} HP)`);
+            logMsg("CRITICAL OVERLOAD: ENERGY DEPLETED");
         } else {
             state.p.en -= energyCost;
             logMsg("SYSTEM OVERLOAD: ENERGY DRAIN");
         }
         
-        // 高能量密度下的额外过载惩罚
+        // 高能量密度下的视觉反馈（触发边缘红光）
         const overloadThreshold = CFG.baseWaveEnergy * CFG.energyThreshold;
         if (totalEnergyOnPlayer >= overloadThreshold) {
-            // 若之前未造成HP伤害，则再追加一次受损
-            if (damage === 0) {
-                takeDamage(CFG.dmgVal);
-            }
-            flashScreen('#00ffff', 150);
+            state.edgeGlowIntensity = 1.0; // 触发红色边缘发光
         } else {
-            flashScreen('#00ffff', 100);
+            state.edgeGlowIntensity = 0.6; // 较弱的边缘发光
         }
         
         // 玩家被迫发出自发波（与敌人受迫共振对称）
@@ -968,7 +961,7 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                         // 进入stun状态，不发出受迫共振波
                         enemy.state = 'stunned';
                         enemy.isPerfectStun = isPerfectResonance;
-                        enemy.timer = isPerfectResonance ? 600 : 300; // 完美共振10秒，普通共振5秒
+                        enemy.timer = isPerfectResonance ? CFG.stunTime : CFG.stunTime / 2; // 完美共振10秒，普通共振5秒
                         enemy.canBeDetonated = true; // 标记可处决
                         
                         // 视觉反馈

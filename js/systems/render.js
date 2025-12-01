@@ -237,7 +237,7 @@ function draw() {
     ctx.fillStyle = state.p.invuln > 0 ? '#fff' : '#00ffff';
     ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-8, 6); ctx.lineTo(-8, -6); ctx.fill();
     
-    if(state.isCharging) {
+    if(state.p.isCharging) {
         const spread = lerp(CFG.maxSpread, CFG.minSpread, state.focusLevel);
         ctx.fillStyle = `rgba(0, 255, 255, ${0.1 + state.focusLevel*0.2})`;
         ctx.beginPath(); ctx.moveTo(0,0);
@@ -254,5 +254,51 @@ function draw() {
     
     // 恢复相机变换
     ctx.restore();
+    
+    // 绘制挣脱进度条（被抓取时显示）
+    if (state.p.isGrabbed) {
+        const barWidth = 400;
+        const barHeight = 30;
+        const barX = (canvas.width - barWidth) / 2;
+        const barY = canvas.height - 100;
+        const progress = state.p.struggleProgress / CFG.struggleProgressMax;
+        
+        // 背景
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(barX, barY, barWidth, barHeight);
+        
+        // 进度条
+        ctx.fillStyle = '#ff0000';
+        ctx.fillRect(barX + 2, barY + 2, (barWidth - 4) * progress, barHeight - 4);
+        
+        // 边框
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(barX, barY, barWidth, barHeight);
+        
+        // 文字
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 20px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('[F] STRUGGLE', canvas.width / 2, barY - 25);
+    }
+    
+    // 绘制红色边缘发光效果
+    if (state.edgeGlowIntensity > 0) {
+        const intensity = state.edgeGlowIntensity;
+        const borderWidth = 8;
+        const glowColor = `rgba(255, 0, 0, ${intensity * 0.8})`;
+        
+        ctx.fillStyle = glowColor;
+        // 上边缘
+        ctx.fillRect(0, 0, canvas.width, borderWidth);
+        // 下边缘
+        ctx.fillRect(0, canvas.height - borderWidth, canvas.width, borderWidth);
+        // 左边缘
+        ctx.fillRect(0, 0, borderWidth, canvas.height);
+        // 右边缘
+        ctx.fillRect(canvas.width - borderWidth, 0, borderWidth, canvas.height);
+    }
 }
 
