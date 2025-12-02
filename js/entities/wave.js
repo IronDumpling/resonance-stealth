@@ -1,16 +1,30 @@
 // 波纹相关逻辑
 
-function emitWave(x, y, angle, spread, freq, source, ownerId) {
+function emitWave(x, y, angle, spread, freq, source, ownerId, isChain, isParry, isPerfectParry, energyMult) {
     // 频率影响基础能量：低频(100Hz)=0.5x，中频(200Hz)=1x，高频(300Hz)=1.5x
     const freqFactor = 0.5 + (freq - CFG.freqMin) / (CFG.freqMax - CFG.freqMin);
-    const baseEnergy = CFG.baseWaveEnergy * freqFactor;
+    let baseEnergy = CFG.baseWaveEnergy * freqFactor;
+    
+    // 应用弹反倍率 (完美=2x, 普通=1x)
+    if (energyMult) {
+        baseEnergy *= energyMult;
+    }
+    
+    // 如果是连锁波，也有额外的倍率 (之前的逻辑)
+    if (isChain) {
+        baseEnergy *= 3;
+    }
     
     state.entities.waves.push({
         x: x, y: y, r: CFG.initialRadius, maxR: CFG.waveMaxDist,
         angle: angle, spread: spread, freq: freq, 
         baseEnergy: baseEnergy,      // 频率决定的基础能量
         source: source, ownerId: ownerId,
-        isOriginalWave: (source === 'player' && spread < CFG.analyzeThreshold) // 标记是否是分析波纹（在创建时确定）
+        isOriginalWave: (source === 'player' && spread < CFG.analyzeThreshold), // 标记是否是分析波纹（在创建时确定）
+        
+        // 弹反相关属性
+        isParryWave: isParry || false,       // 标记：我是吞噬者
+        isPerfectParry: isPerfectParry || false // 标记：我的胃口很好 (100%吸收) 还是 一般 (50%)
     });
 }
 
@@ -776,7 +790,7 @@ function handleWavePlayerInteraction(w, oldR, waveIndex) {
     }
     
     // 受迫共振：只在发生共振且冷却就绪时触发
-    if (isNormalResonance && state.p.resCool <= 0) {
+    if (isNormalResonance && state.p.resonanceCD <= 0) {
         // 估算击中玩家的总能量
         const playerDiameter = CFG.playerRadius * 2;
         const maxArcLength = w.r * (w.spread > 0.001 ? w.spread : 0.001);
@@ -804,7 +818,7 @@ function handleWavePlayerInteraction(w, oldR, waveIndex) {
         
         // 玩家被迫发出自发波（与敌人受迫共振对称）
         emitWave(state.p.x, state.p.y, 0, Math.PI * 2, state.freq, 'player');
-        state.p.resCool = CFG.resCooldown;
+        state.p.resonanceCD = CFG.resonanceCD;
         updateUI();
     }
     
@@ -939,16 +953,8 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                 }
                 
                 // 触发共振效果
-                if (isNormalResonance && enemy.resCool <= 0) {
-                    // 记录共振轮廓回声（绿色）
-                    state.entities.echoes.push({
-                        x: enemy.x, y: enemy.y, r: enemy.r,
-                        type: 'enemy_resonance',
-                        life: 1.0,
-                        isPerfect: isPerfectResonance
-                    });
-                    
-                    // 过载效果：基于能量阈值判断
+                if (isNormalResonance) {
+                    // 先计算能量阈值
                     const minCircumference = CFG.initialRadius * CFG.minSpread;
                     const minEnergyPerPoint = CFG.baseWaveEnergy / minCircumference;
                     const standardEnemyR = 16;
@@ -957,15 +963,22 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                     const minTotalEnergy = minEnergyPerPoint * standardCoveredArcLength;
                     const overloadThreshold = minTotalEnergy * 0.1;
                     
+                    // 层次1：视觉反馈（总是显示，让玩家知道发生了共振）
+                    // 如果冷却中且能量不足，只显示视觉反馈，不执行任何效果
+                    state.entities.echoes.push({
+                        x: enemy.x, y: enemy.y, r: enemy.r,
+                        type: 'enemy_resonance',
+                        life: 1.0,
+                        isPerfect: isPerfectResonance
+                    });
+                    
+                    // 层次2：高能量效果（忽略冷却，允许立即进入stun）
                     if (totalEnergy >= overloadThreshold) {
-                        // 进入stun状态，不发出受迫共振波
+                        // 进入stun状态，不发出受迫共振波，不设置冷却
                         enemy.state = 'stunned';
                         enemy.isPerfectStun = isPerfectResonance;
                         enemy.timer = isPerfectResonance ? CFG.stunTime : CFG.stunTime / 2; // 完美共振10秒，普通共振5秒
                         enemy.canBeDetonated = true; // 标记可处决
-                        
-                        // 视觉反馈
-                        spawnParticles(enemy.x, enemy.y, '#ffff00', 15); // 黄色警告粒子
                         
                         // 日志消息
                         if (isPerfectResonance) {
@@ -973,10 +986,12 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                         } else {
                             logMsg("TARGET STUNNED");
                         }
-                    } else {
-                        // 能量不足，只进行普通的受迫发波，不进入stun
+                    }
+                    // 层次3：低能量效果（检查冷却，防止频繁发波）
+                    else if (enemy.resonanceCD <= 0) {
+                        // 能量不足，只进行普通的受迫发波，设置冷却
                         emitWave(enemy.x, enemy.y, 0, Math.PI*2, enemy.freq, 'enemy', enemy.id);
-                        enemy.resCool = CFG.resCooldown;
+                        enemy.resonanceCD = CFG.resonanceCD;
                         
                         // 敌人会警觉并追踪波纹来源位置
                         if (enemy.state === 'idle' || enemy.state === 'alert' || enemy.state === 'patrol' || enemy.state === 'searching') {
@@ -1012,8 +1027,95 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
     return 'none';
 }
 
+// 计算波纹在指定半径和角度下的能量密度
+// 复用 updateWave 中的计算逻辑
+function calculateWaveEnergyPerPoint(baseEnergy, radius, spread) {
+    const isFullCircle = spread > Math.PI * 1.9;
+    const circumference = isFullCircle ? (2 * Math.PI * radius) : (radius * spread);
+    const energyPerPoint = baseEnergy / (circumference > 0.01 ? circumference : 0.01);
+    return energyPerPoint;
+}
+
+// 判断敌人波纹中心是否在玩家波纹扇形内
+function isAngleOverlap(pWave, eWave) {
+    const angleToEnemyWave = Math.atan2(eWave.y - pWave.y, eWave.x - pWave.x);
+    let angleDiff = Math.abs(angleToEnemyWave - pWave.angle);
+    while (angleDiff > Math.PI) angleDiff = Math.abs(angleDiff - Math.PI * 2);
+    return (angleDiff < pWave.spread / 2 + 0.2); // 0.2 弧度作为边缘宽容度
+}
+
+// 处理波纹与波纹的交互（弹反波吞噬敌方波纹）
+function handleWaveToWaveInteraction() {
+    // 1. 筛选角色
+    // 只有玩家发出的"弹反波"才有资格吞噬
+    const parryWaves = state.entities.waves.filter(w => w.source === 'player' && w.isParryWave);
+    // 所有非玩家波（敌人波、连锁波）都是食物
+    const enemyWaves = state.entities.waves.filter(w => w.source !== 'player' && w.source !== 'pulse');
+    
+    parryWaves.forEach(pWave => {
+        enemyWaves.forEach(eWave => {
+            if (eWave._toRemove) return; // 已经被吃掉了
+            
+            // 2. 碰撞检测
+            // 简化模型：两个圆环的距离 < 两者半径之和，且 > 半径之差 (即圆环线有重叠可能)
+            // 为了手感爽快，我们只要判定"波前相遇"即可
+            const d = dist(pWave.x, pWave.y, eWave.x, eWave.y);
+            const radiusSum = pWave.r + eWave.r;
+            const touchThreshold = CFG.waveSpeed * 2.5; // 宽容度
+            
+            // 如果波纹接触了
+            if (Math.abs(d - radiusSum) < touchThreshold) {
+                
+                // 3. 频率匹配检测
+                const freqDelta = Math.abs(pWave.freq - eWave.freq);
+                
+                // 只有在普通共振范围内才能发生干涉/吞噬
+                if (freqDelta <= CFG.normalResTol) {
+                    
+                    // 4. 角度重叠检测 (避免背后吸能)
+                    // 只有当敌人波纹在玩家波纹的扇形覆盖范围内才算
+                    if (isAngleOverlap(pWave, eWave)) {
+                        
+                        // === 触发吞噬 (ABSORPTION) ===
+                        
+                        // A. 计算食物的总能量
+                        // 估算敌方波纹当前的剩余总能量
+                        // energyPerPoint * (周长 * spread)
+                        const isFullCircle = eWave.spread > Math.PI * 1.9;
+                        const eCircumference = isFullCircle ? (2 * Math.PI * eWave.r) : (eWave.r * (eWave.spread > 0.01 ? eWave.spread : 0.01));
+                        const eTotalEnergy = eWave.energyPerPoint * eCircumference;
+                        
+                        // B. 决定吸收效率
+                        // 完美弹反吸收 100% (1.0)，普通弹反吸收 50% (0.5)
+                        const efficiency = pWave.isPerfectParry ? 1.0 : 0.5;
+                        const absorbedEnergy = eTotalEnergy * efficiency;
+                        
+                        // C. 注入能量
+                        // 直接增加 baseEnergy。
+                        // updateWave 函数在下一帧会自动用新的 baseEnergy / circumference 来计算新的 energyPerPoint
+                        // 从而实现"平均分配到每个点"的效果
+                        pWave.baseEnergy += absorbedEnergy;
+                        
+                        // D. 销毁敌方波纹
+                        eWave._toRemove = true;
+                        
+                        // E. 视觉特效
+                        // 在两波接触点生成粒子
+                        const midX = pWave.x + Math.cos(pWave.angle) * pWave.r;
+                        const midY = pWave.y + Math.sin(pWave.angle) * pWave.r;
+                        spawnParticles(midX, midY, pWave.isPerfectParry ? '#ffffff' : '#00ffff', 15);
+                    }
+                }
+            }
+        });
+    });
+}
+
 // 更新单个波纹
 function updateWave(w, i) {
+    // 如果波纹已被标记删除（例如弹反触发），直接返回，不进行任何交互
+    if (w._toRemove) return;
+    
     const oldR = w.r;
     w.r += CFG.waveSpeed;
     

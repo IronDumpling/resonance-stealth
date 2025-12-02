@@ -29,8 +29,9 @@ const state = {
         en: CFG.maxEnergy, 
         reserveEn: 0, 
         invuln: 0,
-        resCool: 0, 
+        resonanceCD: 0, 
         grabParticleTimer: 0,
+        shouldShowAimLine: false,  // 是否显示辅助瞄准线
     },
     keys: { w:0, a:0, s:0, d:0, space:0, f:0, r:0, e:0 },
     mouse: { x:0, y:0 },
@@ -133,6 +134,7 @@ function init() {
     state.p.grabberEnemy = null;
     state.p.struggleProgress = 0;
     state.p.chargeStartTime = 0;
+    state.p.shouldShowAimLine = false;
     
     state.entities.walls = [];
     state.entities.items = [];
@@ -303,6 +305,10 @@ function update() {
     checkPlayerDeath(); // 检查能量归零死亡
     updateCamera();
     updateItemsVisibility();
+
+    // 处理波纹与波纹的交互（弹反波吞噬敌方波纹）
+    // 在波纹位置更新前调用，优先处理波与波的抵消
+    handleWaveToWaveInteraction();
 
     // 更新波纹（标记-清理模式避免重叠）
     // 第一遍：更新所有波纹，标记需要删除的

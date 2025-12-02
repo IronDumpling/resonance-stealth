@@ -2,6 +2,18 @@
 
 // 聚焦逻辑
 function updateFocus() {
+    // 被抓取时无法蓄力或发波
+    if(state.p.isGrabbed) {
+        if(state.p.isCharging) {
+            // 如果正在蓄力，立即重置蓄力状态
+            state.p.isCharging = false;
+            state.focusLevel = 0;
+            state.p.chargeStartTime = 0;
+            state.p.shouldShowAimLine = false;
+        }
+        return;
+    }
+    
     if(state.keys.space) {
         if(!state.p.isCharging) {
             // 开始蓄力：记录开始时间，重置聚焦等级
@@ -23,12 +35,27 @@ function updateFocus() {
                 state.focusLevel = Math.min(1, Math.sqrt(normalizedTime));
             }
             // 如果还在延迟期内，focusLevel 保持为 0（已在初始化时设置）
+            
+            // 计算当前蓄力状态下的预期波纹能量，判断是否显示辅助瞄准线
+            const currentSpread = lerp(CFG.maxSpread, CFG.minSpread, state.focusLevel);
+            
+            // 逻辑计算 baseEnergy
+            const freqFactor = 0.5 + (state.freq - CFG.freqMin) / (CFG.freqMax - CFG.freqMin);
+            const baseEnergy = CFG.baseWaveEnergy * freqFactor;
+            const energyPerPoint = calculateWaveEnergyPerPoint(baseEnergy, CFG.initialRadius, currentSpread);
+             
+            // 如果能量达到 infoLevelAnalyze，显示辅助瞄准线
+            state.p.shouldShowAimLine = energyPerPoint >= CFG.infoLevelAnalyze;
+        } else {
+            // 不在蓄力时，不显示辅助瞄准线
+            state.p.shouldShowAimLine = false;
         }
     } else {
         // 松开 Space 键时，重置蓄力状态
         if(state.p.isCharging) {
             state.p.isCharging = false;
             state.p.chargeStartTime = 0;
+            state.p.shouldShowAimLine = false;
         }
     }
 }
@@ -56,27 +83,88 @@ function releaseScan() {
 
     state.p.en -= energyCost;
     
-    emitWave(state.p.x, state.p.y, state.p.a, currentSpread, state.freq, 'player');
+    // --- 弹反判定逻辑 ---
+    let isParry = false;
+    let isPerfectParry = false;
+    let energyMult = 1.0;
+    
+    // 寻找接近的敌方波纹
+    // 判定条件：非玩家波，非pulse波，频率在共振范围内，且波纹边缘与玩家距离极近
+    const hitWave = state.entities.waves.find(w => {
+        if (w.source === 'player' || w.source === 'pulse') return false;
+        if (Math.abs(w.freq - state.freq) > CFG.normalResTol) return false;
+        
+        // 计算波纹边缘与玩家的距离
+        const distToPlayer = dist(w.x, w.y, state.p.x, state.p.y);
+        const distToEdge = Math.abs(distToPlayer - w.r);
+        
+        return distToEdge < CFG.parryDistanceThreshold;
+    });
+    
+    if (hitWave) {
+        isParry = true;
+        
+        // 判定是否完美共振
+        const freqDelta = Math.abs(hitWave.freq - state.freq);
+        isPerfectParry = freqDelta <= CFG.perfectResTol;
+        
+        // 计算能量倍率：完美弹反2倍，普通弹反1倍
+        energyMult = isPerfectParry ? 2.0 : 1.0;
+        
+        // 能量奖励
+        const reward = isPerfectParry ? CFG.parryRewardPerfect : CFG.parryRewardNormal;
+        addEnergy(reward);
+
+        logMsg(isPerfectParry ? "PERFECT RESONANCE REFLECTION" : "WAVE DEFLECTED");
+        
+        // 为了保护玩家，触发弹反的瞬间，这道贴脸的波纹必须立刻消失
+        hitWave._toRemove = true;
+    }
+    
+    // --- 发射波纹 ---
+    emitWave(
+        state.p.x, state.p.y, 
+        state.p.a, 
+        currentSpread, 
+        state.freq, 
+        'player', 
+        null, 
+        false,          // isChain
+        isParry,        // isParry
+        isPerfectParry, // isPerfectParry
+        energyMult      // energyMult
+    );
     
     state.p.isCharging = false; 
-    state.focusLevel = 0; 
+    state.focusLevel = 0;
+    state.p.shouldShowAimLine = false; // 释放时不显示辅助瞄准线
     updateUI();
 }
 
-// 增加能量（拾取或奖励）
-function gainEnergy(amount) {
-    let remaining = amount;
+// 提升主能量（自动处理溢出到备用，并显示绿色闪烁）
+function addEnergy(amount) {
+    if (amount <= 0) return;
     
-    // 1. 先填主能量
     const spaceInMain = CFG.maxEnergy - state.p.en;
-    const toMain = Math.min(spaceInMain, remaining);
-    state.p.en += toMain;
-    remaining -= toMain;
+    const toMain = Math.min(spaceInMain, amount);
     
-    // 2. 溢出部分存入备用
-    if (remaining > 0) {
-        state.p.reserveEn += remaining;
+    if (toMain > 0) {
+        state.p.en += toMain;
+        // 主能量提升时，显示绿色边缘闪烁
+        flashEdgeGlow('green', 150);
     }
+    
+    // 溢出部分存入备用
+    const overflow = amount - toMain;
+    if (overflow > 0) {
+        addReserveEnergy(overflow);
+    }
+}
+
+// 提升备用能量
+function addReserveEnergy(amount) {
+    if (amount <= 0) return;
+    state.p.reserveEn += amount;
 }
 
 // 统一交互逻辑 (拾取 + 处决)
@@ -104,17 +192,17 @@ function tryInteract() {
         // 根据共振类型给予不同奖励
         if (Target.isPerfectStun) {
             // 完美共振：能量+100%
-            gainEnergy(CFG.maxEnergy);
+            addEnergy(CFG.maxEnergy);
             logMsg("ECHO BEACON DETONATED - CASCADE INITIATED");
         } else {
             // 普通共振：能量+50%
-            gainEnergy(CFG.maxEnergy * 0.5);
+            addEnergy(CFG.maxEnergy * 0.5);
             logMsg("ECHO BEACON DETONATED - AREA REVEALED");
         }
         
         // 视觉反馈
         flashEdgeGlow('white', 100); // 边缘白闪
-        spawnParticles(Target.x, Target.y, '#00ffff', 50); // 青色粒子
+        spawnParticles(Target.x, Target.y, '#ff0000', 50); // 红色粒子
         
         // 不立即移除敌人，让 updateEnemies 在下一帧处理激发态并释放波
         updateUI();
@@ -131,7 +219,7 @@ function tryInteract() {
         const item = items[0];
         if(item.type === 'energy') {
             // 能量瓶直接补充到备用能量
-            state.p.reserveEn += CFG.energyFlaskVal;
+            addReserveEnergy(CFG.energyFlaskVal);
             logMsg(`RESERVE ENERGY RESTORED (+${CFG.energyFlaskVal})`);
             spawnParticles(item.x, item.y, '#00ff00', 20);
             // 移除物品
@@ -188,12 +276,18 @@ function updateReserveEnergy() {
     if (state.keys.r && state.p.reserveEn > 0 && state.p.en < CFG.maxEnergy) {
         const needed = CFG.maxEnergy - state.p.en;
         const used = Math.min(needed, state.p.reserveEn);
-        state.p.en += used;
-        state.p.reserveEn -= used;
-        state.keys.r = false;
-        logMsg(`RESERVE TRANSFERRED (+${Math.floor(used)} ENERGY)`);
-        spawnParticles(state.p.x, state.p.y, '#33ccff', 15);
-        updateUI();
+        
+        if (used > 0) {
+            // 从备用能量中扣除
+            state.p.reserveEn -= used;
+            // 使用 addEnergy 提升主能量
+            addEnergy(used);
+            
+            state.keys.r = false;
+            logMsg(`RESERVE TRANSFERRED (+${Math.floor(used)} ENERGY)`);
+            spawnParticles(state.p.x, state.p.y, '#33ccff', 15);
+            updateUI();
+        }
     }
 }
 
@@ -223,6 +317,6 @@ function updatePlayer() {
     
     // 冷却时间
     if(state.p.invuln > 0) state.p.invuln--;
-    if(state.p.resCool > 0) state.p.resCool--;
+    if(state.p.resonanceCD > 0) state.p.resonanceCD--;
 }
 

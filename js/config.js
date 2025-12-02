@@ -5,16 +5,20 @@ const CFG = {
     pViewDist: 280,
     pViewAngle: Math.PI / 2.5,
     playerRadius: 14,          // 玩家碰撞半径（用于波纹命中与分割）
-    maxEnergy: 100,         // 能量上限
+    maxEnergy: 100,            // 能量上限
     
-    energyFlaskVal: 40, // 能量瓶恢复量
+    energyFlaskVal: 30,        // 能量瓶恢复量
     
     // 扫描与波
     forcedWaveCost: 15,
     overloadDmgRatio: 1.3,
     waveSpeed: 5,
-    waveMaxDist: 1500,  // 增大扫描范围
-    
+    waveMaxDist: 1500,           // 增大扫描范围
+
+    parryDistanceThreshold: 25,  // 弹反判定距离阈值（像素）
+    parryRewardNormal: 20,       // 普通弹反回复量
+    parryRewardPerfect: 40,      // 完美弹反回复量
+
     // 聚焦参数
     focusSpeed: 0.015,             // 蓄力增长速度
     focusChargeDelay: 0.15,        // 蓄力延迟时间（秒），期间角度不缩小
@@ -26,14 +30,13 @@ const CFG = {
     freqMin: 100,
     freqMax: 300,
     perfectResTol: 5,  // 完美共振容差（±5Hz）
-    normalResTol: 15,  // 普通共振容差（±15Hz） 
+    normalResTol: 10,  // 普通共振容差（±10Hz） 
     
     // 敌人
     eSpeedPatrol: 0.6,
     eSpeedChase: 1.5,
     stunTime: 600, 
-    grabCD: 60,          // 抓取冷却时间（帧数）
-    resCooldown: 120,
+    grabCD: 120,          // 抓取冷却时间（帧数）
     
     // 抓取与挣脱
     struggleProgressMax: 100,      // 挣脱进度最大值
@@ -45,6 +48,7 @@ const CFG = {
     baseWaveEnergy: 10000,   // 波纹固定基础能量N
     energyThreshold: 0.1,    // 过载能量阈值比例
     initialRadius: 5,        // 初始半径
+    resonanceCD: 120,
     
     // 波纹信息显示等级阈值
     infoLevelClear: 500,      // 高于此值：清晰轮廓（低于则为模糊轮廓）
@@ -53,7 +57,7 @@ const CFG = {
     
     // 阻挡物
     wallFreqs: [150, 200, 250],  // 墙壁频率选项
-    wallColors: {              // 墙壁颜色映射
+    wallColors: {                // 墙壁颜色映射
         150: '#333333',
         200: '#666666', 
         250: '#999999'

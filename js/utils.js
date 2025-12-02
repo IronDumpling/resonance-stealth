@@ -125,6 +125,10 @@ function flashEdgeGlow(color, duration) {
         edgeGlow.style.boxShadow = 'inset 0 0 20px 8px rgba(255, 255, 255, 0.8)';
     } else if (color === 'red') {
         edgeGlow.style.boxShadow = 'inset 0 0 20px 8px rgba(255, 0, 0, 0.8)';
+    } else if (color === 'green') {
+        edgeGlow.style.boxShadow = 'inset 0 0 20px 8px rgba(0, 255, 0, 0.8)';
+    } else if (color === 'cyan') {
+        edgeGlow.style.boxShadow = 'inset 0 0 20px 8px rgba(0, 255, 255, 0.8)';
     }
     
     // 显示闪烁
