@@ -83,7 +83,55 @@ function releaseScan() {
 
     state.p.en -= energyCost;
     
-    emitWave(state.p.x, state.p.y, state.p.a, currentSpread, state.freq, 'player');
+    // --- 弹反判定逻辑 ---
+    let isParry = false;
+    let isPerfectParry = false;
+    let energyMult = 1.0;
+    
+    // 寻找接近的敌方波纹
+    // 判定条件：非玩家波，非pulse波，频率在共振范围内，且波纹边缘与玩家距离极近
+    const hitWave = state.entities.waves.find(w => {
+        if (w.source === 'player' || w.source === 'pulse') return false;
+        if (Math.abs(w.freq - state.freq) > CFG.normalResTol) return false;
+        
+        // 计算波纹边缘与玩家的距离
+        const distToPlayer = dist(w.x, w.y, state.p.x, state.p.y);
+        const distToEdge = Math.abs(distToPlayer - w.r);
+        
+        return distToEdge < CFG.parryDistanceThreshold;
+    });
+    
+    if (hitWave) {
+        isParry = true;
+        
+        // 判定是否完美共振
+        const freqDelta = Math.abs(hitWave.freq - state.freq);
+        isPerfectParry = freqDelta <= CFG.perfectResTol;
+        
+        // 计算能量倍率：完美弹反2倍，普通弹反1倍
+        energyMult = isPerfectParry ? 2.0 : 1.0;
+        
+        // 视觉反馈：瞬间爆发
+        spawnParticles(state.p.x, state.p.y, isPerfectParry ? '#ffffff' : '#00ffff', 40);
+        logMsg(isPerfectParry ? "PERFECT RESONANCE REFLECTION" : "WAVE DEFLECTED");
+        
+        // 策略选择：为了保护玩家，触发弹反的瞬间，这道贴脸的波纹必须立刻消失
+        hitWave._toRemove = true;
+    }
+    
+    // --- 发射波纹 ---
+    emitWave(
+        state.p.x, state.p.y, 
+        state.p.a, 
+        currentSpread, 
+        state.freq, 
+        'player', 
+        null, 
+        false,          // isChain
+        isParry,        // isParry
+        isPerfectParry, // isPerfectParry
+        energyMult      // energyMult
+    );
     
     state.p.isCharging = false; 
     state.focusLevel = 0;

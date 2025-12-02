@@ -306,6 +306,10 @@ function update() {
     updateCamera();
     updateItemsVisibility();
 
+    // 处理波纹与波纹的交互（弹反波吞噬敌方波纹）
+    // 在波纹位置更新前调用，优先处理波与波的抵消
+    handleWaveToWaveInteraction();
+
     // 更新波纹（标记-清理模式避免重叠）
     // 第一遍：更新所有波纹，标记需要删除的
     for(let i = 0; i < state.entities.waves.length; i++) {

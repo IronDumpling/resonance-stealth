@@ -13,7 +13,8 @@ const CFG = {
     forcedWaveCost: 15,
     overloadDmgRatio: 1.3,
     waveSpeed: 5,
-    waveMaxDist: 1500,  // 增大扫描范围
+    waveMaxDist: 1500,           // 增大扫描范围
+    parryDistanceThreshold: 25,  // 弹反判定距离阈值（像素）
     
     // 聚焦参数
     focusSpeed: 0.015,             // 蓄力增长速度
