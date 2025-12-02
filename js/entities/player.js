@@ -111,11 +111,13 @@ function releaseScan() {
         // 计算能量倍率：完美弹反2倍，普通弹反1倍
         energyMult = isPerfectParry ? 2.0 : 1.0;
         
-        // 视觉反馈：瞬间爆发
-        spawnParticles(state.p.x, state.p.y, isPerfectParry ? '#ffffff' : '#00ffff', 40);
+        // 能量奖励
+        const reward = isPerfectParry ? CFG.parryRewardPerfect : CFG.parryRewardNormal;
+        addEnergy(reward);
+
         logMsg(isPerfectParry ? "PERFECT RESONANCE REFLECTION" : "WAVE DEFLECTED");
         
-        // 策略选择：为了保护玩家，触发弹反的瞬间，这道贴脸的波纹必须立刻消失
+        // 为了保护玩家，触发弹反的瞬间，这道贴脸的波纹必须立刻消失
         hitWave._toRemove = true;
     }
     
