@@ -2,6 +2,18 @@
 
 // 聚焦逻辑
 function updateFocus() {
+    // 被抓取时无法蓄力或发波
+    if(state.p.isGrabbed) {
+        if(state.p.isCharging) {
+            // 如果正在蓄力，立即重置蓄力状态
+            state.p.isCharging = false;
+            state.focusLevel = 0;
+            state.p.chargeStartTime = 0;
+            state.p.shouldShowAimLine = false;
+        }
+        return;
+    }
+    
     if(state.keys.space) {
         if(!state.p.isCharging) {
             // 开始蓄力：记录开始时间，重置聚焦等级
