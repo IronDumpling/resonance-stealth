@@ -1,5 +1,48 @@
 // 渲染相关函数
 
+// 根据敌人频率计算颜色渐变
+// 参数：
+//   enemyFreq: 敌人频率
+//   playerFreq: 玩家频率
+//   freqRange: 频率范围 [min, max]
+//   startColor: 起始颜色 [r, g, b]
+//   endColor: 结束颜色 [r, g, b]
+// 返回：颜色字符串 "rgb(r, g, b)"
+function calculateEnemyEchoColor(enemyFreq, playerFreq, freqRange, startColor, endColor) {
+    const [freqMin, freqMax] = freqRange;
+    const [startR, startG, startB] = startColor;
+    const [endR, endG, endB] = endColor;
+    const perfectResTol = CFG.perfectResTol;
+    const freqDiff = Math.abs(enemyFreq - playerFreq);
+    
+    // 计算最大频率差值
+    let maxFreqDiff;
+    if (enemyFreq < playerFreq) {
+        // 高频：从敌人频率到最大频率
+        maxFreqDiff = freqMax - enemyFreq;
+    } else {
+        // 低频：从最小频率到敌人频率
+        maxFreqDiff = enemyFreq - freqMin;
+    }
+    
+    // 计算渐变比例
+    // 完美共振时 ratio = 1（最接近结束颜色）
+    // 频率差值最大时 ratio = 0（最接近起始颜色）
+    let ratio = 0;
+    if (maxFreqDiff > perfectResTol) {
+        ratio = Math.max(0, Math.min(1, 1 - (freqDiff - perfectResTol) / (maxFreqDiff - perfectResTol)));
+    } else if (freqDiff <= perfectResTol) {
+        ratio = 1; // 完美共振
+    }
+    
+    // 颜色插值
+    const r = Math.round(startR + (endR - startR) * ratio);
+    const g = Math.round(startG + (endG - startG) * ratio);
+    const b = Math.round(startB + (endB - startB) * ratio);
+    
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
 // 绘制背景
 function drawBackground() {
     ctx.fillStyle = '#000510';
@@ -35,15 +78,49 @@ function drawEchoes() {
             ctx.arc(e.x, e.y, 4, 0, Math.PI*2); 
             ctx.fill();
         } else if(e.type === 'enemy_bounce') {
-            // 敌人反弹回声：白色清晰轮廓
-            ctx.strokeStyle = '#ffffff';
+            // 敌人反弹回声：根据频率渐变颜色（从白色到亮绿色）
+            // 通过位置找到对应的敌人
+            const enemy = state.entities.enemies.find(en => 
+                Math.abs(en.x - e.x) < 1 && Math.abs(en.y - e.y) < 1
+            );
+            
+            if (enemy && enemy.freq < state.freq && enemy.freq >= CFG.freqMin) {
+                // 高频：从白色到亮绿色渐变（300Hz到完美共振）
+                ctx.strokeStyle = calculateEnemyEchoColor(
+                    enemy.freq,
+                    state.freq,
+                    [enemy.freq, CFG.freqMax],
+                    [255, 255, 255],// 白色
+                    [0, 255, 0]     // 亮绿色
+                );
+            } else {
+                ctx.strokeStyle = '#ffffff';
+            }
+            
             ctx.lineWidth = 2;
             ctx.beginPath(); 
             ctx.arc(e.x, e.y, e.r, 0, Math.PI*2); 
             ctx.stroke();
         } else if(e.type === 'enemy_blur') {
-            // 敌人穿透回声：灰色模糊轮廓
-            ctx.strokeStyle = '#666666';
+            // 敌人穿透回声：根据频率渐变颜色（从灰色虚线到亮绿色）
+            // 通过位置找到对应的敌人
+            const enemy = state.entities.enemies.find(en => 
+                Math.abs(en.x - e.x) < 1 && Math.abs(en.y - e.y) < 1
+            );
+            
+            if (enemy && enemy.freq > state.freq && enemy.freq <= CFG.freqMax) {
+                // 低频：从灰色到亮绿色渐变（100Hz到完美共振）
+                ctx.strokeStyle = calculateEnemyEchoColor(
+                    enemy.freq,
+                    state.freq,
+                    [CFG.freqMin, enemy.freq],
+                    [0, 255, 0],     // 亮绿色
+                    [102, 102, 102]  // 灰色
+                );
+            } else {
+                ctx.strokeStyle = '#666666';
+            }
+            
             ctx.lineWidth = 1;
             ctx.setLineDash([4, 4]); // 虚线
             ctx.beginPath(); 
