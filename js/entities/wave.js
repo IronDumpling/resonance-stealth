@@ -299,13 +299,16 @@ function handleWavePenetration(w, wall, waveIndex) {
     
     // 记录墙壁吸收的能量（用于raycast分析显示）
     if (w.source === 'player') {
+        // 初始化墙壁对象的absorbedEnergy（如果不存在）
+        if (!wall.absorbedEnergy) wall.absorbedEnergy = 0;
+        
         const existingEcho = state.entities.wallEchoes.find(we => we.wall === wall);
         if (!existingEcho) {
             state.entities.wallEchoes.push({
                 wall: wall,
                 life: 1.0,
                 energy: 0,
-                absorbedEnergy: 0
+                absorbedEnergy: wall.absorbedEnergy  // 从墙壁对象读取
             });
         }
     }
@@ -357,11 +360,16 @@ function handleWavePenetration(w, wall, waveIndex) {
                 // 计算穿透损失的能量
                 const lostEnergy = w.baseEnergy * penetrationLoss * (penetratedSpread / w.spread);
                 
-                // 记录墙壁吸收的能量（用于raycast分析显示）
+                // 记录墙壁吸收的能量（持久化存储在墙壁对象上）
                 if (w.source === 'player') {
+                    // 直接存储在墙壁对象上，确保数据不会因为wallEcho被移除而丢失
+                    if (!wall.absorbedEnergy) wall.absorbedEnergy = 0;
+                    wall.absorbedEnergy += lostEnergy;
+                    
+                    // 同时更新wallEcho（如果存在）
                     const existingEcho = state.entities.wallEchoes.find(we => we.wall === wall);
                     if (existingEcho) {
-                        existingEcho.absorbedEnergy = (existingEcho.absorbedEnergy || 0) + lostEnergy;
+                        existingEcho.absorbedEnergy = wall.absorbedEnergy;
                     }
                 }
                 
@@ -963,19 +971,14 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                 // 玩家波纹才显示信息
                 if (w.source === 'player') {
                     if (willBounce) {
-                        // 反弹：根据能量显示清晰轮廓或分析UI
+                        // 反弹：根据能量显示清晰轮廓（不再显示分析UI）
                         if (showAnalyzeUI) {
-                            // 高能量：显示分析UI
+                            // 高能量：显示清晰轮廓
                             state.entities.echoes.push({
-                                x: enemy.x, y: enemy.y, r: enemy.r, 
-                                type: 'analyze',
-                                life: isLongDuration ? 5.0 : 2.0,
-                                enemyId: enemy.id,
-                                isResonance: isNormalResonance,
-                                isPerfect: isPerfectResonance
+                                x: enemy.x, y: enemy.y, r: enemy.r,
+                                type: 'enemy_bounce',
+                                life: isClearOutline ? 1.0 : 0.5
                             });
-                            enemy.lastPingTime = Date.now();
-                            enemy.pingType = 'analyze';
                         } else {
                             // 中低能量：显示清晰轮廓
                             state.entities.echoes.push({
@@ -985,24 +988,19 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                             });
                         }
                     } else {
-                        // 穿透：显示模糊轮廓（短暂）
+                        // 穿透：显示模糊轮廓（不再显示分析UI）
                         if (showAnalyzeUI) {
-                            // 高能量穿透（低频聚焦）：短暂分析UI
+                            // 高能量穿透：模糊轮廓
                             state.entities.echoes.push({
-                                x: enemy.x, y: enemy.y, r: enemy.r, 
-                                type: 'analyze',
-                                life: isLongDuration ? 2.0 : 1.0,
-                                enemyId: enemy.id,
-                                isResonance: isNormalResonance,
-                                isPerfect: isPerfectResonance
+                                x: enemy.x, y: enemy.y, r: enemy.r,
+                                type: 'enemy_blur',
+                                life: 0.3
                             });
-                            enemy.lastPingTime = Date.now();
-                            enemy.pingType = 'analyze';
                         } else {
                             // 低能量穿透：模糊轮廓
                             state.entities.echoes.push({
                                 x: enemy.x, y: enemy.y, r: enemy.r,
-                                type: 'enemy_blur',  // 新类型：模糊轮廓
+                                type: 'enemy_blur',
                                 life: 0.3
                             });
                         }

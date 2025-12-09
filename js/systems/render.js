@@ -187,7 +187,9 @@ function drawWallEchoes() {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             const blockFreqText = `BLOCK: ${we.wall.blockFreq}Hz`;
-            const absorbedText = `ABSORBED: ${Math.floor(we.absorbedEnergy || 0)}`;
+            // 优先使用墙壁对象上的absorbedEnergy（持久化存储），如果没有则使用wallEcho的
+            const absorbedEnergy = we.wall.absorbedEnergy || we.absorbedEnergy || 0;
+            const absorbedText = `ABSORBED: ${Math.floor(absorbedEnergy)}`;
             ctx.fillText(blockFreqText, centerX, centerY - 10);
             ctx.fillText(absorbedText, centerX, centerY + 10);
         }
@@ -349,7 +351,7 @@ function drawAimLine() {
     ctx.moveTo(state.p.x, state.p.y);
     
     // 终点：根据raycast结果或最大长度
-    const maxLength = CFG.pViewDist * 2;
+    const maxLength = CFG.pViewDist * 1.5;
     let endX, endY;
     
     if (state.p.aimLineHit) {

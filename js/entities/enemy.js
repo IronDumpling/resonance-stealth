@@ -99,15 +99,12 @@ function updateEnemyUI(e) {
     const execHint = e.executeHintElement;
     const struggleHint = e.struggleHintElement;
     
-    // analyze UI 在以下情况显示：
-    // 1. 波纹分析（原有逻辑）
-    // 2. 瞄准线raycast碰撞（新增）
+    // analyze UI 只在瞄准线raycast碰撞时显示，不碰撞时立刻消失
     const canShowAnalyze = (e.state === 'idle' || e.state === 'patrol' || e.state === 'alert' || e.state === 'searching' || e.state === 'dormant');
     const isRaycastHit = state.p.aimLineHit && state.p.aimLineHit.type === 'enemy' && state.p.aimLineHit.enemy === e;
-    const isWaveAnalyze = Date.now() - e.lastPingTime < 2000 && e.pingType === 'analyze';
     
-    // 更新 analyze UI
-    if (canShowAnalyze && (isWaveAnalyze || isRaycastHit)) {
+    // 更新 analyze UI：只在raycast碰撞时显示
+    if (canShowAnalyze && isRaycastHit) {
         const screenPos = worldToScreen(e.x, e.y - 20);
         ui.style.display = 'block'; 
         ui.style.left = screenPos.x + 'px'; 
@@ -143,39 +140,8 @@ function updateEnemyUI(e) {
         const enText = `EN: ${Math.floor(e.en)}/${CFG.enemyMaxEnergy}`;
         const overloadText = `OVERLOAD: ${Math.floor(e.overload)}/${CFG.maxOverload}`;
         text.innerHTML = statusText + `<br><span style='color:#aaa;font-size:0.8em;'>${enText} | ${overloadText}</span>`;
-    } else if (isRaycastHit) {
-        // raycast碰撞时也显示分析UI（即使没有波纹分析）
-        const screenPos = worldToScreen(e.x, e.y - 20);
-        ui.style.display = 'block'; 
-        ui.style.left = screenPos.x + 'px'; 
-        ui.style.top = screenPos.y + 'px';
-        
-        let diff = clamp((e.freq - state.freq) / 100, -1, 1);
-        const offset = 40 + (diff * 38);
-        ui.querySelector('.analyzer-pip').style.left = offset + 'px';
-        
-        const text = ui.querySelector('.analyzer-text');
-        const pip = ui.querySelector('.analyzer-pip');
-        const freqDiff = Math.abs(state.freq - e.freq);
-        
-        if(freqDiff <= CFG.perfectResTol) {
-            pip.style.backgroundColor = '#00ff00';
-            text.innerHTML = "<span style='color:#00ff00'>[◆ PERFECT RESONANCE]</span>";
-        } else if(freqDiff <= CFG.normalResTol) {
-            pip.style.backgroundColor = '#88ff88';
-            text.innerHTML = "<span style='color:#88ff88'>[● RESONANCE]</span>";
-        } else if(diff < 0) {
-            pip.style.backgroundColor = '#0088ff';
-            text.innerHTML = "<span style='color:#0088ff'>▼ LOWER FREQ</span>"; 
-        } else {
-            pip.style.backgroundColor = '#ff4400';
-            text.innerHTML = "<span style='color:#ff4400'>▲ HIGHER FREQ</span>";
-        }
-        
-        const enText = `EN: ${Math.floor(e.en)}/${CFG.enemyMaxEnergy}`;
-        const overloadText = `OVERLOAD: ${Math.floor(e.overload)}/${CFG.maxOverload}`;
-        text.innerHTML += `<br><span style='color:#aaa;font-size:0.8em;'>${enText} | ${overloadText}</span>`;
     } else {
+        // 不碰撞时立刻隐藏UI
         ui.style.display = 'none';
     }
     

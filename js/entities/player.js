@@ -475,9 +475,12 @@ function updateAimLineRaycast() {
                 wall: wall,
                 life: 1.0,
                 energy: 0,
-                absorbedEnergy: 0
+                absorbedEnergy: wall.absorbedEnergy || 0  // 从墙壁对象读取已存储的能量
             };
             state.entities.wallEchoes.push(wallEcho);
+        } else {
+            // 同步墙壁对象的absorbedEnergy到wallEcho
+            wallEcho.absorbedEnergy = wall.absorbedEnergy || 0;
         }
         // 更新显示时间
         wallEcho.life = 1.0;

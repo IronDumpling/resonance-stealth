@@ -50,7 +50,7 @@ const CFG = {
     waveAbsorbRatio: 0.3,          // 波纹穿透时生物吸收的能量比例（对应穿透损失的30%）
     
     // 过载系统
-    overloadDecayRate: 0.5,        // 过载条自然衰减速度（每帧）
+    overloadDecayRate: 0.5,         // 过载条自然衰减速度（每帧）
     overloadGainNormal: 10,         // 普通共振时过载增加量
     overloadGainPerfect: 100,       // 完美共振时过载增加量（直接满）
     maxOverload: 100,               // 过载最大值（玩家和敌人统一）
