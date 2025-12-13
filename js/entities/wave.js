@@ -858,11 +858,34 @@ function handleWavePlayerInteraction(w, oldR, waveIndex) {
         const coveredArcLength = Math.min(playerDiameter, maxArcLength);
         const totalEnergyOnPlayer = w.energyPerPoint * coveredArcLength;
         
-        // 增加玩家过载值
+        // 根据波能量动态计算玩家过载值增长
+        // 计算基础能量阈值（与敌人相同）
+        const minCircumference = CFG.initialRadius * CFG.minSpread;
+        const minEnergyPerPoint = CFG.baseWaveEnergy / minCircumference;
+        const playerDiam = CFG.playerRadius * 2;
+        const standardCoveredArcLength = CFG.initialRadius * Math.min(playerDiam / CFG.initialRadius, CFG.minSpread);
+        const minTotalEnergy = minEnergyPerPoint * standardCoveredArcLength;
+        
+        // 根据波能量动态计算过载值增长
+        let overloadGain = 0;
         if (isPerfectResonance) {
-            state.p.overload = CFG.maxOverload; // 完美共振直接满
+            // 完美共振：在普通共振基础上翻倍
+            const baseGain = CFG.overloadGainNormal * (totalEnergyOnPlayer / minTotalEnergy);
+            overloadGain = baseGain * 2;
         } else {
-            state.p.overload += CFG.overloadGainNormal;
+            // 普通共振：根据totalEnergyOnPlayer动态计算
+            overloadGain = CFG.overloadGainNormal * (totalEnergyOnPlayer / minTotalEnergy);
+        }
+        
+        // 计算实际增加的过载值（限制不超过最大值）
+        const oldOverload = state.p.overload;
+        state.p.overload = Math.min(CFG.maxOverload, state.p.overload + overloadGain);
+        const actualGain = state.p.overload - oldOverload;
+        
+        // 设置玩家硬直时间（实际过载增长量 * 0.1帧）
+        if (actualGain > 0) {
+            if (!state.p.overloadedStunTimer) state.p.overloadedStunTimer = 0;
+            state.p.overloadedStunTimer = Math.max(state.p.overloadedStunTimer, actualGain * 0.1);
         }
         
         let energyCost = CFG.forcedWaveCost;
@@ -1024,11 +1047,26 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                     const minTotalEnergy = minEnergyPerPoint * standardCoveredArcLength;
                     const overloadThreshold = minTotalEnergy * 0.1;
                     
-                    // 增加过载值
+                    // 根据波能量动态计算过载值增长
+                    let overloadGain = 0;
                     if (isPerfectResonance) {
-                        enemy.overload = CFG.maxOverload; // 完美共振直接满
+                        // 完美共振：在普通共振基础上翻倍
+                        const baseGain = CFG.overloadGainNormal * (totalEnergy / minTotalEnergy);
+                        overloadGain = baseGain * 2;
                     } else {
-                        enemy.overload += CFG.overloadGainNormal;
+                        // 普通共振：根据totalEnergy动态计算
+                        overloadGain = CFG.overloadGainNormal * (totalEnergy / minTotalEnergy);
+                    }
+                    
+                    // 计算实际增加的过载值（限制不超过最大值）
+                    const oldOverload = enemy.overload;
+                    enemy.overload = Math.min(CFG.maxOverload, enemy.overload + overloadGain);
+                    const actualGain = enemy.overload - oldOverload;
+                    
+                    // 设置硬直时间（实际过载增长量 * 0.1帧）
+                    if (actualGain > 0) {
+                        if (!enemy.overloadedStunTimer) enemy.overloadedStunTimer = 0;
+                        enemy.overloadedStunTimer = Math.max(enemy.overloadedStunTimer, actualGain * 0.1);
                     }
                     
                     // 层次1：视觉反馈（总是显示，让玩家知道发生了共振）
@@ -1055,8 +1093,9 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                             logMsg("TARGET STUNNED");
                         }
                     }
-                    // 层次3：低能量效果（检查冷却，防止频繁发波）
-                    else if (enemy.resonanceCD <= 0) {
+                    // 层次3：低能量效果（检查冷却，防止频繁发波，硬直期间无法发波）
+                    else if (enemy.resonanceCD <= 0 && (!enemy.overloadedStunTimer || enemy.overloadedStunTimer <= 0)) {
+                        // 硬直期间无法发波
                         // 能量不足，只进行普通的受迫发波，设置冷却
                         // 计算能量消耗（使用与玩家相同的公式）
                         const freqNorm = (enemy.freq - CFG.freqMin) / (CFG.freqMax - CFG.freqMin);

@@ -1,10 +1,84 @@
 // 敌人相关逻辑
 
+// 检查圆与墙壁是否重叠
+function checkCircleWallCollision(cx, cy, cr) {
+    // 检查圆心是否在墙内
+    if (checkWall(cx, cy)) return true;
+    
+    // 检查圆的四个方向点是否在墙内（更精确的碰撞检测）
+    const checkPoints = [
+        { x: cx + cr, y: cy },      // 右
+        { x: cx - cr, y: cy },      // 左
+        { x: cx, y: cy + cr },      // 下
+        { x: cx, y: cy - cr }       // 上
+    ];
+    
+    for (const pt of checkPoints) {
+        if (checkWall(pt.x, pt.y)) return true;
+    }
+    
+    // 检查圆是否与墙壁矩形相交（更精确的检测）
+    for (let wall of state.entities.walls) {
+        // 找到矩形上距离圆心最近的点
+        const closestX = Math.max(wall.x, Math.min(cx, wall.x + wall.w));
+        const closestY = Math.max(wall.y, Math.min(cy, wall.y + wall.h));
+        
+        // 计算最近点到圆心的距离
+        const distToClosest = Math.hypot(cx - closestX, cy - closestY);
+        
+        // 如果距离小于半径，则碰撞
+        if (distToClosest < cr) return true;
+    }
+    
+    return false;
+}
+
+// 检查圆与圆是否重叠
+function checkCircleCircleCollision(x1, y1, r1, x2, y2, r2) {
+    const d = dist(x1, y1, x2, y2);
+    return d < (r1 + r2);
+}
+
 function spawnEnemy() {
     let ex, ey, ok=false;
-    while(!ok) {
-        ex = rand(50, canvas.width-50); ey = rand(50, canvas.height-50);
-        if(dist(ex,ey,state.p.x,state.p.y) > 300) ok=true;
+    const enemyRadius = 16;
+    const minDistanceFromPlayer = 300;
+    const minDistanceFromEnemies = enemyRadius * 2 + 10; // 敌人之间最小距离（半径之和 + 10像素缓冲）
+    let attempts = 0;
+    const maxAttempts = 200; // 最大尝试次数，避免无限循环
+    
+    while(!ok && attempts < maxAttempts) {
+        attempts++;
+        ex = rand(50, canvas.width-50); 
+        ey = rand(50, canvas.height-50);
+        
+        // 检查距离玩家是否足够远
+        if(dist(ex, ey, state.p.x, state.p.y) <= minDistanceFromPlayer) {
+            continue;
+        }
+        
+        // 检查是否与墙壁重叠
+        if (checkCircleWallCollision(ex, ey, enemyRadius)) {
+            continue;
+        }
+        
+        // 检查是否与其他敌人重叠
+        let overlapsEnemy = false;
+        for (let existingEnemy of state.entities.enemies) {
+            if (checkCircleCircleCollision(ex, ey, enemyRadius, existingEnemy.x, existingEnemy.y, existingEnemy.r)) {
+                overlapsEnemy = true;
+                break;
+            }
+        }
+        
+        if (!overlapsEnemy) {
+            ok = true;
+        }
+    }
+    
+    // 如果尝试次数过多仍未找到合适位置，跳过生成这个敌人
+    if (!ok) {
+        return;
     }
     
     // 为敌人生成巡逻路径点（2~3个）——在其周围一定范围内、且不在墙内
@@ -98,8 +172,8 @@ function onEnemySensesPlayer(enemy, playerX, playerY) {
 
 // 统一能量感知检测
 function checkEnergyDetection(energySource, enemy) {
-    // 1. 检查敌人是否在可感知状态
-    if (enemy.state === 'stunned' || enemy.state === 'dormant' || enemy.state === 'detonating') {
+    // 1. 检查敌人是否在可感知状态（休眠敌人可以感知，但不能移动/发波/grab）
+    if (enemy.state === 'stunned' || enemy.state === 'detonating') {
         return false;
     }
     
@@ -260,6 +334,9 @@ function updateEnemyMovement(e) {
     // STUNNED、DETONATING、GRABBING 和 DORMANT 状态在 updateEnemies 中处理，这里直接返回
     if (e.state === 'stunned' || e.state === 'detonating' || e.state === 'grabbing' || e.state === 'dormant' || e.state === 'grabbed_by_player') return;
     
+    // 硬直状态无法移动
+    if (e.overloadedStunTimer && e.overloadedStunTimer > 0) return;
+    
     // 检查玩家是否挣脱（如果敌人处于 grabbing 状态但玩家已挣脱）
     if (e.state === 'grabbing' && (!state.p.isGrabbed || state.p.grabberEnemy !== e)) {
         e.state = 'alert';
@@ -300,8 +377,17 @@ function updateEnemyMovement(e) {
     let spd = CFG.eSpeedPatrol;
     let tx = null, ty = null;
     
+    // 速度降低：过载值 >= 2/3 时，速度降低50%
+    if (e.overload >= CFG.maxOverload * 2 / 3) {
+        spd *= 0.5;
+    }
+    
     if (e.state === 'alert') {
         spd = CFG.eSpeedChase;
+        // 再次应用速度降低（如果过载值高）
+        if (e.overload >= CFG.maxOverload * 2 / 3) {
+            spd *= 0.5;
+        }
         tx = (e.targetX != null ? e.targetX : state.p.x);
         ty = (e.targetY != null ? e.targetY : state.p.y);
         
@@ -325,29 +411,71 @@ function updateEnemyMovement(e) {
                 e.currentWPIndex = (idx + 1) % e.waypoints.length;
             }
         } else {
-            // 没有路径点则使用原来的随机游走行为
-            if (Math.random() < 0.01) {
-                e.angle += (Math.random() - 0.5);
+            // 如果没有路径点，创建默认路径点（当前位置周围）
+            const defaultWaypoints = [];
+            for (let i = 0; i < 3; i++) {
+                const ang = (i * Math.PI * 2 / 3) + Math.random() * 0.5;
+                const d = 100 + Math.random() * 50;
+                const wx = e.x + Math.cos(ang) * d;
+                const wy = e.y + Math.sin(ang) * d;
+                if (wx >= 50 && wx <= canvas.width - 50 && wy >= 50 && wy <= canvas.height - 50 && !checkWall(wx, wy)) {
+                    defaultWaypoints.push({ x: wx, y: wy });
+                }
+            }
+            if (defaultWaypoints.length > 0) {
+                e.waypoints = defaultWaypoints;
+                e.currentWPIndex = 0;
+            } else {
+                // 如果无法创建路径点，至少设置一个目标（当前位置，不移动）
+                tx = e.x;
+                ty = e.y;
             }
         }
     } else {
-        // 其他未知状态：退化为轻微游走
-        if (Math.random() < 0.01) {
-            e.angle += (Math.random() - 0.5);
+        // 其他未知状态：也使用路径点系统
+        if (e.waypoints && e.waypoints.length > 0) {
+            const idx = e.currentWPIndex || 0;
+            const wp = e.waypoints[idx];
+            tx = wp.x;
+            ty = wp.y;
+            
+            const distToWP = dist(e.x, e.y, tx, ty);
+            if (distToWP < 5) {
+                e.currentWPIndex = (idx + 1) % e.waypoints.length;
+            }
+        } else {
+            // 如果没有路径点，创建默认路径点
+            const defaultWaypoints = [];
+            for (let i = 0; i < 3; i++) {
+                const ang = (i * Math.PI * 2 / 3) + Math.random() * 0.5;
+                const d = 100 + Math.random() * 50;
+                const wx = e.x + Math.cos(ang) * d;
+                const wy = e.y + Math.sin(ang) * d;
+                if (wx >= 50 && wx <= canvas.width - 50 && wy >= 50 && wy <= canvas.height - 50 && !checkWall(wx, wy)) {
+                    defaultWaypoints.push({ x: wx, y: wy });
+                }
+            }
+            if (defaultWaypoints.length > 0) {
+                e.waypoints = defaultWaypoints;
+                e.currentWPIndex = 0;
+            } else {
+                tx = e.x;
+                ty = e.y;
+            }
         }
     }
     
     if (tx != null && ty != null) {
         let angleToTarget = Math.atan2(ty - e.y, tx - e.x);
         
-        // 避障逻辑
+        // 避障逻辑：检查目标方向是否有障碍物
         const lookAheadDist = 40;
         let avoidX = 0, avoidY = 0;
         let hasObs = false;
         
         const checkAngles = [0, -0.5, 0.5];
         for (let da of checkAngles) {
-            const checkA = e.angle + da;
+            const checkA = angleToTarget + da;  // 修复：检查目标方向，而不是当前角度
             const cx = e.x + Math.cos(checkA) * lookAheadDist;
             const cy = e.y + Math.sin(checkA) * lookAheadDist;
             if (checkWall(cx, cy)) {
@@ -374,7 +502,25 @@ function updateEnemyMovement(e) {
         e.x += mx;
         e.y += my;
     } else {
-        e.angle += (Math.random() > 0.5 ? 1 : -1) * Math.PI / 2;
+        // 修复：尝试多个方向，而不是只旋转90度
+        let foundDirection = false;
+        const tryAngles = [Math.PI / 4, -Math.PI / 4, Math.PI / 2, -Math.PI / 2, Math.PI * 3 / 4, -Math.PI * 3 / 4, Math.PI, 0];
+        for (let angleOffset of tryAngles) {
+            const testAngle = e.angle + angleOffset;
+            const testMx = Math.cos(testAngle) * spd;
+            const testMy = Math.sin(testAngle) * spd;
+            if (!checkWall(e.x + testMx, e.y + testMy)) {
+                e.angle = testAngle;
+                e.x += testMx;
+                e.y += testMy;
+                foundDirection = true;
+                break;
+            }
+        }
+        // 如果所有方向都被阻挡，保持当前角度（不移动）
+        if (!foundDirection) {
+            // 不移动，保持当前角度
+        }
     }
 }
 
@@ -430,6 +576,15 @@ function updateEnemies() {
         if(e.resonanceCD > 0) e.resonanceCD--;
         if(e.grabCooldown > 0) e.grabCooldown--;
         
+        // 处理硬直状态
+        if (e.overloadedStunTimer && e.overloadedStunTimer > 0) {
+            e.overloadedStunTimer--;
+            // 硬直期间无法移动、发波、抓取，直接跳过移动逻辑
+            if (e.overloadedStunTimer > 0) {
+                // 硬直期间仍然可以更新其他逻辑（如过载衰减）
+            }
+        }
+        
         // 能量自然衰减（非休眠状态）
         if (e.state !== 'dormant') {
             e.en = Math.max(0, e.en - CFG.energyDecayRate);
@@ -469,11 +624,34 @@ function updateEnemies() {
             return;
         } else if(e.state === 'dormant') {
             // 休眠状态：停止AI移动、不发波、不抓取
-            // 如果能量恢复，唤醒敌人
-            if (e.en > 0) {
+            // 但可以感知能耗辐射、吸收生物波能量、被共振
+            // 如果能量恢复到1/2以上，唤醒敌人
+            if (e.en >= CFG.enemyMaxEnergy / 2) {
                 e.state = 'patrol';
                 logMsg("TARGET AWAKENED");
             }
+            
+            // 休眠敌人吸收与之接触的能耗辐射
+            state.entities.radiations.forEach(radiation => {
+                const distToRadiation = dist(e.x, e.y, radiation.x, radiation.y);
+                if (distToRadiation <= radiation.maxRadius) {
+                    // 计算该距离处的能量值
+                    let energyValue = 0;
+                    if (distToRadiation > 0.01) {
+                        energyValue = radiation.centerEnergy / (2 * Math.PI * distToRadiation);
+                    } else {
+                        energyValue = radiation.centerEnergy; // 距离太近，使用中心能量
+                    }
+                    
+                    // 将能量值转换为敌人能量恢复（使用转换率，避免恢复过快）
+                    const conversionRate = 0.1; // 10%的转换率
+                    const energyGain = energyValue * conversionRate;
+                    e.en = Math.min(CFG.enemyMaxEnergy, e.en + energyGain);
+                    
+                    // 如果能量达到1/2，唤醒敌人（上面的检查会处理）
+                }
+            });
+            
             return;
         } else if(e.state === 'grabbed_by_player') {
             // 被玩家抓取状态：停止移动
@@ -527,9 +705,10 @@ function updateEnemies() {
                 }
             }
         } else {
-            // 碰撞检测：抓取玩家
+            // 碰撞检测：抓取玩家（硬直期间无法抓取）
             if(dToP < 25 && !state.p.isGrabbed && e.grabCooldown <= 0 && 
-               e.state !== 'stunned' && e.state !== 'detonating') {
+               e.state !== 'stunned' && e.state !== 'detonating' &&
+               (!e.overloadedStunTimer || e.overloadedStunTimer <= 0)) {
                 // 抓取玩家
                 state.p.isGrabbed = true;
                 state.p.grabberEnemy = e;
@@ -542,10 +721,10 @@ function updateEnemies() {
         }
     });
     
-    // 第二遍：检测所有辐射场，对每个敌人进行能量感知
+    // 第二遍：检测所有辐射场，对每个敌人进行能量感知（休眠敌人也可以感知）
     state.entities.radiations.forEach(radiation => {
         state.entities.enemies.forEach(e => {
-            if (e.state !== 'stunned' && e.state !== 'dormant' && e.state !== 'detonating') {
+            if (e.state !== 'stunned' && e.state !== 'detonating') {
                 checkEnergyDetection({ type: 'radiation', x: radiation.x, y: radiation.y, centerEnergy: radiation.centerEnergy }, e);
             }
         });

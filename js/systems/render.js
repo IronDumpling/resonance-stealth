@@ -313,12 +313,44 @@ function drawEntities() {
     // 绘制物品
     state.entities.items.forEach(i => {
         if(i.visibleTimer > 0) {
-            ctx.fillStyle = '#00ff00'; ctx.shadowBlur = 10; ctx.shadowColor = '#00ff00';
-            ctx.beginPath(); 
-            // 简单的瓶子形状
-            ctx.rect(i.x-3, i.y-6, 6, 12);
-            ctx.fill();
-            ctx.shadowBlur = 0;
+            if (i.type === 'core_hot') {
+                // 热核心：橙红色
+                ctx.fillStyle = '#ff6600'; 
+                ctx.shadowBlur = 10; 
+                ctx.shadowColor = '#ff6600';
+                ctx.beginPath(); 
+                ctx.arc(i.x, i.y, i.r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            } else if (i.type === 'core_cold') {
+                // 冷核心：淡蓝色/灰色，带破碎效果
+                ctx.fillStyle = '#8888ff'; 
+                ctx.shadowBlur = 5; 
+                ctx.shadowColor = '#8888ff';
+                ctx.beginPath(); 
+                ctx.arc(i.x, i.y, i.r, 0, Math.PI * 2);
+                ctx.fill();
+                // 绘制破碎效果（几条裂纹线）
+                ctx.strokeStyle = '#6666aa';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(i.x - i.r * 0.7, i.y - i.r * 0.5);
+                ctx.lineTo(i.x + i.r * 0.3, i.y + i.r * 0.6);
+                ctx.moveTo(i.x + i.r * 0.4, i.y - i.r * 0.6);
+                ctx.lineTo(i.x - i.r * 0.5, i.y + i.r * 0.4);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            } else {
+                // 其他物品（能量瓶等）：绿色
+                ctx.fillStyle = '#00ff00'; 
+                ctx.shadowBlur = 10; 
+                ctx.shadowColor = '#00ff00';
+                ctx.beginPath(); 
+                // 简单的瓶子形状
+                ctx.rect(i.x-3, i.y-6, 6, 12);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
         }
     });
 
@@ -433,7 +465,12 @@ function drawRadiations() {
                 return; // 超出视觉范围，不渲染
             }
             
-            // 检查是否在视野多边形内（更精确的视野检查）
+            // 检查是否在视野扇形内
+            if (!isInCone(rad.x, rad.y)) {
+                return; // 不在视野角度内，不渲染
+            }
+            
+            // 检查是否在视野多边形内（更精确的视野检查，包括墙壁遮挡）
             if (!checkLineOfSight(state.p.x, state.p.y, rad.x, rad.y)) {
                 return; // 被墙壁遮挡，不渲染
             }

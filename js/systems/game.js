@@ -130,9 +130,11 @@ function spawnItem(type) {
 }
 
 // 在敌人位置生成核心物品
-function spawnCoreAtEnemy(enemy) {
+function spawnCoreAtEnemy(enemy, coreType) {
+    coreType = coreType || 'core_hot'; // 默认为热核心
+    const visibleTimer = coreType === 'core_cold' ? 60 : 120; // 冷核心可见时间更短
     state.entities.items.push({
-        type: 'core_hot', x: enemy.x, y: enemy.y, r: 10, visibleTimer: 120 // 可见2秒
+        type: coreType, x: enemy.x, y: enemy.y, r: 10, visibleTimer: visibleTimer
     });
 }
 

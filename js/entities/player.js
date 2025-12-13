@@ -56,8 +56,8 @@ function updatePlayerRadiation() {
 
 // 聚焦逻辑
 function updateFocus() {
-    // 被抓取时无法蓄力或发波
-    if(state.p.isGrabbed) {
+    // 被抓取或硬直状态时无法蓄力或发波
+    if(state.p.isGrabbed || (state.p.overloadedStunTimer && state.p.overloadedStunTimer > 0)) {
         if(state.p.isCharging) {
             // 如果正在蓄力，立即重置蓄力状态
             state.p.isCharging = false;
@@ -117,6 +117,8 @@ function updateFocus() {
 // 释放扫描
 function releaseScan() {
     if(!state.p.isCharging) return;
+    // 硬直状态无法发波
+    if(state.p.overloadedStunTimer && state.p.overloadedStunTimer > 0) return;
     
     // 计算当前角度（弧度）
     const currentSpread = lerp(CFG.maxSpread, CFG.minSpread, state.focusLevel);
@@ -274,10 +276,9 @@ function tryInteract() {
                 logMsg("ECHO BEACON DETONATED - AREA REVEALED");
             }
             
-            // 在敌人位置生成热核心物品
-            state.entities.items.push({
-                type: 'core_hot', x: Target.x, y: Target.y, r: 10, visibleTimer: 120
-            });
+            // 根据敌人状态生成不同类型核心
+            const coreType = Target.state === 'dormant' ? 'core_cold' : 'core_hot';
+            spawnCoreAtEnemy(Target, coreType);
         } else {
             // 能量<=0：不释放共振波，核心破碎
             logMsg("CORE SHATTERED - NO ENERGY");
@@ -310,9 +311,17 @@ function tryInteract() {
             updateUI();
         } else if(item.type === 'core_hot') {
             // 热核心恢复能量
-            addEnergy(CFG.coreItemValue);
-            logMsg(`CORE ABSORBED (+${CFG.coreItemValue} ENERGY)`);
+            addEnergy(CFG.coreHotItemValue);
+            logMsg(`CORE ABSORBED (+${CFG.coreHotItemValue} ENERGY)`);
             spawnParticles(item.x, item.y, '#ff6600', 30);
+            // 移除物品
+            state.entities.items = state.entities.items.filter(i => i !== item);
+            updateUI();
+        } else if(item.type === 'core_cold') {
+            // 冷核心：一用即碎，恢复能量为0
+            addEnergy(CFG.coreColdItemValue);
+            logMsg(`COLD CORE ABSORBED (FRAGILE)`);
+            spawnParticles(item.x, item.y, '#8888ff', 20);
             // 移除物品
             state.entities.items = state.entities.items.filter(i => i !== item);
             updateUI();
@@ -436,6 +445,11 @@ function updatePlayer() {
     const baseDecay = CFG.energyDecayRate;
     state.p.en = Math.max(0, state.p.en - baseDecay);
     
+    // 处理硬直状态
+    if (state.p.overloadedStunTimer && state.p.overloadedStunTimer > 0) {
+        state.p.overloadedStunTimer--;
+    }
+    
     // 更新辐射场
     updatePlayerRadiation();
     
@@ -444,15 +458,19 @@ function updatePlayer() {
     updateReserveEnergy();
     updatePlayerGrab();
     
-    // 被抓取或抓取敌人时无法移动
-    if (!state.p.isGrabbed && !state.p.isGrabbingEnemy) {
+    // 被抓取、抓取敌人或硬直状态时无法移动
+    if (!state.p.isGrabbed && !state.p.isGrabbingEnemy && (!state.p.overloadedStunTimer || state.p.overloadedStunTimer <= 0)) {
         // 移动
         let dx=0, dy=0;
         if(state.keys.w) dy-=1; if(state.keys.s) dy+=1;
         if(state.keys.a) dx-=1; if(state.keys.d) dx+=1;
         if(dx||dy) {
             const len = Math.hypot(dx,dy);
-            const spd = state.p.isCharging ? CFG.pSpeed * 0.3 : CFG.pSpeed;
+            let spd = state.p.isCharging ? CFG.pSpeed * 0.3 : CFG.pSpeed;
+            // 速度降低：过载值 >= 2/3 时，速度降低50%
+            if (state.p.overload >= CFG.maxOverload * 2 / 3) {
+                spd *= 0.5;
+            }
             const nx = state.p.x + (dx/len)*spd; const ny = state.p.y + (dy/len)*spd;
             if(!checkWall(nx, state.p.y)) state.p.x = nx;
             if(!checkWall(state.p.x, ny)) state.p.y = ny;
@@ -465,6 +483,22 @@ function updatePlayer() {
     // 冷却时间
     if(state.p.invuln > 0) state.p.invuln--;
     if(state.p.resonanceCD > 0) state.p.resonanceCD--;
+    
+    // 过载条自然衰减
+    state.p.overload = Math.max(0, state.p.overload - CFG.overloadDecayRate);
+    
+    // 玩家过载满时，无法移动、发波（通过硬直状态实现，过载满时设置一个很长的硬直时间）
+    if (state.p.overload >= CFG.maxOverload) {
+        // 设置硬直时间，直到过载值降到2/3以下
+        if (!state.p.overloadedStunTimer || state.p.overloadedStunTimer <= 0) {
+            // 设置一个很长的硬直时间，每帧检查过载值
+            state.p.overloadedStunTimer = 1; // 设置为1，每帧更新
+        }
+        // 如果过载值仍然满，保持硬直
+        if (state.p.overload >= CFG.maxOverload) {
+            state.p.overloadedStunTimer = 1; // 保持硬直
+        }
+    }
     
     // 瞄准线raycast检测
     updateAimLineRaycast();

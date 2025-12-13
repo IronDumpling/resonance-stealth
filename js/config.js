@@ -73,7 +73,8 @@ const CFG = {
     stealthGrabDistance: 30,        // 暗杀抓取距离
     
     // 核心物品
-    coreItemValue: 50,              // 核心物品恢复的能量值
+    coreHotItemValue: 50,           // 热核心恢复的能量值
+    coreColdItemValue: 0,           // 冷核心恢复的能量值（一用即碎，恢复0）
     
     // 波纹能量
     baseWaveEnergy: 10000,       // 波纹固定基础能量N
