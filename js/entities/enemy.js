@@ -45,8 +45,8 @@ function spawnEnemy() {
         overload: 0,                // 当前过载值
         maxOverload: CFG.maxOverload, // 过载阈值（统一为100）
         // 感知系统
-        detectionRadius: CFG.noiseDetectionRadius,      // 感知范围半径
-        detectionSectorAngle: CFG.noiseDetectionSectorAngle // 敏感扇区角度
+        detectionRadius: CFG.energyDetectionRadius,      // 感知范围半径
+        detectionSectorAngle: CFG.energyDetectionSectorAngle // 敏感扇区角度
     });
 }
 
@@ -96,46 +96,69 @@ function onEnemySensesPlayer(enemy, playerX, playerY) {
     enemy.searchTimer = 0;
 }
 
-// 检查底噪波纹检测
-function checkNoiseDetection(noiseWave, enemy) {
+// 统一能量感知检测
+function checkEnergyDetection(energySource, enemy) {
     // 1. 检查敌人是否在可感知状态
     if (enemy.state === 'stunned' || enemy.state === 'dormant' || enemy.state === 'detonating') {
         return false;
     }
     
-    // 2. 计算底噪波纹到敌人的距离
-    const distToEnemy = dist(noiseWave.x, noiseWave.y, enemy.x, enemy.y);
+    let energyValue = 0;
+    let sourceX = 0, sourceY = 0;
+    let distToEnemy = 0;
     
-    // 3. 检查是否在感知范围内
-    if (distToEnemy > enemy.detectionRadius) {
+    // 2. 根据能量源类型计算能量值
+    if (energySource.type === 'radiation') {
+        // 辐射场：计算敌人到辐射场中心的距离
+        distToEnemy = dist(energySource.x, energySource.y, enemy.x, enemy.y);
+        sourceX = energySource.x;
+        sourceY = energySource.y;
+        
+        // 检查是否在感知范围内
+        if (distToEnemy > enemy.detectionRadius) {
+            return false;
+        }
+        
+        // 计算该距离处的能量值：使用circumference计算方式
+        if (distToEnemy > 0.01) {
+            energyValue = energySource.centerEnergy / (2 * Math.PI * distToEnemy);
+        } else {
+            energyValue = energySource.centerEnergy; // 距离太近，使用中心能量
+        }
+    } else if (energySource.type === 'wave') {
+        // 生物波：使用波的energyPerPoint
+        distToEnemy = dist(energySource.x, energySource.y, enemy.x, enemy.y);
+        sourceX = energySource.x;
+        sourceY = energySource.y;
+        
+        // 检查是否在感知范围内
+        if (distToEnemy > enemy.detectionRadius) {
+            return false;
+        }
+        
+        energyValue = energySource.energyPerPoint;
+    } else {
         return false;
     }
     
-    // 4. 计算角度
-    // 敌人到波纹源的角度（注意：底噪波纹的起点是玩家位置，即noiseWave.x, noiseWave.y）
-    const angleToNoiseSource = Math.atan2(noiseWave.y - enemy.y, noiseWave.x - enemy.x);
-    // 敌人朝向角度
+    // 3. 计算角度
+    const angleToSource = Math.atan2(sourceY - enemy.y, sourceX - enemy.x);
     const enemyAngle = enemy.angle;
-    // 角度差（归一化到 0-π）
-    let angleDiff = Math.abs(angleToNoiseSource - enemyAngle);
+    let angleDiff = Math.abs(angleToSource - enemyAngle);
     while (angleDiff > Math.PI) {
         angleDiff = Math.abs(angleDiff - Math.PI * 2);
     }
     
-    // 5. 判断是否在敏感扇区
+    // 4. 判断是否在敏感扇区
     const inSensitiveSector = angleDiff < enemy.detectionSectorAngle / 2;
     
-    // 6. 获取底噪强度（使用energyPerPoint）
-    const noiseIntensity = noiseWave.energyPerPoint;
+    // 5. 根据扇区选择阈值
+    const threshold = inSensitiveSector ? CFG.energyRemoteDetectionThresholdSensitive : CFG.energyRemoteDetectionThresholdBlind;
     
-    // 7. 根据扇区选择阈值
-    const threshold = inSensitiveSector ? CFG.noiseDetectionThreshold : CFG.noiseBlindSectorThreshold;
-    
-    // 8. 如果底噪强度达到阈值，触发警觉
-    if (noiseIntensity >= threshold) {
-        // 使用波纹起点位置（玩家位置）
-        onEnemySensesPlayer(enemy, noiseWave.x, noiseWave.y);
-        logMsg("ENEMY DETECTED NOISE");
+    // 6. 如果能量值达到阈值，触发警觉
+    if (energyValue >= threshold) {
+        onEnemySensesPlayer(enemy, sourceX, sourceY);
+        logMsg("ENEMY DETECTED ENERGY");
         return true;
     }
     
@@ -355,6 +378,50 @@ function updateEnemyMovement(e) {
     }
 }
 
+// 更新敌人辐射场
+function updateEnemyRadiation(enemy) {
+    // 计算敌人能量消耗率（基础衰减 + 移动）
+    const baseDecay = CFG.energyDecayRate;
+    let energyConsumption = baseDecay;
+    
+    // 如果敌人在移动，增加消耗（简化处理，使用状态判断）
+    if (enemy.state === 'alert' || enemy.state === 'patrol' || enemy.state === 'searching') {
+        energyConsumption = baseDecay * 1.5; // 移动时1.5倍
+    }
+    
+    // 查找或创建敌人的辐射场
+    let enemyRadiation = state.entities.radiations.find(r => r.ownerId === enemy.id && r.ownerType === 'enemy');
+    
+    if (energyConsumption > 0 && enemy.state !== 'dormant') {
+        // 计算辐射半径
+        const maxRadius = CFG.radiationBaseRadius + energyConsumption * CFG.radiationEnergyMultiplier;
+        
+        if (enemyRadiation) {
+            // 更新现有辐射场
+            enemyRadiation.x = enemy.x;
+            enemyRadiation.y = enemy.y;
+            enemyRadiation.centerEnergy = energyConsumption;
+            enemyRadiation.maxRadius = maxRadius;
+        } else {
+            // 创建新辐射场
+            enemyRadiation = {
+                x: enemy.x,
+                y: enemy.y,
+                centerEnergy: energyConsumption,
+                maxRadius: maxRadius,
+                ownerId: enemy.id,
+                ownerType: 'enemy'
+            };
+            state.entities.radiations.push(enemyRadiation);
+        }
+    } else {
+        // 能量消耗为0或休眠状态，移除辐射场
+        if (enemyRadiation) {
+            state.entities.radiations = state.entities.radiations.filter(r => r !== enemyRadiation);
+        }
+    }
+}
+
 // 更新敌人
 function updateEnemies() {
     const enemiesToRemove = []; // 需要移除的敌人
@@ -372,6 +439,9 @@ function updateEnemies() {
                 logMsg("TARGET DORMANT");
             }
         }
+        
+        // 更新敌人辐射场
+        updateEnemyRadiation(e);
         
         // 过载条自然衰减
         e.overload = Math.max(0, e.overload - CFG.overloadDecayRate);
@@ -472,14 +542,25 @@ function updateEnemies() {
         }
     });
     
-    // 第二遍：更新所有敌人的UI
+    // 第二遍：检测所有辐射场，对每个敌人进行能量感知
+    state.entities.radiations.forEach(radiation => {
+        state.entities.enemies.forEach(e => {
+            if (e.state !== 'stunned' && e.state !== 'dormant' && e.state !== 'detonating') {
+                checkEnergyDetection({ type: 'radiation', x: radiation.x, y: radiation.y, centerEnergy: radiation.centerEnergy }, e);
+            }
+        });
+    });
+    
+    // 第三遍：更新所有敌人的UI
     state.entities.enemies.forEach(e => {
         updateEnemyUI(e);
     });
     
-    // 移除死亡的敌人
+    // 移除死亡的敌人（同时移除其辐射场）
     enemiesToRemove.forEach(e => {
         state.entities.enemies = state.entities.enemies.filter(x => x !== e);
+        // 移除敌人的辐射场
+        state.entities.radiations = state.entities.radiations.filter(r => r.ownerId !== e.id);
         if(e.uiElement) e.uiElement.remove();
         if(e.executeHintElement) e.executeHintElement.remove();
         if(e.struggleHintElement) e.struggleHintElement.remove();

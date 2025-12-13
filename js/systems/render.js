@@ -229,14 +229,7 @@ function drawWaves() {
         
         // 根据波纹来源决定颜色
         let color;
-        if (w.source === 'noise') {
-            // 底噪波纹：淡青色，低透明度，类似水面涟漪
-            // 使用固定的低透明度，让底噪波纹更明显
-            const noiseAlpha = 0.2; // 固定透明度30%，让底噪波纹可见
-            color = `rgba(100, 200, 255, ${noiseAlpha})`;
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 1.5; // 稍微粗一点的线条，更容易看到
-        } else if (w.source === 'player') {
+        if (w.source === 'player') {
             // 玩家波纹：青色，能量影响饱和度/亮度/透明度
             color = `hsla(180, ${saturation}%, ${lightness}%, ${alpha})`;
             ctx.strokeStyle = color;
@@ -394,7 +387,7 @@ function drawAimLine() {
     ctx.moveTo(state.p.x, state.p.y);
     
     // 终点：根据raycast结果或最大长度
-    const maxLength = CFG.pViewDist * 1.5;
+    const maxLength = CFG.pViewDist;
     let endX, endY;
     
     if (state.p.aimLineHit) {
@@ -425,6 +418,46 @@ function drawPlayer() {
     }
     
     ctx.restore();
+}
+
+// 绘制辐射场
+function drawRadiations() {
+    state.entities.radiations.forEach(rad => {
+        if (rad.centerEnergy <= 0 || rad.maxRadius <= 0) return;
+        
+        // 敌人的辐射场只在玩家视觉范围内渲染
+        if (rad.ownerType === 'enemy') {
+            const distToPlayer = dist(rad.x, rad.y, state.p.x, state.p.y);
+            // 检查是否在视觉范围内（考虑辐射场半径）
+            if (distToPlayer > CFG.pViewDist + rad.maxRadius) {
+                return; // 超出视觉范围，不渲染
+            }
+            
+            // 检查是否在视野多边形内（更精确的视野检查）
+            if (!checkLineOfSight(state.p.x, state.p.y, rad.x, rad.y)) {
+                return; // 被墙壁遮挡，不渲染
+            }
+        }
+        // 玩家的辐射场始终渲染（或者也可以添加视野检查，但通常玩家自己的辐射场应该可见）
+        
+        // 创建径向渐变：从中心（高能量）到边缘（能量为0）
+        const gradient = ctx.createRadialGradient(rad.x, rad.y, 0, rad.x, rad.y, rad.maxRadius);
+        
+        // 计算中心透明度（基于能量强度）
+        const maxEnergy = CFG.energyDecayRate * 3.0; // 最大能量消耗（奔跑时）
+        const energyRatio = Math.min(1.0, rad.centerEnergy / maxEnergy);
+        const centerAlpha = 0.1 + energyRatio * 0.15; // 中心透明度 0.1-0.25
+        
+        // 渐变：中心较亮，边缘透明
+        gradient.addColorStop(0, `rgba(100, 200, 255, ${centerAlpha})`);
+        gradient.addColorStop(0.5, `rgba(100, 200, 255, ${centerAlpha * 0.5})`);
+        gradient.addColorStop(1, 'rgba(100, 200, 255, 0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(rad.x, rad.y, rad.maxRadius, 0, Math.PI * 2);
+        ctx.fill();
+    });
 }
 
 // 绘制粒子
@@ -483,6 +516,9 @@ function draw() {
     
     // 绘制墙壁轮廓
     drawWallEchoes();
+
+    // 绘制辐射场（在波纹之前）
+    drawRadiations();
 
     // 绘制波纹
     drawWaves();

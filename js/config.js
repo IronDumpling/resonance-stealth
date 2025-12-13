@@ -46,17 +46,20 @@ const CFG = {
     grabEnergyDrainRate: 0.1,      // 被抓取时每帧能量流失量
     
     // 能量系统
-    energyDecayRate: 0.005,         // 能量自然衰减（每帧基础消耗，也是底噪的基础强度）
+    energyDecayRate: 0.005,         // 能量自然衰减（每帧基础消耗）
     waveAbsorbRatio: 0.3,          // 波纹穿透时生物吸收的能量比例（对应穿透损失的30%）
     
-    // 底噪系统
-    noiseMoveMultiplier: 2.0,       // 移动时底噪倍数
-    noiseSprintMultiplier: 3.0,     // 奔跑时底噪倍数
-    noiseWaveCostRatio: 1.0,        // 发波时底噪与能量消耗的比例系数
-    noiseDetectionRadius: 200,      // 敌人感知范围半径（像素）
-    noiseDetectionSectorAngle: Math.PI / 2, // 敌人正面敏感扇区角度（90度）
-    noiseDetectionThreshold: 5,     // 敏感扇区内的察觉阈值
-    noiseBlindSectorThreshold: 50,  // 盲区（背面/侧面）的察觉阈值
+    // 能耗辐射系统
+    radiationBaseRadius: 50,        // 基础辐射半径（像素）
+    radiationEnergyMultiplier: 1,   // 能量消耗到辐射半径的转换系数
+    radiationDecayRate: 0.01,       // 辐射场衰减率（每帧）
+    
+    // 能量感知系统
+    energyDetectionRadius: 200,                  // 能量感知范围半径（像素）
+    energyDetectionSectorAngle: Math.PI / 2,     // 敏感扇区角度（90度）
+    energyRemoteDetectionThresholdSensitive: 5,  // 远程能量感知阈值（敏感区）
+    energyRemoteDetectionThresholdBlind: 50,     // 远程能量感知阈值（盲区）
+    energyAbsorbDetectionThreshold: 10,          // 吸收能量感知阈值（生物波穿透时）
     
     // 过载系统
     overloadDecayRate: 0.5,         // 过载条自然衰减速度（每帧）

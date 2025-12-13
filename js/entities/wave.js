@@ -570,6 +570,12 @@ function handleWaveEnemyPenetration(w, enemy, waveIndex) {
                     logMsg("TARGET AWAKENED");
                 }
                 
+                // 检测吸收能量是否达到察觉阈值
+                if (absorbedEnergy >= CFG.energyAbsorbDetectionThreshold && w.source === 'player') {
+                    onEnemySensesPlayer(enemy, w.x, w.y);
+                    logMsg("ENEMY DETECTED WAVE ABSORPTION");
+                }
+                
                 newWaves.push({
                     x: w.x, y: w.y, r: w.r, maxR: w.maxR,
                     angle: normalizedAngle,
@@ -814,8 +820,8 @@ function handleWavePlayerPenetration(w, waveIndex) {
 
 // 敌人波纹击中玩家的统一处理（物理 / 共振 / AI / 波形反馈）
 function handleWavePlayerInteraction(w, oldR, waveIndex) {
-    // 忽略玩家自己的波纹和底噪波纹（底噪不触发共振）
-    if (w.source === 'player' || w.source === 'noise') return 'none';
+    // 忽略玩家自己的波纹
+    if (w.source === 'player') return 'none';
     
     const dToP = dist(state.p.x, state.p.y, w.x, w.y);
     // 使用 oldR / w.r 判断扩散环本帧是否扫过玩家
@@ -938,11 +944,6 @@ function checkWaveItemCollisions(w) {
 
 // 处理波纹与敌人碰撞（分割波纹）
 function handleWaveEnemyInteraction(w, oldR, waveIndex) {
-    // 底噪波纹不触发共振，只用于感知检测（在updateWave中单独处理）
-    if (w.source === 'noise') {
-        return 'none';
-    }
-    
     for (let enemy of state.entities.enemies) {
         if(w.ownerId === enemy.id) continue;
         
@@ -1206,26 +1207,22 @@ function updateWave(w, i) {
         return;
     }
     
-    // 底噪波纹的特殊处理：只进行感知检测，不触发共振
-    if (w.source === 'noise') {
-        // 检查底噪波纹是否与敌人碰撞（用于感知检测）
+    // 感知范围内波能量检测：对每个生物波，检查是否在敌人的感知范围内
+    if (w.source === 'player' || w.source === 'enemy') {
         for (let enemy of state.entities.enemies) {
+            if (enemy.state === 'stunned' || enemy.state === 'dormant' || enemy.state === 'detonating') {
+                continue;
+            }
+            
             const d = dist(enemy.x, enemy.y, w.x, w.y);
-            // 检查波纹边缘是否扫过敌人（使用oldR和w.r判断扩散环是否扫过）
-            // 同时检查敌人是否在感知范围内
-            if (d >= oldR && d <= w.r && d <= enemy.detectionRadius) {
-                checkNoiseDetection(w, enemy);
+            // 检查波是否在敌人的感知范围内
+            if (d <= enemy.detectionRadius) {
+                // 检查波是否扫过敌人（使用oldR和w.r判断扩散环是否扫过）
+                if (d >= oldR && d <= w.r) {
+                    checkEnergyDetection({ type: 'wave', x: w.x, y: w.y, energyPerPoint: w.energyPerPoint }, enemy);
+                }
             }
         }
-        
-        // 底噪波纹仍然需要与墙壁交互（阻挡/穿透）
-        const wallCollisionResult = handleWaveWallInteraction(w, oldR, i);
-        if (wallCollisionResult === 'bounced' || wallCollisionResult === 'penetrated') {
-            w._toRemove = true;
-            return;
-        }
-        
-        return; // 底噪波纹不进行其他交互
     }
     
     // 先检测与敌人的碰撞（分割波纹）

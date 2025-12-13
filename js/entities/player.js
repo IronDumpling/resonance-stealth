@@ -1,30 +1,57 @@
 // 玩家相关逻辑
 
-// 生成底噪波纹
-function emitNoiseWave(noiseIntensity) {
-    if (noiseIntensity <= 0) return;
+// 更新玩家辐射场
+function updatePlayerRadiation() {
+    // 计算当前能量消耗率
+    const baseDecay = CFG.energyDecayRate;
+    let energyConsumption = baseDecay;
     
-    // 底噪强度转换为baseEnergy
-    const baseEnergy = noiseIntensity;
+    // 检测移动状态
+    if (!state.p.isGrabbed && !state.p.isGrabbingEnemy) {
+        let dx=0, dy=0;
+        if(state.keys.w) dy-=1; if(state.keys.s) dy+=1;
+        if(state.keys.a) dx-=1; if(state.keys.d) dx+=1;
+        if(dx||dy) {
+            const isSprinting = state.keys.shift || false;
+            if (isSprinting) {
+                energyConsumption = baseDecay * 3.0; // 奔跑时3倍
+            } else {
+                energyConsumption = baseDecay * 2.0; // 移动时2倍
+            }
+        }
+    }
     
-    // 直接创建底噪波纹对象
-    const circumference = 2 * Math.PI * CFG.initialRadius;
-    const energyPerPoint = baseEnergy / (circumference > 0.01 ? circumference : 0.01);
+    // 查找或创建玩家的辐射场
+    let playerRadiation = state.entities.radiations.find(r => r.ownerId === 'player' && r.ownerType === 'player');
     
-    state.entities.waves.push({
-        x: state.p.x,
-        y: state.p.y,
-        r: CFG.initialRadius,
-        maxR: CFG.waveMaxDist,
-        angle: 0,                  // 全向，角度不重要
-        spread: Math.PI * 2,       // 全向传播
-        freq: state.freq,          // 使用玩家当前频率
-        baseEnergy: baseEnergy,     // 直接使用计算的baseEnergy
-        energyPerPoint: energyPerPoint,
-        source: 'noise',           // 标记为底噪波纹
-        ownerId: 'player',         // 标记来源
-        isOriginalWave: false      // 底噪波纹不是分析波纹
-    });
+    if (energyConsumption > 0) {
+        // 计算辐射半径
+        const maxRadius = CFG.radiationBaseRadius + energyConsumption * CFG.radiationEnergyMultiplier;
+        
+        if (playerRadiation) {
+            // 更新现有辐射场
+            playerRadiation.x = state.p.x;
+            playerRadiation.y = state.p.y;
+            playerRadiation.centerEnergy = energyConsumption;
+            playerRadiation.maxRadius = maxRadius;
+        } else {
+            // 创建新辐射场
+            playerRadiation = {
+                x: state.p.x,
+                y: state.p.y,
+                centerEnergy: energyConsumption,
+                maxRadius: maxRadius,
+                ownerId: 'player',
+                ownerType: 'player'
+            };
+            state.entities.radiations.push(playerRadiation);
+        }
+    } else {
+        // 能量消耗为0，移除辐射场
+        if (playerRadiation) {
+            state.entities.radiations = state.entities.radiations.filter(r => r !== playerRadiation);
+        }
+    }
 }
 
 // 聚焦逻辑
@@ -110,21 +137,15 @@ function releaseScan() {
 
     state.p.en -= energyCost;
     
-    // 生成发波时的底噪
-    const noiseIntensity = energyCost * CFG.noiseWaveCostRatio;
-    if (noiseIntensity > 0) {
-        emitNoiseWave(noiseIntensity);
-    }
-    
     // --- 弹反判定逻辑 ---
     let isParry = false;
     let isPerfectParry = false;
     let energyMult = 1.0;
     
     // 寻找接近的敌方波纹
-    // 判定条件：非玩家波，非pulse波，非底噪波，频率在共振范围内，且波纹边缘与玩家距离极近
+    // 判定条件：非玩家波，非pulse波，频率在共振范围内，且波纹边缘与玩家距离极近
     const hitWave = state.entities.waves.find(w => {
-        if (w.source === 'player' || w.source === 'pulse' || w.source === 'noise') return false;
+        if (w.source === 'player' || w.source === 'pulse') return false;
         if (Math.abs(w.freq - state.freq) > CFG.normalResTol) return false;
         
         // 计算波纹边缘与玩家的距离
@@ -411,46 +432,12 @@ function updateReserveEnergy() {
 
 // 更新玩家状态
 function updatePlayer() {
-    // 能量自然衰减（底噪消耗）
+    // 能量自然衰减
     const baseDecay = CFG.energyDecayRate;
     state.p.en = Math.max(0, state.p.en - baseDecay);
     
-    // 计算底噪强度
-    let noiseIntensity = 0;
-    let isMoving = false;
-    let isSprinting = false;
-    
-    // 检测移动状态
-    if (!state.p.isGrabbed && !state.p.isGrabbingEnemy) {
-        let dx=0, dy=0;
-        if(state.keys.w) dy-=1; if(state.keys.s) dy+=1;
-        if(state.keys.a) dx-=1; if(state.keys.d) dx+=1;
-        if(dx||dy) {
-            isMoving = true;
-            // 检测是否在奔跑（Shift键或移动速度较快）
-            isSprinting = state.keys.shift || false;
-        }
-    }
-    
-    // 计算底噪强度
-    if (isSprinting) {
-        noiseIntensity = baseDecay * CFG.noiseSprintMultiplier;
-    } else if (isMoving) {
-        noiseIntensity = baseDecay * CFG.noiseMoveMultiplier;
-    } else {
-        noiseIntensity = baseDecay; // 基础底噪
-    }
-    
-    // 更新玩家状态
-    state.p.currentNoiseLevel = noiseIntensity;
-    state.p.isSprinting = isSprinting;
-    
-    // 生成底噪波纹（每60帧生成一次）
-    state.p.noiseWaveFrameCounter++;
-    if (noiseIntensity > 0 && state.p.noiseWaveFrameCounter >= 60) {
-        emitNoiseWave(noiseIntensity);
-        state.p.noiseWaveFrameCounter = 0; // 重置计数器
-    }
+    // 更新辐射场
+    updatePlayerRadiation();
     
     updateFocus(); 
     updateStruggle();
