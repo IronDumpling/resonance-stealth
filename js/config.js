@@ -46,7 +46,7 @@ const CFG = {
     grabEnergyDrainRate: 0.1,      // 被抓取时每帧能量流失量
     
     // 能量系统
-    energyDecayRate: 0.005,         // 能量自然衰减（每帧基础消耗）
+    energyDecayRate: 0.01,         // 能量自然衰减（每帧基础消耗）
     waveAbsorbRatio: 0.3,          // 波纹穿透时生物吸收的能量比例（对应穿透损失的30%）
     
     // 能耗辐射系统
@@ -58,7 +58,7 @@ const CFG = {
     energyDetectionRadius: 200,                  // 能量感知范围半径（像素）
     energyDetectionSectorAngle: Math.PI / 2,     // 敏感扇区角度（90度）
     energyRemoteDetectionThresholdSensitive: 5,  // 远程能量感知阈值（敏感区）
-    energyRemoteDetectionThresholdBlind: 50,     // 远程能量感知阈值（盲区）
+    energyRemoteDetectionThresholdBlind: 200,     // 远程能量感知阈值（盲区）
     energyAbsorbDetectionThreshold: 10,          // 吸收能量感知阈值（生物波穿透时）
     
     // 过载系统

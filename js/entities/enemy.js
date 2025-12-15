@@ -211,6 +211,19 @@ function checkEnergyDetection(energySource, enemy) {
         }
         
         energyValue = energySource.energyPerPoint;
+    } else if (energySource.type === 'core') {
+        // 核心能量：直接使用核心能量值（不随距离衰减）
+        distToEnemy = dist(energySource.x, energySource.y, enemy.x, enemy.y);
+        sourceX = energySource.x;
+        sourceY = energySource.y;
+        
+        // 检查是否在感知范围内
+        if (distToEnemy > enemy.detectionRadius) {
+            return false;
+        }
+        
+        // 核心能量值：直接使用核心能量值（不随距离衰减，因为核心能量是储存在生物体内的）
+        energyValue = energySource.coreEnergy;
     } else {
         return false;
     }
@@ -728,6 +741,44 @@ function updateEnemies() {
                 checkEnergyDetection({ type: 'radiation', x: radiation.x, y: radiation.y, centerEnergy: radiation.centerEnergy }, e);
             }
         });
+    });
+    
+    // 第二点五遍：检测核心能量（玩家和敌人）
+    // 检测玩家核心能量
+    state.entities.enemies.forEach(e => {
+        if (e.state !== 'stunned' && e.state !== 'detonating') {
+            const distToPlayer = dist(state.p.x, state.p.y, e.x, e.y);
+            if (distToPlayer <= e.detectionRadius && state.p.en > 0) {
+                checkEnergyDetection({ 
+                    type: 'core', 
+                    x: state.p.x, 
+                    y: state.p.y, 
+                    coreEnergy: state.p.en 
+                }, e);
+            }
+        }
+    });
+    
+    // 检测其他敌人核心能量（敌人之间互相感知）
+    state.entities.enemies.forEach(e => {
+        if (e.state !== 'stunned' && e.state !== 'detonating') {
+            state.entities.enemies.forEach(otherEnemy => {
+                // 跳过自己
+                if (otherEnemy === e) return;
+                // 跳过stunned和detonating状态的敌人
+                if (otherEnemy.state === 'stunned' || otherEnemy.state === 'detonating') return;
+                
+                const distToOther = dist(otherEnemy.x, otherEnemy.y, e.x, e.y);
+                if (distToOther <= e.detectionRadius && otherEnemy.en > 0) {
+                    checkEnergyDetection({ 
+                        type: 'core', 
+                        x: otherEnemy.x, 
+                        y: otherEnemy.y, 
+                        coreEnergy: otherEnemy.en 
+                    }, e);
+                }
+            });
+        }
     });
     
     // 第三遍：更新所有敌人的UI
