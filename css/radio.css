@@ -1,0 +1,282 @@
+/**
+ * 无线电UI样式
+ * Radio User Interface Styles
+ */
+
+/* 摩斯码参考手册 */
+#morse-reference {
+    position: fixed;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    background: rgba(0, 26, 0, 0.95);
+    border: 2px solid #00ff00;
+    padding: 15px;
+    font-family: 'Courier New', monospace;
+    color: #00ff00;
+    font-size: 12px;
+    max-width: 200px;
+    max-height: 600px;
+    overflow-y: auto;
+    z-index: 1500;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+    display: none; /* 默认隐藏 */
+}
+
+#morse-reference.visible {
+    display: block;
+}
+
+#morse-reference h3 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    text-align: center;
+    border-bottom: 1px solid #00aa00;
+    padding-bottom: 5px;
+}
+
+#morse-reference .morse-table {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+#morse-reference .morse-char {
+    font-weight: bold;
+}
+
+#morse-reference .morse-code {
+    color: #88ff88;
+    letter-spacing: 2px;
+}
+
+#morse-reference .morse-section {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #005500;
+}
+
+#morse-reference .morse-section-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #ffff00;
+}
+
+/* 摩斯码输入框 */
+#morse-input-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 26, 0, 0.95);
+    border: 2px solid #00ff00;
+    padding: 15px;
+    font-family: 'Courier New', monospace;
+    z-index: 1500;
+    display: none;
+}
+
+#morse-input-container.visible {
+    display: block;
+}
+
+#morse-input-container label {
+    color: #00ff00;
+    display: block;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+#morse-input {
+    background: #000000;
+    border: 1px solid #00aa00;
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    padding: 8px;
+    width: 300px;
+    text-transform: uppercase;
+}
+
+#morse-input:focus {
+    outline: none;
+    border-color: #00ff00;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+#morse-submit {
+    background: #003300;
+    border: 2px solid #00ff00;
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    padding: 8px 20px;
+    margin-left: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#morse-submit:hover {
+    background: #005500;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+#morse-submit:active {
+    background: #00ff00;
+    color: #000000;
+}
+
+/* 无线电控制提示 */
+.radio-hint {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 26, 0, 0.9);
+    border: 1px solid #00aa00;
+    padding: 10px 20px;
+    font-family: 'Courier New', monospace;
+    color: #00ff00;
+    font-size: 12px;
+    text-align: center;
+    z-index: 1400;
+    pointer-events: none;
+}
+
+/* 信号列表（可选） */
+#signal-list {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 26, 0, 0.9);
+    border: 2px solid #00ff00;
+    padding: 10px;
+    font-family: 'Courier New', monospace;
+    color: #00ff00;
+    font-size: 11px;
+    max-width: 250px;
+    max-height: 400px;
+    overflow-y: auto;
+    z-index: 1400;
+    display: none;
+}
+
+#signal-list.visible {
+    display: block;
+}
+
+#signal-list h4 {
+    margin: 0 0 10px 0;
+    font-size: 12px;
+    border-bottom: 1px solid #00aa00;
+    padding-bottom: 5px;
+}
+
+#signal-list .signal-item {
+    margin-bottom: 8px;
+    padding: 5px;
+    background: rgba(0, 0, 0, 0.5);
+    border-left: 3px solid #00aa00;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#signal-list .signal-item:hover {
+    background: rgba(0, 255, 0, 0.1);
+    border-left-color: #00ff00;
+}
+
+#signal-list .signal-item.selected {
+    border-left-color: #ffff00;
+    background: rgba(255, 255, 0, 0.1);
+}
+
+#signal-list .signal-callsign {
+    font-weight: bold;
+    color: #ffff00;
+}
+
+#signal-list .signal-freq {
+    color: #88ff88;
+}
+
+#signal-list .signal-strength {
+    color: #00aa00;
+}
+
+/* 地图标记 */
+.map-marker {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #ffff00;
+    border: 2px solid #00ff00;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 50;
+    box-shadow: 0 0 10px rgba(255, 255, 0, 0.8);
+}
+
+.map-marker::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    border: 2px solid #ffff00;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: marker-pulse 2s infinite;
+}
+
+@keyframes marker-pulse {
+    0% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(0.5);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(2);
+    }
+}
+
+.map-marker-label {
+    position: absolute;
+    top: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid #00ff00;
+    padding: 2px 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    color: #ffff00;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* 滚动条样式 */
+#morse-reference::-webkit-scrollbar,
+#signal-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+#morse-reference::-webkit-scrollbar-track,
+#signal-list::-webkit-scrollbar-track {
+    background: #001100;
+}
+
+#morse-reference::-webkit-scrollbar-thumb,
+#signal-list::-webkit-scrollbar-thumb {
+    background: #00aa00;
+    border-radius: 4px;
+}
+
+#morse-reference::-webkit-scrollbar-thumb:hover,
+#signal-list::-webkit-scrollbar-thumb:hover {
+    background: #00ff00;
+}
+

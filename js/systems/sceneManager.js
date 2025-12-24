@@ -457,40 +457,148 @@ class RobotScene extends Scene {
     }
 }
 
-// 无线电场景 (RADIO) - 占位符
+// 无线电场景 (RADIO)
 class RadioScene extends Scene {
     constructor() {
         super(SCENES.RADIO);
+        this.radio = null;
+        this.radioUI = null;
     }
     
     enter(data) {
         super.enter(data);
+        console.log('RadioScene entering...');
+        
+        // 初始化无线电系统（如果还没初始化）
+        if (!this.radio && typeof initRadioSystem === 'function') {
+            console.log('Initializing radio system...');
+            this.radio = initRadioSystem();
+            radioSystem = this.radio; // 设置全局引用
+            console.log('Radio system initialized:', this.radio);
+        } else if (radioSystem) {
+            console.log('Using existing radio system');
+            this.radio = radioSystem;
+        } else {
+            console.error('Failed to initialize radio system!');
+        }
+        
+        // 初始化无线电UI
+        if (!this.radioUI && typeof initRadioUI === 'function' && this.radio) {
+            console.log('Initializing radio UI...');
+            this.radioUI = initRadioUI(this.radio);
+            radioUI = this.radioUI; // 设置全局引用
+        } else if (radioUI) {
+            console.log('Using existing radio UI');
+            this.radioUI = radioUI;
+        }
+        
+        // 绑定canvas
+        if (this.radioUI && typeof canvas !== 'undefined') {
+            this.radioUI.init(canvas);
+            console.log('Radio UI bound to canvas');
+        }
+        
+        // 设置输入上下文
+        if (typeof inputManager !== 'undefined') {
+            console.log('Setting input context to RADIO');
+            inputManager.setContext(INPUT_CONTEXTS.RADIO);
+            
+            // 注册滚轮事件监听
+            this.wheelHandler = (event) => {
+                console.log('RadioScene wheel handler called', event);
+                if (this.radio) {
+                    if (event.originalEvent.shiftKey) {
+                        // 精调
+                        console.log('Fine tuning');
+                        this.radio.tuneFine(event.delta > 0 ? -1 : 1);
+                    } else {
+                        // 粗调
+                        console.log('Coarse tuning');
+                        this.radio.tuneCoarse(event.delta > 0 ? -1 : 1);
+                    }
+                } else {
+                    console.warn('Radio system not initialized');
+                }
+            };
+            console.log('Registering wheel handler for RADIO context');
+            inputManager.on('onWheel', INPUT_CONTEXTS.RADIO, this.wheelHandler);
+        }
+        
         logMsg("RADIO TRANSCEIVER ACTIVE | [ESC] RETURN TO MENU");
     }
     
+    exit() {
+        super.exit();
+        
+        // 移除滚轮事件监听
+        if (this.wheelHandler && typeof inputManager !== 'undefined') {
+            inputManager.off('onWheel', INPUT_CONTEXTS.RADIO, this.wheelHandler);
+        }
+        
+        // 保存无线电状态（保持全局实例）
+    }
+    
     update(deltaTime) {
-        // TODO: 实现无线电系统更新
+        if (this.radio) {
+            this.radio.update(deltaTime);
+        }
     }
     
     render(ctx, canvas) {
-        // 占位符渲染
-        ctx.fillStyle = '#001a00';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        ctx.fillStyle = '#00ff00';
-        ctx.font = '20px "Courier New"';
-        ctx.textAlign = 'center';
-        ctx.fillText('RADIO TRANSCEIVER', canvas.width / 2, canvas.height / 2 - 40);
-        ctx.font = '16px "Courier New"';
-        ctx.fillText('(Under Construction)', canvas.width / 2, canvas.height / 2);
-        ctx.fillText('Press ESC to return', canvas.width / 2, canvas.height / 2 + 40);
+        if (this.radioUI) {
+            this.radioUI.render(0.016); // 假设16ms帧时间
+        } else {
+            // 后备渲染（如果UI未初始化）
+            ctx.fillStyle = '#001a00';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#00ff00';
+            ctx.font = '20px "Courier New"';
+            ctx.textAlign = 'center';
+            ctx.fillText('RADIO TRANSCEIVER', canvas.width / 2, canvas.height / 2 - 40);
+            ctx.font = '16px "Courier New"';
+            ctx.fillText('Loading...', canvas.width / 2, canvas.height / 2);
+        }
     }
     
     handleInput(event) {
-        if (event.key === 'Escape') {
+        if (!this.radio) return false;
+        
+        const key = event.key.toLowerCase();
+        
+        // ESC - 返回主菜单
+        if (key === 'escape') {
             sceneManager.switchScene(SCENES.CRT_ON, 'fade');
             return true;
         }
+        
+        // 天线旋转
+        if (key === 'arrowleft') {
+            this.radio.rotateAntenna(-5);
+            return true;
+        }
+        if (key === 'arrowright') {
+            this.radio.rotateAntenna(5);
+            return true;
+        }
+        
+        // 操作按钮
+        if (key === 'd') {
+            this.radio.recordDirection();
+            return true;
+        }
+        if (key === 'p') {
+            this.radio.sendPing();
+            return true;
+        }
+        if (key === 'm') {
+            const marker = this.radio.markSignalOnMap();
+            if (marker) {
+                console.log('Signal marked on map:', marker);
+            }
+            return true;
+        }
+        
         return false;
     }
 }
