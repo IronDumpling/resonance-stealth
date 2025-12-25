@@ -79,10 +79,9 @@ const CFG = {
     energyAbsorbDetectionThreshold: 10,          // 吸收能量感知阈值（生物波穿透时）
     
     // 过载系统
-    overloadDecayRate: 0.5,         // 过载条自然衰减速度（每帧）
-    overloadGainNormal: 10,         // 普通共振时过载增加量
-    overloadGainPerfect: 100,       // 完美共振时过载增加量（直接满）
+    overloadDecayRate: 0.2,         // 过载条自然衰减速度（每帧，降低以允许连击）
     maxOverload: 100,               // 过载最大值（玩家和敌人统一）
+    overloadStunMultiplier: 2,      // 硬直时间倍率（过载增长 * 倍率 = 硬直帧数）
     
     // 抓取系统
     grabEnergyDrainRateEnemy: 0.15, // 玩家抓取敌人时的能量吸收速度

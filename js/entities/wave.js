@@ -866,15 +866,15 @@ function handleWavePlayerInteraction(w, oldR, waveIndex) {
         const standardCoveredArcLength = CFG.initialRadius * Math.min(playerDiam / CFG.initialRadius, CFG.minSpread);
         const minTotalEnergy = minEnergyPerPoint * standardCoveredArcLength;
         
-        // 根据波能量动态计算过载值增长
+        // 玩家过载值增长（与敌人使用相同的公式）
+        const energyRatio = totalEnergyOnPlayer / minTotalEnergy;
+        const dampedRatio = Math.sqrt(Math.max(0, energyRatio));
+        
         let overloadGain = 0;
         if (isPerfectResonance) {
-            // 完美共振：在普通共振基础上翻倍
-            const baseGain = CFG.overloadGainNormal * (totalEnergyOnPlayer / minTotalEnergy);
-            overloadGain = baseGain * 2;
+            overloadGain = CFG.maxOverload * dampedRatio;
         } else {
-            // 普通共振：根据totalEnergyOnPlayer动态计算
-            overloadGain = CFG.overloadGainNormal * (totalEnergyOnPlayer / minTotalEnergy);
+            overloadGain = (CFG.maxOverload / 3) * dampedRatio;
         }
         
         // 计算实际增加的过载值（限制不超过最大值）
@@ -882,10 +882,11 @@ function handleWavePlayerInteraction(w, oldR, waveIndex) {
         state.p.overload = Math.min(CFG.maxOverload, state.p.overload + overloadGain);
         const actualGain = state.p.overload - oldOverload;
         
-        // 设置玩家硬直时间（实际过载增长量 * 0.1帧）
+        // 设置玩家硬直时间
         if (actualGain > 0) {
             if (!state.p.overloadedStunTimer) state.p.overloadedStunTimer = 0;
-            state.p.overloadedStunTimer = Math.max(state.p.overloadedStunTimer, actualGain * 0.1);
+            const stunDuration = actualGain * CFG.overloadStunMultiplier;
+            state.p.overloadedStunTimer = Math.max(state.p.overloadedStunTimer, stunDuration);
         }
         
         let energyCost = CFG.forcedWaveCost;
@@ -1046,15 +1047,21 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                     const minTotalEnergy = minEnergyPerPoint * standardCoveredArcLength;
                     const overloadThreshold = minTotalEnergy * 0.1;
                     
-                    // 根据波能量动态计算过载值增长
+                    // 重新设计的过载值增长系统
+                    // 使用平方根衰减避免高能量密度导致过载暴增
+                    // 目标：完美共振+最小spread = 100（一次满），普通共振 = 30-40（需2-3次）
+                    
+                    const energyRatio = totalEnergy / minTotalEnergy;
+                    const dampedRatio = Math.sqrt(Math.max(0, energyRatio)); // 平方根衰减
+                    
                     let overloadGain = 0;
                     if (isPerfectResonance) {
-                        // 完美共振：在普通共振基础上翻倍
-                        const baseGain = CFG.overloadGainNormal * (totalEnergy / minTotalEnergy);
-                        overloadGain = baseGain * 2;
+                        // 完美共振：能量比1.0时达到100（一次满）
+                        // 能量比0.25时达到50（两次满）
+                        overloadGain = CFG.maxOverload * dampedRatio;
                     } else {
-                        // 普通共振：根据totalEnergy动态计算
-                        overloadGain = CFG.overloadGainNormal * (totalEnergy / minTotalEnergy);
+                        // 普通共振：最高约33（需要3次），能量低时更少
+                        overloadGain = (CFG.maxOverload / 3) * dampedRatio;
                     }
                     
                     // 计算实际增加的过载值（限制不超过最大值）
@@ -1062,14 +1069,15 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                     enemy.overload = Math.min(CFG.maxOverload, enemy.overload + overloadGain);
                     const actualGain = enemy.overload - oldOverload;
                     
-                    // 设置硬直时间（实际过载增长量 * 0.1帧）
+                    // 设置硬直时间：过载增长越多，硬直越久（给玩家准备时间）
+                    // actualGain * 2 帧 = 约 0.03-2秒 的硬直
                     if (actualGain > 0) {
                         if (!enemy.overloadedStunTimer) enemy.overloadedStunTimer = 0;
-                        enemy.overloadedStunTimer = Math.max(enemy.overloadedStunTimer, actualGain * 0.1);
+                        const stunDuration = actualGain * CFG.overloadStunMultiplier;
+                        enemy.overloadedStunTimer = Math.max(enemy.overloadedStunTimer, stunDuration);
                     }
                     
                     // 层次1：视觉反馈（总是显示，让玩家知道发生了共振）
-                    // 如果冷却中且能量不足，只显示视觉反馈，不执行任何效果
                     state.entities.echoes.push({
                         x: enemy.x, y: enemy.y, r: enemy.r,
                         type: 'enemy_resonance',
@@ -1077,34 +1085,14 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                         isPerfect: isPerfectResonance
                     });
                     
-                    // 层次2：过载满值或高能量效果（忽略冷却，允许立即进入stun）
-                    if (enemy.overload >= CFG.maxOverload || totalEnergy >= overloadThreshold) {
-                        // 进入stun状态，不发出受迫共振波，不设置冷却
-                        if (enemy.isDormant) {
-                            // 休眠敌人过载后仍保持休眠，但可以被处决
-                            enemy.state = 'stunned';
-                            enemy.canBeDetonated = true;
-                            enemy.timer = CFG.stunTime;
-                        } else {
-                            // 正常敌人的过载逻辑
-                            enemy.state = 'stunned';
-                            enemy.isPerfectStun = isPerfectResonance;
-                            enemy.timer = isPerfectResonance ? CFG.stunTime : CFG.stunTime / 2; // 完美共振10秒，普通共振5秒
-                            enemy.canBeDetonated = true; // 标记可处决
-                        }
+                    // 层次2：受迫共振波（铺板现象，只要共振就发波）
+                    // 条件：冷却完毕、有足够能量、不在硬直中、不在stunned/detonating状态
+                    if (enemy.resonanceCD <= 0 && 
+                        (!enemy.overloadedStunTimer || enemy.overloadedStunTimer <= 0) &&
+                        enemy.state !== 'stunned' && 
+                        enemy.state !== 'detonating') {
                         
-                        // 日志消息
-                        if (isPerfectResonance) {
-                            logMsg("TARGET CRITICAL - READY TO DETONATE");
-                        } else {
-                            logMsg("TARGET STUNNED");
-                        }
-                    }
-                    // 层次3：低能量效果（检查冷却，防止频繁发波，硬直期间无法发波）
-                    else if (enemy.resonanceCD <= 0 && (!enemy.overloadedStunTimer || enemy.overloadedStunTimer <= 0)) {
-                        // 硬直期间无法发波
-                        // 能量不足，只进行普通的受迫发波，设置冷却
-                        // 计算能量消耗（使用与玩家相同的公式）
+                        // 计算能量消耗
                         const freqNorm = (enemy.freq - CFG.freqMin) / (CFG.freqMax - CFG.freqMin);
                         const focusNorm = 1; // 敌人发波为全向
                         const rawCost = 5 * freqNorm + 5 * focusNorm;
@@ -1114,11 +1102,35 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                             enemy.en = Math.max(0, enemy.en - energyCost);
                             emitWave(enemy.x, enemy.y, 0, Math.PI*2, enemy.freq, 'enemy', enemy.id);
                             enemy.resonanceCD = CFG.resonanceCD;
+                            
+                            // 敌人会警觉并追踪波纹来源位置
+                            if (enemy.state === 'idle' || enemy.state === 'alert' || enemy.state === 'patrol' || enemy.state === 'searching') {
+                                onEnemySensesPlayer(enemy, w.x, w.y);
+                            }
+                        }
+                    }
+                    
+                    // 层次3：过载检查（检查是否过载满，满了则进入stunned）
+                    if (enemy.overload >= CFG.maxOverload) {
+                        if (enemy.isDormant) {
+                            // 休眠敌人过载后仍保持休眠，但可以被处决
+                            enemy.state = 'stunned';
+                            enemy.canBeDetonated = true;
+                            enemy.isPerfectStun = false; // 休眠敌人不会有完美共振
+                            enemy.timer = CFG.stunTime;
+                        } else {
+                            // 正常敌人的过载逻辑
+                            enemy.state = 'stunned';
+                            enemy.isPerfectStun = isPerfectResonance;
+                            enemy.timer = isPerfectResonance ? CFG.stunTime : CFG.stunTime / 2;
+                            enemy.canBeDetonated = true;
                         }
                         
-                        // 敌人会警觉并追踪波纹来源位置
-                        if (enemy.state === 'idle' || enemy.state === 'alert' || enemy.state === 'patrol' || enemy.state === 'searching') {
-                            onEnemySensesPlayer(enemy, w.x, w.y);
+                        // 日志消息
+                        if (isPerfectResonance) {
+                            logMsg("TARGET CRITICAL - READY TO DETONATE");
+                        } else {
+                            logMsg("TARGET STUNNED");
                         }
                     }
                 }

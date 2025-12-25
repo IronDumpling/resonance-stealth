@@ -598,12 +598,20 @@ function updateDormantEnemyAbsorption(enemy) {
     const absorptionRange = CFG.dormantAbsorptionRange;
     const absorptionRate = CFG.dormantAbsorptionRate;
     
+    let absorbedFromPlayer = false;
+    
     // 1. 吸收玩家能量
     const distToPlayer = dist(enemy.x, enemy.y, state.p.x, state.p.y);
     if (distToPlayer < absorptionRange && state.p.en > 0) {
         const absorbed = Math.min(absorptionRate, state.p.en);
         state.p.en -= absorbed;
         enemy.en = Math.min(CFG.enemyMaxEnergy, enemy.en + absorbed);
+        absorbedFromPlayer = true;
+    }
+    
+    // 如果吸收了玩家能量，显示红色边缘警告
+    if (absorbedFromPlayer) {
+        flashEdgeGlow('red', 50); // 短暂的红色闪烁警告
     }
     
     // 2. 吸收其他敌人能量
