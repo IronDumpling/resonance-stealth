@@ -23,6 +23,11 @@ const state = {
         isGrabbed: false,
         grabberEnemy: null,      // 抓取玩家的敌人引用
         struggleProgress: 0,      // 挣脱进度 (0-100)
+        grabImmunity: 0,         // 抓取无敌时间（挣脱后的保护期）
+        grabHintElement: null,   // 玩家抓取敌人的UI提示
+        
+        // 背包系统
+        inventory: [],           // 背包数组，最多6个物品
         isCharging: false,
         chargeStartTime: 0,       // 开始蓄力的时间戳（秒）
         en: CFG.maxEnergy, 
@@ -34,12 +39,22 @@ const state = {
         overload: 0,               // 玩家过载值（与敌人一致）
         isGrabbingEnemy: null,     // 当前抓取的敌人引用
         grabHintElement: null,     // Grab Hint UI元素引用
-        aimLineHit: null           // 瞄准线raycast碰撞结果
+        aimLineHit: null,          // 瞄准线raycast碰撞结果
+        
+        // 核心系统
+        currentCore: CORE_TYPES.SCAVENGER,  // 当前装备的核心
+        durability: CFG.maxDurability,      // 耐久值
+        isDormant: false,                   // 是否休眠
+        isDestroyed: false                  // 是否报废
     },
     keys: { w:0, a:0, s:0, d:0, space:0, f:0, r:0, e:0 },
     mouse: { x:0, y:0 },
     freq: 150,
     focusLevel: 0,
+    
+    // UI消息系统
+    currentMessage: '',
+    messageTimer: 0,
     
     camera: { x: 0, y: 0 },
     entities: {
@@ -210,8 +225,6 @@ function init() {
     // 初始化相机位置为玩家位置
     state.camera.x = state.p.x;
     state.camera.y = state.p.y;
-    
-    updateUI();
 }
 
 // 更新相机位置（跟随玩家）
@@ -282,7 +295,14 @@ function update() {
     updateItemsUI();
     
     updateParticlesAndEchoes();
-    updateUI();
+    
+    // 更新消息计时器
+    if (state.messageTimer > 0) {
+        state.messageTimer--;
+        if (state.messageTimer <= 0) {
+            state.currentMessage = '';
+        }
+    }
 }
 
 // --- 输入处理 ---
@@ -313,9 +333,10 @@ function initInputHandlers() {
     };
 
     window.onwheel = e => {
-        const d = Math.sign(e.deltaY) * -5;
+        // shift键精调（±1Hz），否则粗调（±5Hz）
+        const step = e.shiftKey ? 1 : 5;
+        const d = Math.sign(e.deltaY) * -step;
         state.freq = clamp(state.freq+d, CFG.freqMin, CFG.freqMax);
-        updateUI();
     };
 }
 
@@ -422,9 +443,10 @@ function setupInputRouting() {
     inputManager.on('onWheel', null, (event) => {
         // 在ROBOT场景中调整频率
         if (sceneManager.getCurrentScene() === SCENES.ROBOT) {
-            const d = Math.sign(event.delta) * -5;
+            // shift键精调（±1Hz），否则粗调（±5Hz）
+            const step = event.shiftKey ? 1 : 5;
+            const d = Math.sign(event.delta) * -step;
             state.freq = clamp(state.freq + d, CFG.freqMin, CFG.freqMax);
-            updateUI();
         }
     });
     
@@ -448,8 +470,13 @@ if (typeof RobotScene !== 'undefined') {
         inputManager.setContext(INPUT_CONTEXTS.ROBOT);
         
         // 显示游戏UI
-        document.getElementById('ui-layer').style.display = 'block';
         document.getElementById('world-ui-container').style.display = 'block';
+        
+        // 初始化并显示背包UI
+        if (typeof createInventoryUI === 'function') {
+            createInventoryUI();
+            showInventoryUI();
+        }
     };
     
     const originalExit = RobotScene.prototype.exit;
@@ -457,8 +484,12 @@ if (typeof RobotScene !== 'undefined') {
         originalExit.call(this);
         
         // 隐藏游戏UI
-        document.getElementById('ui-layer').style.display = 'none';
         document.getElementById('world-ui-container').style.display = 'none';
+        
+        // 隐藏背包UI
+        if (typeof hideInventoryUI === 'function') {
+            hideInventoryUI();
+        }
     };
 }
 

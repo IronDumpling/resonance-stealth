@@ -27,16 +27,13 @@
 <!-- 边缘发光效果 -->
 <div id="edge-glow"></div>
 
-<!-- 游戏UI层(HUD) -->
-<div id="ui-layer">
-    <div class="hud-row" id="energy-row">ENERGY: <span id="energy-val">100/100</span></div>
-    <div class="hud-row" id="reserve-row">RESERVE: <span id="reserve-val">0</span></div>
-    <div class="hud-row">TUNER: <span id="freq-box">150 Hz</span></div>
-    <div class="hud-row" id="msg-log" style="color:#ffaa00; height:20px; font-size:14px;">INITIALIZING...</div>
-</div>
+<!-- 游戏UI层已整合到Canvas渲染中 -->
 
 <!-- 世界UI容器 -->
 <div id="world-ui-container"></div>
+
+<!-- 背包UI（右侧列表） -->
+<div id="inventory-container" style="display: none;"></div>
 
 <!-- 加载脚本 -->
 <!-- 核心配置 -->
@@ -50,8 +47,10 @@
 <script src="js/systems/crtDisplay.js"></script>
 <script src="js/systems/inputManager.js"></script>
 <script src="js/systems/radioSystem.js"></script>
+<script src="js/systems/inventory.js"></script>
 <script src="js/ui/uiManager.js"></script>
 <script src="js/ui/radioUI.js"></script>
+<script src="js/ui/inventoryUI.js"></script>
 
 <!-- 实体模块 -->
 <script src="js/entities/wave.js"></script>

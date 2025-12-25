@@ -98,10 +98,17 @@ function spawnEnemy() {
         waypoints.push({ x: wx, y: wy });
     }
     
+    // 随机分配核心类型
+    const coreTypes = [CORE_TYPES.SCAVENGER, CORE_TYPES.MIMIC, CORE_TYPES.HEAVY];
+    const randomCore = coreTypes[Math.floor(Math.random() * coreTypes.length)];
+    
+    // 根据核心类型调整频率范围
+    const enemyFreq = Math.floor(rand(randomCore.freqMin, randomCore.freqMax));
+    
     state.entities.enemies.push({
         id: Math.random().toString(36).substr(2,9),
         x: ex, y: ey, r: 16,
-        freq: Math.floor(rand(CFG.freqMin, CFG.freqMax)),
+        freq: enemyFreq,
         state: 'patrol', timer: 0, angle: rand(0, Math.PI*2),
         resonanceCD: 0,
         grabCooldown: 0,           // 抓取冷却时间
@@ -114,6 +121,11 @@ function spawnEnemy() {
         executeHintElement: createExecuteHintUI(),
         struggleHintElement: createStruggleHintUI(),
         grabHintElement: null,
+        // 核心系统
+        core: randomCore,
+        isDormant: false,
+        isDestroyed: false,
+        struggleProgress: 0,       // 敌人的挣脱进度（当被玩家抓取时）
         // 能量系统
         en: CFG.enemyMaxEnergy,     // 当前能量
         overload: 0,                // 当前过载值
@@ -387,7 +399,7 @@ function updateEnemyMovement(e) {
         return;
     }
     
-    let spd = CFG.eSpeedPatrol;
+    let spd = CFG.eSpeedPatrol * e.core.speedMultiplier;
     let tx = null, ty = null;
     
     // 速度降低：过载值 >= 2/3 时，速度降低50%
@@ -396,7 +408,7 @@ function updateEnemyMovement(e) {
     }
     
     if (e.state === 'alert') {
-        spd = CFG.eSpeedChase;
+        spd = CFG.eSpeedChase * e.core.speedMultiplier;
         // 再次应用速度降低（如果过载值高）
         if (e.overload >= CFG.maxOverload * 2 / 3) {
             spd *= 0.5;
@@ -552,8 +564,8 @@ function updateEnemyRadiation(enemy) {
     let enemyRadiation = state.entities.radiations.find(r => r.ownerId === enemy.id && r.ownerType === 'enemy');
     
     if (energyConsumption > 0 && enemy.state !== 'dormant') {
-        // 计算辐射半径
-        const maxRadius = CFG.radiationBaseRadius + energyConsumption * CFG.radiationEnergyMultiplier;
+        // 计算辐射半径（受核心辐射倍率影响）
+        const maxRadius = (CFG.radiationBaseRadius + energyConsumption * CFG.radiationEnergyMultiplier) * enemy.core.radiationMultiplier;
         
         if (enemyRadiation) {
             // 更新现有辐射场
@@ -581,11 +593,93 @@ function updateEnemyRadiation(enemy) {
     }
 }
 
+// 休眠敌人吸收能量
+function updateDormantEnemyAbsorption(enemy) {
+    const absorptionRange = CFG.dormantAbsorptionRange;
+    const absorptionRate = CFG.dormantAbsorptionRate;
+    
+    // 1. 吸收玩家能量
+    const distToPlayer = dist(enemy.x, enemy.y, state.p.x, state.p.y);
+    if (distToPlayer < absorptionRange && state.p.en > 0) {
+        const absorbed = Math.min(absorptionRate, state.p.en);
+        state.p.en -= absorbed;
+        enemy.en = Math.min(CFG.enemyMaxEnergy, enemy.en + absorbed);
+    }
+    
+    // 2. 吸收其他敌人能量
+    state.entities.enemies.forEach(other => {
+        if (other === enemy || other.isDormant || other.isDestroyed) return;
+        
+        const distToOther = dist(enemy.x, enemy.y, other.x, other.y);
+        if (distToOther < absorptionRange && other.en > 0) {
+            const absorbed = Math.min(absorptionRate, other.en);
+            other.en -= absorbed;
+            enemy.en = Math.min(CFG.enemyMaxEnergy, enemy.en + absorbed);
+            
+            // 被吸收的敌人也可能进入休眠
+            if (other.en <= 0) {
+                other.isDormant = true;
+                other.state = 'dormant';
+                other.en = 0;
+            }
+        }
+    });
+    
+    // 3. 吸收辐射场能量
+    state.entities.radiations.forEach(rad => {
+        if (rad.ownerType === 'enemy' && rad.ownerId === enemy.id) return;
+        
+        const distToRad = dist(enemy.x, enemy.y, rad.x, rad.y);
+        if (distToRad < absorptionRange && rad.centerEnergy > 0) {
+            const absorbed = Math.min(absorptionRate, rad.centerEnergy);
+            rad.centerEnergy -= absorbed;
+            enemy.en = Math.min(CFG.enemyMaxEnergy, enemy.en + absorbed);
+        }
+    });
+}
+
 // 更新敌人
 function updateEnemies() {
     const enemiesToRemove = []; // 需要移除的敌人
     
     state.entities.enemies.forEach(e => {
+        // 检查报废状态
+        if (e.isDestroyed) {
+            enemiesToRemove.push(e);
+            spawnParticles(e.x, e.y, '#666666', 30);
+            // 掉落核心（可以后续实现）
+            return;
+        }
+        
+        // 检查休眠状态
+        if (e.isDormant) {
+            // 休眠敌人主动吸收能量
+            updateDormantEnemyAbsorption(e);
+            
+            // 检查是否达到恢复阈值
+            if (e.en >= CFG.enemyMaxEnergy * CFG.dormantWakeupThreshold) {
+                e.isDormant = false;
+                e.state = 'patrol';
+                logMsg("DORMANT ENEMY REACTIVATED");
+            }
+            
+            // 休眠敌人仍然可以被共振累积过载值（后续处理）
+            return;
+        }
+        
+        // 能量自然衰减（受核心影响）
+        const baseDecay = CFG.energyDecayRate * e.core.energyMultiplier;
+        e.en = Math.max(0, e.en - baseDecay);
+        
+        // 能量耗尽进入休眠
+        if (e.en <= 0 && !e.isDormant) {
+            e.isDormant = true;
+            e.en = 0;
+            e.state = 'dormant';
+            // 休眠敌人会保留在场景中，不会被移除
+            return;
+        }
+        
         if(e.resonanceCD > 0) e.resonanceCD--;
         if(e.grabCooldown > 0) e.grabCooldown--;
         
@@ -718,8 +812,9 @@ function updateEnemies() {
                 }
             }
         } else {
-            // 碰撞检测：抓取玩家（硬直期间无法抓取）
+            // 碰撞检测：抓取玩家（硬直期间、无敌期间无法抓取）
             if(dToP < 25 && !state.p.isGrabbed && e.grabCooldown <= 0 && 
+               state.p.grabImmunity <= 0 &&  // 检查玩家是否处于无敌时间
                e.state !== 'stunned' && e.state !== 'detonating' &&
                (!e.overloadedStunTimer || e.overloadedStunTimer <= 0)) {
                 // 抓取玩家

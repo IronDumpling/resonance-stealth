@@ -306,30 +306,6 @@ class UIManager {
                 energyEl.textContent = `${Math.floor(data.energy)}/${data.maxEnergy || 100}`;
             }
         }
-        
-        // 更新备用能量
-        if (data.reserveEnergy !== undefined) {
-            const reserveEl = document.getElementById('reserve-val');
-            if (reserveEl) {
-                reserveEl.textContent = Math.floor(data.reserveEnergy);
-            }
-        }
-        
-        // 更新频率
-        if (data.frequency !== undefined) {
-            const freqEl = document.getElementById('freq-box');
-            if (freqEl) {
-                freqEl.textContent = Math.floor(data.frequency) + ' Hz';
-            }
-        }
-        
-        // 更新消息日志
-        if (data.message !== undefined) {
-            const msgEl = document.getElementById('msg-log');
-            if (msgEl) {
-                msgEl.textContent = data.message;
-            }
-        }
     }
     
     // 更新函数(每帧调用)

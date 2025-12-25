@@ -1,9 +1,41 @@
-// 玩家相关逻辑
+/**
+ * 处理玩家休眠状态
+ */
+function handlePlayerDormancy() {
+    // 休眠时辐射场逐渐消失
+    const playerRadiation = state.entities.radiations.find(r => r.ownerId === 'player' && r.ownerType === 'player');
+    if (playerRadiation) {
+        playerRadiation.radius *= 0.95;
+        if (playerRadiation.radius < 5) {
+            const index = state.entities.radiations.indexOf(playerRadiation);
+            if (index !== -1) {
+                state.entities.radiations.splice(index, 1);
+            }
+        }
+    }
+    
+    // 按R键重启（消耗备用能量）
+    if (state.keys.r && state.p.reserveEn >= CFG.restartEnergyCost) {
+        state.p.reserveEn -= CFG.restartEnergyCost;
+        state.p.en = CFG.restartEnergyGain;
+        state.p.isDormant = false;
+        logMsg("SYSTEM REBOOTED");
+    }
+}
+
+/**
+ * 处理玩家报废
+ */
+function handlePlayerDestruction() {
+    logMsg("ROBOT DESTROYED");
+    // TODO: 触发场景切换到组装界面
+    // sceneManager.switchScene(SCENES.ASSEMBLY);
+}
 
 // 更新玩家辐射场
 function updatePlayerRadiation() {
-    // 计算当前能量消耗率
-    const baseDecay = CFG.energyDecayRate;
+    // 计算当前能量消耗率（受核心影响）
+    const baseDecay = CFG.energyDecayRate * state.p.currentCore.energyMultiplier;
     let energyConsumption = baseDecay;
     
     // 检测移动状态
@@ -25,8 +57,8 @@ function updatePlayerRadiation() {
     let playerRadiation = state.entities.radiations.find(r => r.ownerId === 'player' && r.ownerType === 'player');
     
     if (energyConsumption > 0) {
-        // 计算辐射半径
-        const maxRadius = CFG.radiationBaseRadius + energyConsumption * CFG.radiationEnergyMultiplier;
+        // 计算辐射半径（受核心辐射倍率影响）
+        const maxRadius = (CFG.radiationBaseRadius + energyConsumption * CFG.radiationEnergyMultiplier) * state.p.currentCore.radiationMultiplier;
         
         if (playerRadiation) {
             // 更新现有辐射场
@@ -194,7 +226,6 @@ function releaseScan() {
     state.p.isCharging = false; 
     state.focusLevel = 0;
     state.p.shouldShowAimLine = false; // 释放时不显示辅助瞄准线
-    updateUI();
 }
 
 // 提升主能量（自动处理溢出到备用，并显示绿色闪烁）
@@ -262,6 +293,9 @@ function tryInteract() {
         // 立即清除可处决标记，防止重复触发
         Target.canBeDetonated = false;
         
+        // 记录是否是休眠状态
+        const wasDormant = Target.isDormant;
+        
         // 根据敌人能量决定是否释放共振波
         if (Target.en > 0) {
             // 能量>0：保持现有逻辑释放共振波
@@ -275,13 +309,22 @@ function tryInteract() {
                 addEnergy(CFG.maxEnergy * 0.5);
                 logMsg("ECHO BEACON DETONATED - AREA REVEALED");
             }
-            
-            // 根据敌人状态生成不同类型核心
-            const coreType = Target.state === 'dormant' ? 'core_cold' : 'core_hot';
-            spawnCoreAtEnemy(Target, coreType);
+        }
+        
+        // 根据敌人状态决定掉落核心类型
+        if (wasDormant || Target.en <= 0) {
+            // 休眠敌人或无能量：掉落冷核心（立即回复能量）
+            spawnCoreAtEnemy(Target, 'core_cold');
+            logMsg("COLD CORE EXTRACTED");
         } else {
-            // 能量<=0：不释放共振波，核心破碎
-            logMsg("CORE SHATTERED - NO ENERGY");
+            // 活跃敌人有能量：掉落热核心（收集）
+            if (Target.en > CFG.enemyMaxEnergy * 0.5) {
+                spawnCoreAtEnemy(Target, 'core_hot');
+                logMsg("HOT CORE EXTRACTED");
+            } else {
+                spawnCoreAtEnemy(Target, 'core_cold');
+                logMsg("DEPLETED CORE EXTRACTED");
+            }
         }
         
         // 视觉反馈
@@ -289,12 +332,107 @@ function tryInteract() {
         spawnParticles(Target.x, Target.y, '#ff0000', 50); // 红色粒子
         
         // 不立即移除敌人，让 updateEnemies 在下一帧处理激发态并释放波
-        updateUI();
         return;
     }
 
     // 2. 尝试拾取物品（使用新的物品系统）
     if(tryPickupItem()) {
+        return;
+    }
+}
+
+// 创建玩家抓取提示UI
+function createPlayerGrabHintUI() {
+    const div = document.createElement('div');
+    div.className = 'player-grab-hint';
+    div.style.cssText = `
+        position: absolute;
+        background: rgba(0, 255, 255, 0.2);
+        border: 2px solid #00ffff;
+        padding: 8px 12px;
+        font-size: 14px;
+        color: #00ffff;
+        pointer-events: none;
+        white-space: nowrap;
+        transform: translate(-50%, -100%);
+        text-shadow: 0 0 5px #00ffff;
+        z-index: 1000;
+    `;
+    div.textContent = '[E] DRAIN ENERGY';
+    document.body.appendChild(div);
+    return div;
+}
+
+// 更新玩家抓取提示UI
+function updatePlayerGrabHint() {
+    let canGrab = false;
+    let targetEnemy = null;
+    
+    if (!state.p.isGrabbingEnemy && !state.p.isGrabbed && !state.p.isDormant && !state.p.isDestroyed) {
+        for (const enemy of state.entities.enemies) {
+            if (enemy.state === 'alert' || enemy.state === 'grabbed_by_player' || 
+                enemy.state === 'grabbing' || enemy.isDormant || enemy.isDestroyed) {
+                continue;
+            }
+            
+            const distance = dist(state.p.x, state.p.y, enemy.x, enemy.y);
+            const freqDiff = Math.abs(state.freq - enemy.freq);
+            
+            if (distance <= CFG.playerGrabDistance && freqDiff <= CFG.normalResTol) {
+                canGrab = true;
+                targetEnemy = enemy;
+                break;
+            }
+        }
+    }
+    
+    // 显示/隐藏UI提示
+    if (canGrab && targetEnemy) {
+        if (!state.p.grabHintElement) {
+            state.p.grabHintElement = createPlayerGrabHintUI();
+        }
+        const screenPos = worldToScreen(targetEnemy.x, targetEnemy.y - 40);
+        state.p.grabHintElement.style.display = 'block';
+        state.p.grabHintElement.style.left = screenPos.x + 'px';
+        state.p.grabHintElement.style.top = screenPos.y + 'px';
+    } else {
+        if (state.p.grabHintElement) {
+            state.p.grabHintElement.style.display = 'none';
+        }
+    }
+}
+
+// 尝试抓取敌人（按E键触发）
+function tryGrabEnemy() {
+    // 条件检查
+    if (state.p.isGrabbingEnemy || state.p.isGrabbed || state.p.isDormant || state.p.isDestroyed) {
+        return;
+    }
+    
+    // 寻找可以抓取的敌人
+    for (const enemy of state.entities.enemies) {
+        // 1. 敌人未警觉
+        if (enemy.state === 'alert' || enemy.state === 'grabbed_by_player' || enemy.state === 'grabbing' || enemy.isDormant || enemy.isDestroyed) {
+            continue;
+        }
+        
+        // 2. 距离足够近
+        const distance = dist(state.p.x, state.p.y, enemy.x, enemy.y);
+        if (distance > CFG.playerGrabDistance) {
+            continue;
+        }
+        
+        // 3. 同频（在共振范围内）
+        const freqDiff = Math.abs(state.freq - enemy.freq);
+        if (freqDiff > CFG.normalResTol) {
+            continue;
+        }
+        
+        // 成功抓取
+        state.p.isGrabbingEnemy = enemy;
+        enemy.state = 'grabbed_by_player';
+        enemy.struggleProgress = 0;
+        logMsg("GRABBING TARGET");
         return;
     }
 }
@@ -311,7 +449,8 @@ function updatePlayerGrab() {
     if (state.p.isGrabbed) {
         // 玩家被其他敌人抓取
         state.p.isGrabbingEnemy = null;
-        enemy.state = 'alert';
+        enemy.state = 'patrol';
+        enemy.struggleProgress = 0;
         logMsg("GRAB INTERRUPTED");
         return;
     }
@@ -320,6 +459,7 @@ function updatePlayerGrab() {
         // 玩家过载值上升并触发stunned
         state.p.isGrabbingEnemy = null;
         enemy.state = 'alert';
+        enemy.struggleProgress = 0;
         logMsg("GRAB INTERRUPTED - OVERLOADED");
         return;
     }
@@ -327,18 +467,48 @@ function updatePlayerGrab() {
     if (enemy.state !== 'grabbed_by_player') {
         // 敌人进入其他状态
         state.p.isGrabbingEnemy = null;
+        enemy.struggleProgress = 0;
         return;
     }
     
     // 持续吸收能量
-    const drainAmount = CFG.grabEnergyDrainRateEnemy;
+    const drainAmount = CFG.playerGrabEnergyDrain;
     enemy.en = Math.max(0, enemy.en - drainAmount);
     addEnergy(drainAmount);
     
+    // 敌人挣脱机制
+    if (Math.random() < CFG.enemyStruggleChance) {
+        enemy.struggleProgress = Math.min(100, enemy.struggleProgress + CFG.enemyStruggleProgressGain);
+        
+        // 玩家消耗耐久度
+        state.p.durability = Math.max(0, state.p.durability - CFG.beingStruggledDurabilityLoss);
+        
+        // 耐久度归零游戏结束
+        if (state.p.durability <= 0) {
+            state.p.isDestroyed = true;
+            state.p.isGrabbingEnemy = null;
+            enemy.state = 'alert';
+            enemy.struggleProgress = 0;
+            logMsg("DURABILITY DEPLETED - SYSTEM FAILURE");
+            return;
+        }
+        
+        // 挣脱成功
+        if (enemy.struggleProgress >= 100) {
+            state.p.isGrabbingEnemy = null;
+            enemy.state = 'alert';
+            enemy.struggleProgress = 0;
+            logMsg("TARGET BROKE FREE!");
+            return;
+        }
+    }
+    
     // 如果敌人能量归零，进入休眠状态，结束抓取
     if (enemy.en <= 0) {
+        enemy.isDormant = true;
         enemy.state = 'dormant';
         state.p.isGrabbingEnemy = null;
+        enemy.struggleProgress = 0;
         logMsg("TARGET DRAINED - DORMANT");
     }
 }
@@ -354,14 +524,29 @@ function updateStruggle() {
     // 每帧衰减进度
     state.p.struggleProgress = Math.max(0, state.p.struggleProgress - CFG.struggleProgressDecay);
     
-    // 按F增加进度
+    // 按F增加进度（消耗耐久）
     if (state.keys.f) {
         state.p.struggleProgress = Math.min(CFG.struggleProgressMax, state.p.struggleProgress + CFG.struggleProgressGain);
+        state.p.durability = Math.max(0, state.p.durability - CFG.struggleDurabilityLoss);
         state.keys.f = false; // 防止连续触发
+        
+        // 耐久度归零游戏结束
+        if (state.p.durability <= 0) {
+            state.p.isDestroyed = true;
+            logMsg("DURABILITY DEPLETED - SYSTEM FAILURE");
+        }
     }
     
     // 进度满时挣脱
     if (state.p.struggleProgress >= CFG.struggleProgressMax) {
+        // 给玩家无敌时间
+        state.p.grabImmunity = CFG.playerGrabImmunityTime;
+        
+        // 给抓取者设置更长的冷却时间
+        if (state.p.grabberEnemy) {
+            state.p.grabberEnemy.grabCooldown = CFG.grabCDAfterStruggle;
+        }
+        
         state.p.isGrabbed = false;
         state.p.grabberEnemy = null;
         state.p.struggleProgress = 0;
@@ -390,29 +575,39 @@ function updateStruggle() {
 
 // 使用备用能量补充主能量（R键）
 function updateReserveEnergy() {
-    if (state.keys.r && state.p.reserveEn > 0 && state.p.en < CFG.maxEnergy) {
-        const needed = CFG.maxEnergy - state.p.en;
-        const used = Math.min(needed, state.p.reserveEn);
-        
-        if (used > 0) {
-            // 从备用能量中扣除
-            state.p.reserveEn -= used;
-            // 使用 addEnergy 提升主能量
-            addEnergy(used);
-            
+    if (state.keys.r && state.p.en < CFG.maxEnergy) {
+        // 使用背包中的能量瓶
+        if (useEnergyFlask()) {
             state.keys.r = false;
-            logMsg(`RESERVE TRANSFERRED (+${Math.floor(used)} ENERGY)`);
-            spawnParticles(state.p.x, state.p.y, '#33ccff', 15);
-            updateUI();
         }
     }
 }
 
 // 更新玩家状态
 function updatePlayer() {
-    // 能量自然衰减
-    const baseDecay = CFG.energyDecayRate;
+    // 检查报废状态
+    if (state.p.isDestroyed) {
+        handlePlayerDestruction();
+        return; // 报废后不再更新
+    }
+    
+    // 检查休眠状态
+    if (state.p.isDormant) {
+        handlePlayerDormancy();
+        return; // 休眠时不更新其他逻辑
+    }
+    
+    // 能量自然衰减（受核心影响）
+    const baseDecay = CFG.energyDecayRate * state.p.currentCore.energyMultiplier;
     state.p.en = Math.max(0, state.p.en - baseDecay);
+    
+    // 能量耗尽进入休眠
+    if (state.p.en <= 0 && !state.p.isDormant) {
+        state.p.isDormant = true;
+        state.p.en = 0;
+        logMsg("SYSTEM DORMANT - PRESS [R] TO RESTART");
+        return;
+    }
     
     // 处理硬直状态
     if (state.p.overloadedStunTimer && state.p.overloadedStunTimer > 0) {
@@ -426,6 +621,13 @@ function updatePlayer() {
     updateStruggle();
     updateReserveEnergy();
     updatePlayerGrab();
+    updatePlayerGrabHint();
+    
+    // 按E键尝试抓取敌人
+    if (state.keys.e && !state.p.isGrabbingEnemy && !state.p.isGrabbed) {
+        tryGrabEnemy();
+        state.keys.e = false; // 防止连续触发
+    }
     
     // 被抓取、抓取敌人或硬直状态时无法移动
     if (!state.p.isGrabbed && !state.p.isGrabbingEnemy && (!state.p.overloadedStunTimer || state.p.overloadedStunTimer <= 0)) {
@@ -435,12 +637,15 @@ function updatePlayer() {
         if(state.keys.a) dx-=1; if(state.keys.d) dx+=1;
         if(dx||dy) {
             const len = Math.hypot(dx,dy);
-            let spd = state.p.isCharging ? CFG.pSpeed * 0.3 : CFG.pSpeed;
+            let spd = (state.p.isCharging ? CFG.pSpeed * 0.3 : CFG.pSpeed) * state.p.currentCore.speedMultiplier;
             // 速度降低：过载值 >= 2/3 时，速度降低50%
             if (state.p.overload >= CFG.maxOverload * 2 / 3) {
                 spd *= 0.5;
             }
-            const nx = state.p.x + (dx/len)*spd; const ny = state.p.y + (dy/len)*spd;
+            const nx = state.p.x + (dx/len)*spd; 
+            const ny = state.p.y + (dy/len)*spd;
+            
+            // 碰撞检测（不再扣除耐久）
             if(!checkWall(nx, state.p.y)) state.p.x = nx;
             if(!checkWall(state.p.x, ny)) state.p.y = ny;
         }
@@ -452,6 +657,7 @@ function updatePlayer() {
     // 冷却时间
     if(state.p.invuln > 0) state.p.invuln--;
     if(state.p.resonanceCD > 0) state.p.resonanceCD--;
+    if(state.p.grabImmunity > 0) state.p.grabImmunity--;
     
     // 过载条自然衰减
     state.p.overload = Math.max(0, state.p.overload - CFG.overloadDecayRate);

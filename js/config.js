@@ -6,8 +6,23 @@ const CFG = {
     pViewAngle: Math.PI / 2.5,
     playerRadius: 14,          // 玩家碰撞半径（用于波纹命中与分割）
     maxEnergy: 100,            // 能量上限
+    maxDurability: 100,        // 耐久上限
     
     energyFlaskVal: 30,        // 能量瓶恢复量
+    
+    // 休眠与重启
+    restartEnergyCost: 30,     // 重启消耗的备用能量
+    restartEnergyGain: 30,     // 重启后获得的能量
+    
+    // 耐久消耗（仅在抓取/被抓取挣扎时消耗）
+    struggleDurabilityLoss: 2,         // 被抓取挣脱时耐久损失（每次按F）
+    beingStruggledDurabilityLoss: 1.5, // 抓取敌人时，敌人挣脱导致的耐久损失（每次）
+    
+    // 玩家抓取敌人
+    playerGrabDistance: 30,            // 玩家抓取距离
+    playerGrabEnergyDrain: 0.2,        // 玩家抓取敌人时吸取的能量速度（每帧）
+    enemyStruggleChance: 0.02,         // 敌人每帧挣脱的概率
+    enemyStruggleProgressGain: 20,     // 敌人挣脱进度增加量
     
     // 扫描与波
     forcedWaveCost: 15,
@@ -36,7 +51,9 @@ const CFG = {
     eSpeedPatrol: 0.6,
     eSpeedChase: 1.5,
     stunTime: 600, 
-    grabCD: 120,                   // 抓取冷却时间（帧数）
+    grabCD: 180,                   // 抓取基础冷却时间（帧数，3秒）
+    grabCDAfterStruggle: 360,      // 玩家挣脱后，敌人的额外冷却时间（6秒）
+    playerGrabImmunityTime: 120,   // 玩家挣脱后的无敌时间（2秒，期间不能被抓）
     enemyMaxEnergy: 80,            // 敌人最大能量值
     
     // 抓取与挣脱
@@ -73,8 +90,16 @@ const CFG = {
     stealthGrabDistance: 30,        // 暗杀抓取距离
     
     // 核心物品
-    coreHotItemValue: 50,           // 热核心恢复的能量值
-    coreColdItemValue: 0,           // 冷核心恢复的能量值（一用即碎，恢复0）
+    coreHotItemValue: 10,           // 热核心恢复的能量值（收集用）
+    coreColdItemValue: 50,          // 冷核心恢复的能量值（立即吸收）
+    
+    // 背包系统
+    inventorySize: 6,               // 背包容量
+    
+    // 休眠敌人能量吸收
+    dormantAbsorptionRange: 50,     // 休眠敌人吸收范围
+    dormantAbsorptionRate: 0.1,     // 每帧吸收速率
+    dormantWakeupThreshold: 0.5,    // 恢复活动的能量阈值（总能量的一半）
     
     // 波纹能量
     baseWaveEnergy: 10000,       // 波纹固定基础能量N
@@ -100,6 +125,42 @@ const CFG = {
     cameraFOV: 1.4,             // 视野缩放（1.0 = 正常，>1.0 = 放大，<1.0 = 缩小）
     cameraFollowSpeed: 0.1,     // 相机跟随速度（0-1，越大跟随越快）
     cameraSmoothing: true       // 是否启用平滑跟随
+};
+
+// --- 核心类型定义 ---
+const CORE_TYPES = {
+    SCAVENGER: {
+        id: 'scavenger',
+        name: '拾荒者核心',
+        freqMin: 120,
+        freqMax: 220,
+        energyMultiplier: 0.8,      // 能耗降低20%
+        radiationMultiplier: 0.9,   // 辐射半径降低10%
+        speedMultiplier: 1.0,
+        description: '节能高效，适合长期探索'
+    },
+    
+    MIMIC: {
+        id: 'mimic',
+        name: '拟态者核心',
+        freqMin: 100,
+        freqMax: 300,               // 全频率覆盖
+        energyMultiplier: 1.2,      // 能耗增加20%
+        radiationMultiplier: 0.7,   // 辐射半径降低30%
+        speedMultiplier: 1.1,        // 速度提升10%
+        description: '高机动低辐射，擅长潜行'
+    },
+    
+    HEAVY: {
+        id: 'heavy',
+        name: '重装核心',
+        freqMin: 100,
+        freqMax: 150,               // 极低频
+        energyMultiplier: 1.5,      // 能耗增加50%
+        radiationMultiplier: 1.3,   // 辐射半径增加30%
+        speedMultiplier: 0.85,       // 速度降低15%
+        description: '高耐久重装，正面突破'
+    }
 };
 
 // --- Instruction 定义 ---

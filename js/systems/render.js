@@ -438,6 +438,20 @@ function drawAimLine() {
 function drawPlayer() {
     ctx.save();
     ctx.translate(state.p.x, state.p.y); ctx.rotate(state.p.a);
+    
+    // 无敌时间护盾效果
+    if (state.p.grabImmunity > 0) {
+        const pulsePhase = (Date.now() / 200) % 1; // 0-1循环
+        const radius = 20 + pulsePhase * 10;
+        const opacity = 0.3 + pulsePhase * 0.3;
+        
+        ctx.strokeStyle = `rgba(0, 255, 255, ${opacity})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+    
     ctx.fillStyle = state.p.invuln > 0 ? '#fff' : '#00ffff';
     ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-8, 6); ctx.lineTo(-8, -6); ctx.fill();
     
@@ -537,6 +551,109 @@ function drawStruggleBar() {
     ctx.fillText('[F] STRUGGLE', canvas.width / 2, barY - 25);
 }
 
+// 绘制玩家状态UI
+function drawPlayerStatusUI() {
+    const padding = 20;
+    const barWidth = 200;
+    const barHeight = 20;
+    const gap = 10;
+    
+    // 休眠提示
+    if (state.p.isDormant) {
+        ctx.save();
+        ctx.font = 'bold 24px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ff0000';
+        ctx.shadowColor = '#ff0000';
+        ctx.shadowBlur = 10;
+        ctx.fillText('SYSTEM DORMANT', canvas.width / 2, canvas.height / 2 - 50);
+        ctx.fillText('PRESS [R] TO RESTART', canvas.width / 2, canvas.height / 2 + 50);
+        ctx.restore();
+        return;
+    }
+    
+    // 报废提示
+    if (state.p.isDestroyed) {
+        ctx.save();
+        ctx.font = 'bold 30px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#880000';
+        ctx.shadowColor = '#ff0000';
+        ctx.shadowBlur = 15;
+        ctx.fillText('ROBOT DESTROYED', canvas.width / 2, canvas.height / 2);
+        ctx.restore();
+        return;
+    }
+    
+    ctx.save();
+    ctx.font = '14px monospace';
+    ctx.textAlign = 'left';
+    
+    // 核心信息
+    ctx.fillStyle = '#00ff00';
+    ctx.fillText(`CORE: ${state.p.currentCore.name}`, padding, padding);
+    
+    // 能量条
+    const energyY = padding + 25;
+    ctx.fillStyle = '#333333';
+    ctx.fillRect(padding, energyY, barWidth, barHeight);
+    
+    const energyPercent = state.p.en / CFG.maxEnergy;
+    const energyColor = energyPercent > 0.3 ? '#00ff00' : (energyPercent > 0.1 ? '#ffff00' : '#ff0000');
+    ctx.fillStyle = energyColor;
+    ctx.fillRect(padding, energyY, barWidth * energyPercent, barHeight);
+    
+    ctx.strokeStyle = '#00ff00';
+    ctx.strokeRect(padding, energyY, barWidth, barHeight);
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(`ENERGY: ${Math.floor(state.p.en)}/${CFG.maxEnergy}`, padding + 5, energyY + 14);
+    
+    // 耐久条
+    const durabilityY = energyY + barHeight + gap;
+    ctx.fillStyle = '#333333';
+    ctx.fillRect(padding, durabilityY, barWidth, barHeight);
+    
+    const durabilityPercent = state.p.durability / CFG.maxDurability;
+    const durabilityColor = durabilityPercent > 0.5 ? '#00aaff' : (durabilityPercent > 0.2 ? '#ffaa00' : '#ff0000');
+    ctx.fillStyle = durabilityColor;
+    ctx.fillRect(padding, durabilityY, barWidth * durabilityPercent, barHeight);
+    
+    ctx.strokeStyle = '#00aaff';
+    ctx.strokeRect(padding, durabilityY, barWidth, barHeight);
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(`DURABILITY: ${Math.floor(state.p.durability)}/${CFG.maxDurability}`, padding + 5, durabilityY + 14);
+    
+    // 备用能量
+    const reserveY = durabilityY + barHeight + gap;
+    ctx.fillStyle = '#888888';
+    ctx.fillText(`RESERVE: ${Math.floor(state.p.reserveEn)}`, padding, reserveY + 14);
+    
+    // 频率
+    const freqY = reserveY + 20;
+    ctx.fillStyle = '#00ff00';
+    ctx.fillText(`FREQ: ${state.freq} Hz`, padding, freqY + 14);
+    
+    // 消息日志（左下角）
+    if (state.currentMessage && state.messageTimer > 0) {
+        const messageY = canvas.height - 30;
+        ctx.font = '16px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#ffaa00';
+        
+        // 闪烁效果（消息快消失时）
+        if (state.messageTimer < 60) {
+            ctx.globalAlpha = state.messageTimer / 60;
+        }
+        
+        ctx.fillText(state.currentMessage, padding, messageY);
+        ctx.globalAlpha = 1;
+    }
+    
+    ctx.restore();
+}
+
 // 主绘制函数
 function draw() {
     // 绘制背景
@@ -583,5 +700,8 @@ function draw() {
     
     // 绘制UI（挣脱进度条，不受相机变换影响）
     drawStruggleBar();
+    
+    // 绘制玩家状态UI（能量、耐久、核心信息）
+    drawPlayerStatusUI();
 }
 

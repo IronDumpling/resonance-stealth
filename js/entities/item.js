@@ -188,29 +188,39 @@ function tryPickupItem() {
     // 处理不同类型的物品
     switch(item.type) {
         case 'energy':
-            addReserveEnergy(CFG.energyFlaskVal);
-            logMsg(`RESERVE ENERGY RESTORED (+${CFG.energyFlaskVal})`);
-            spawnParticles(item.x, item.y, '#00ff00', 20);
-            break;
+            // 添加到背包
+            if (addToInventory('energy_flask')) {
+                logMsg(`ENERGY FLASK COLLECTED`);
+                spawnParticles(item.x, item.y, '#00ff00', 20);
+                removeItem(item);
+                return true;
+            } else {
+                logMsg("INVENTORY FULL");
+                return false;
+            }
             
         case 'core_hot':
-            addEnergy(CFG.coreHotItemValue);
-            logMsg(`CORE ABSORBED (+${CFG.coreHotItemValue} ENERGY)`);
-            spawnParticles(item.x, item.y, '#ff6600', 30);
-            break;
+            // 热核心：收集到背包，不回复能量
+            if (addToInventory('core_hot')) {
+                logMsg("HOT CORE COLLECTED");
+                spawnParticles(item.x, item.y, '#ff6600', 30);
+                removeItem(item);
+                return true;
+            } else {
+                logMsg("INVENTORY FULL");
+                return false;
+            }
             
         case 'core_cold':
+            // 冷核心：立即回复能量（不占背包）
             addEnergy(CFG.coreColdItemValue);
-            logMsg(`COLD CORE ABSORBED (FRAGILE)`);
+            logMsg(`COLD CORE ABSORBED (+${CFG.coreColdItemValue} ENERGY)`);
             spawnParticles(item.x, item.y, '#8888ff', 20);
-            break;
+            removeItem(item);
+            return true;
     }
     
-    // 移除物品
-    removeItem(item);
-    updateUI();
-    
-    return true;
+    return false;
 }
 
 // 检测是否有可拾取的物品（用于显示通用提示）

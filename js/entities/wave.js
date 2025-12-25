@@ -910,7 +910,6 @@ function handleWavePlayerInteraction(w, oldR, waveIndex) {
         // 玩家被迫发出自发波（与敌人受迫共振对称）
         emitWave(state.p.x, state.p.y, 0, Math.PI * 2, state.freq, 'player');
         state.p.resonanceCD = CFG.resonanceCD;
-        updateUI();
     }
     
     // 玩家过载条自然衰减
@@ -1081,10 +1080,18 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                     // 层次2：过载满值或高能量效果（忽略冷却，允许立即进入stun）
                     if (enemy.overload >= CFG.maxOverload || totalEnergy >= overloadThreshold) {
                         // 进入stun状态，不发出受迫共振波，不设置冷却
-                        enemy.state = 'stunned';
-                        enemy.isPerfectStun = isPerfectResonance;
-                        enemy.timer = isPerfectResonance ? CFG.stunTime : CFG.stunTime / 2; // 完美共振10秒，普通共振5秒
-                        enemy.canBeDetonated = true; // 标记可处决
+                        if (enemy.isDormant) {
+                            // 休眠敌人过载后仍保持休眠，但可以被处决
+                            enemy.state = 'stunned';
+                            enemy.canBeDetonated = true;
+                            enemy.timer = CFG.stunTime;
+                        } else {
+                            // 正常敌人的过载逻辑
+                            enemy.state = 'stunned';
+                            enemy.isPerfectStun = isPerfectResonance;
+                            enemy.timer = isPerfectResonance ? CFG.stunTime : CFG.stunTime / 2; // 完美共振10秒，普通共振5秒
+                            enemy.canBeDetonated = true; // 标记可处决
+                        }
                         
                         // 日志消息
                         if (isPerfectResonance) {
