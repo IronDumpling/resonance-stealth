@@ -299,6 +299,19 @@ class BootScene extends Scene {
         this.bootTimer = 0;
         this.showPrompt = false;
         this.promptFadeIn = 0;
+        
+        // 在boot时就初始化无线电系统和UI，但保持禁用状态
+        if (!radioSystem && typeof initRadioSystem === 'function') {
+            initRadioSystem();
+        }
+        
+        if (!radioUI && typeof initRadioUI === 'function' && radioSystem) {
+            initRadioUI(radioSystem);
+            if (radioUI) {
+                radioUI.init();
+                radioUI.deactivate();  // 初始化为禁用状态
+            }
+        }
     }
     
     update(deltaTime) {
@@ -493,6 +506,11 @@ class RobotScene extends Scene {
                 }
             });
         }
+        
+        // 确保无线电系统激活并运行
+        if (sceneManager) {
+            sceneManager.setRadioState(RADIO_STATE.ACTIVE);
+        }
     }
     
     exit() {
@@ -509,6 +527,14 @@ class RobotScene extends Scene {
         // 调用机器人游戏更新和渲染函数
         if (typeof updateAndDrawRobot === 'function') {
             updateAndDrawRobot();
+        }
+        
+        // 更新无线电系统和UI（在机器人模式下也运行）
+        if (radioSystem) {
+            radioSystem.update(deltaTime);
+        }
+        if (radioUI) {
+            radioUI.update(deltaTime);
         }
     }
     
@@ -539,27 +565,28 @@ class RadioScene extends Scene {
     enter(data) {
         super.enter(data);
         
-        // 初始化无线电系统（如果还没初始化）
-        if (!this.radio && typeof initRadioSystem === 'function') {
-            this.radio = initRadioSystem();
-            radioSystem = this.radio; // 设置全局引用
-        } else if (radioSystem) {
+        // 使用全局的无线电系统（已在BootScene初始化）
+        if (radioSystem) {
             this.radio = radioSystem;
+        } else {
+            console.error('Radio system not initialized!');
+            return;
         }
         
-        // 初始化无线电UI（DOM界面）
-        if (!this.radioUI && typeof initRadioUI === 'function' && this.radio) {
-            this.radioUI = initRadioUI(this.radio);
-            radioUI = this.radioUI; // 设置全局引用
-            // 初始化DOM
-            this.radioUI.init();
-        } else if (radioUI) {
+        // 使用全局的无线电UI（已在BootScene初始化）
+        if (radioUI) {
             this.radioUI = radioUI;
-            // 显示现有DOM
-            const container = document.getElementById('radio-interface');
-            if (container) {
-                container.style.display = 'block';
+            // 确保UI可见并激活
+            if (this.radioUI.container) {
+                this.radioUI.container.style.display = 'flex';
             }
+            // 确保UI是激活状态
+            if (!this.radioUI.isActive) {
+                this.radioUI.activate();
+            }
+        } else {
+            console.error('Radio UI not initialized!');
+            return;
         }
         
         // Initialize radio display UI if not already done
@@ -867,19 +894,18 @@ class MonitorMenuScene extends Scene {
         if (sceneManager) {
             sceneManager.switchDisplayMode(option.mode);
             
-            // Activate radio if selecting radio mode
+            // Activate radio system (runs in both modes)
+            sceneManager.setRadioState(RADIO_STATE.ACTIVE);
+            
+            // Activate radio UI (should already be initialized in BootScene)
+            if (radioUI) {
+                radioUI.activate();
+            } else {
+                console.error('Radio UI not initialized! Should be created in BootScene.');
+            }
+            
+            // Initialize radio display UI if needed
             if (option.mode === DISPLAY_MODES.RADIO_DISPLAY) {
-                sceneManager.setRadioState(RADIO_STATE.ACTIVE);
-                
-                // Initialize radio UI if not already done
-                if (!radioUI && typeof initRadioUI === 'function' && radioSystem) {
-                    initRadioUI(radioSystem);
-                    if (radioUI) {
-                        radioUI.init();
-                    }
-                }
-                
-                // Initialize radio display UI
                 if (!radioDisplayUI && typeof initRadioDisplayUI === 'function' && radioSystem) {
                     initRadioDisplayUI(radioSystem);
                 }

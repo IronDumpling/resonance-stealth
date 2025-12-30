@@ -60,18 +60,42 @@ class RadioDisplayUI {
     generateMorseTable() {
         let html = '<div class="morse-columns">';
         
-        // Letters A-Z
+        // 将字母和数字分成四列
+        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        
+        // 第一列：A-I
         html += '<div class="morse-column">';
-        for (let char = 'A'.charCodeAt(0); char <= 'Z'.charCodeAt(0); char++) {
-            const letter = String.fromCharCode(char);
+        for (let i = 0; i < 9; i++) {
+            const letter = letters[i];
             const code = MORSE_CODE[letter] || '?';
             html += `<div class="morse-entry"><span class="morse-char">${letter}</span> <span class="morse-code">${code}</span></div>`;
         }
         html += '</div>';
         
-        // Numbers 0-9
+        // 第二列：J-R
         html += '<div class="morse-column">';
-        for (let num = 0; num <= 9; num++) {
+        for (let i = 9; i < 18; i++) {
+            const letter = letters[i];
+            const code = MORSE_CODE[letter] || '?';
+            html += `<div class="morse-entry"><span class="morse-char">${letter}</span> <span class="morse-code">${code}</span></div>`;
+        }
+        html += '</div>';
+        
+        // 第三列：S-Z + 0
+        html += '<div class="morse-column">';
+        for (let i = 18; i < 26; i++) {
+            const letter = letters[i];
+            const code = MORSE_CODE[letter] || '?';
+            html += `<div class="morse-entry"><span class="morse-char">${letter}</span> <span class="morse-code">${code}</span></div>`;
+        }
+        // 添加数字0
+        const code0 = MORSE_CODE['0'] || '?';
+        html += `<div class="morse-entry"><span class="morse-char">0</span> <span class="morse-code">${code0}</span></div>`;
+        html += '</div>';
+        
+        // 第四列：数字1-9
+        html += '<div class="morse-column">';
+        for (let num = 1; num <= 9; num++) {
             const code = MORSE_CODE[num.toString()] || '?';
             html += `<div class="morse-entry"><span class="morse-char">${num}</span> <span class="morse-code">${code}</span></div>`;
         }

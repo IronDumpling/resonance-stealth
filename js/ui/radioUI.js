@@ -8,6 +8,10 @@ class RadioUI {
         this.radio = radioSystem;
         this.container = null;
         
+        // UI状态
+        this.isActive = false;  // 是否可交互
+        this.isVisible = true;  // 是否可见
+        
         // 动画状态
         this.blinkTimer = 0;
         this.meterNeedleAngle = -45; // 信号表指针角度
@@ -49,17 +53,33 @@ class RadioUI {
             // 绑定事件
             this.bindEvents();
             
-            // 初始化瀑布图 canvas
+            // 初始化所有 canvas（瀑布图、指南针、信号表）
             this.initWaterfallCanvas();
-            
-            // 初始化指南针 canvas
-            this.initCompassCanvas();
-            
-            // 初始化信号表 canvas
-            this.initMeterCanvas();
             
             console.log('Radio UI DOM created and initialized in left panel');
         }, 0);
+    }
+    
+    /**
+     * 激活UI（允许交互）
+     */
+    activate() {
+        this.isActive = true;
+        if (this.container) {
+            this.container.classList.remove('disabled');
+        }
+        console.log('Radio UI activated');
+    }
+    
+    /**
+     * 停用UI（禁止交互）
+     */
+    deactivate() {
+        this.isActive = false;
+        if (this.container) {
+            this.container.classList.add('disabled');
+        }
+        console.log('Radio UI deactivated');
     }
     
     /**
@@ -223,6 +243,7 @@ class RadioUI {
         // 旋钮按钮
         document.querySelectorAll('.knob-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
+                if (!this.isActive) return;  // 未激活时不响应
                 const knob = e.target.dataset.knob;
                 const dir = parseInt(e.target.dataset.dir);
                 this.handleKnobClick(knob, dir);
@@ -235,16 +256,19 @@ class RadioUI {
         
         // 操作按钮
         document.getElementById('btn-direction')?.addEventListener('click', () => {
+            if (!this.isActive) return;  // 未激活时不响应
             this.radio.recordDirection();
             this.flashButton('btn-direction');
         });
         
         document.getElementById('btn-ping')?.addEventListener('click', () => {
+            if (!this.isActive) return;  // 未激活时不响应
             this.radio.sendPing();
             this.flashButton('btn-ping');
         });
         
         document.getElementById('btn-mark')?.addEventListener('click', () => {
+            if (!this.isActive) return;  // 未激活时不响应
             this.radio.markSignalOnMap();
             this.flashButton('btn-mark');
         });
@@ -407,8 +431,12 @@ class RadioUI {
         const signal = this.radio.getStrongestSignal();
         this.updateSignalInfo(signal);
         
-        // 渲染canvas
-        this.renderWaterfall();
+        // 只在激活状态下渲染瀑布图
+        if (this.isActive) {
+            this.renderWaterfall();
+        }
+        
+        // 始终渲染指南针和信号表
         this.renderCompass();
         this.renderMeter(signal);
         

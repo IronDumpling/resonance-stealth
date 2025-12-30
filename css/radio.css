@@ -14,6 +14,20 @@
     z-index: 10;
 }
 
+/* 禁用状态 */
+#radio-interface.disabled {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+#radio-interface.disabled .action-btn {
+    opacity: 0.3;
+}
+
+#radio-interface.disabled .knob-btn {
+    opacity: 0.3;
+}
+
 /* 无线电面板 - 适应容器 */
 .radio-panel {
     background: linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%);
