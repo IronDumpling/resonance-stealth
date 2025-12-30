@@ -39,7 +39,7 @@ class CrtOnScene extends Scene {
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         
-        ctx.fillText('RESONANCE TERMINAL v2.3', centerX, centerY - 100);
+        ctx.fillText('RESONANCE v0.2', centerX, centerY - 100);
         
         ctx.font = '20px "Courier New"';
         ctx.fillText('[1] RADIO TRANSCEIVER', centerX, centerY);

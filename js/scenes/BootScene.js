@@ -53,9 +53,9 @@ class BootScene extends Scene {
         ctx.font = 'bold 32px "Courier New"';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('RESONANCE TERMINAL', canvas.width / 2, canvas.height / 2 - 60);
+        ctx.fillText('RESONANCE', canvas.width / 2, canvas.height / 2 - 60);
         ctx.font = '16px "Courier New"';
-        ctx.fillText('v2.3 QUANTUM LINK EDITION', canvas.width / 2, canvas.height / 2 - 20);
+        ctx.fillText('v0.2', canvas.width / 2, canvas.height / 2 - 20);
         ctx.globalAlpha = 1;
         
         // 显示按键提示（闪烁效果）
