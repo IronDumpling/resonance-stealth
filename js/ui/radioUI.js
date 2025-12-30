@@ -664,9 +664,9 @@ class RadioUI {
         ctx.arc(cx, cy, radius, 0, Math.PI * 2);
         ctx.stroke();
         
-        // 刻度
+        // 刻度（与雷达图一致：0度=右，90度=下，180度=左，270度=上）
         for (let i = 0; i < 360; i += 45) {
-            const angle = (i - 90) * Math.PI / 180;
+            const angle = i * Math.PI / 180;
             const x1 = cx + Math.cos(angle) * (radius - 5);
             const y1 = cy + Math.sin(angle) * (radius - 5);
             const x2 = cx + Math.cos(angle) * radius;
@@ -680,8 +680,8 @@ class RadioUI {
             ctx.stroke();
         }
         
-        // 指针
-        const angle = (this.radio.antennaAngle - 90) * Math.PI / 180;
+        // 指针（与雷达图使用相同的角度系统）
+        const angle = this.radio.antennaAngle * Math.PI / 180;
         const x = cx + Math.cos(angle) * (radius - 10);
         const y = cy + Math.sin(angle) * (radius - 10);
         

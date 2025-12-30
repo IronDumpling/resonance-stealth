@@ -197,7 +197,7 @@ class RadarMap {
         
         const ctx = this.ctx;
         const angle = this.radio.antennaAngle * Math.PI / 180;
-        const length = 80;
+        const length = 30; // 缩小：80 -> 50
         const beamWidth = 30 * Math.PI / 180; // 30 degree beam width
         
         // Draw beam cone
@@ -216,7 +216,7 @@ class RadarMap {
         
         // Draw antenna direction line
         ctx.strokeStyle = '#00ff00';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2; // 缩小：3 -> 2
         ctx.beginPath();
         ctx.moveTo(this.centerX, this.centerY);
         ctx.lineTo(
@@ -225,8 +225,8 @@ class RadarMap {
         );
         ctx.stroke();
         
-        // Draw arrow head
-        const arrowSize = 10;
+        // Draw arrow head (smaller triangle)
+        const arrowSize = 6; // 缩小：10 -> 6
         ctx.fillStyle = '#00ff00';
         ctx.beginPath();
         ctx.moveTo(

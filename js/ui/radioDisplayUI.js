@@ -320,6 +320,26 @@ class RadioDisplayUI {
             this.container.style.display = 'grid';
             this.container.classList.add('active');
             this.isVisible = true;
+            
+            // 重新设置radar canvas尺寸
+            setTimeout(() => {
+                const radarContainer = document.getElementById('radar-map-container');
+                const radarCanvas = document.getElementById('radar-canvas');
+                
+                if (radarCanvas && radarContainer) {
+                    const headerHeight = 50; // radar-header的高度（包括padding和border）
+                    radarCanvas.width = radarContainer.clientWidth;
+                    radarCanvas.height = radarContainer.clientHeight - headerHeight;
+                    
+                    // 更新radar map的中心点
+                    if (this.radarMap) {
+                        this.radarMap.centerX = radarCanvas.width / 2;
+                        this.radarMap.centerY = radarCanvas.height / 2;
+                    }
+                    
+                    console.log('Radar canvas resized:', radarCanvas.width, 'x', radarCanvas.height);
+                }
+            }, 0);
         }
     }
     

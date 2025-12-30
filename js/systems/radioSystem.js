@@ -171,7 +171,7 @@ class RadioSignal {
 class RadioSystem {
     constructor() {
         this.currentFrequency = 150.0;
-        this.antennaAngle = 0; // 天线指向角度
+        this.antennaAngle = 270; // 天线指向角度（270度=朝上/北）
         this.signals = [];
         this.waterfallHistory = [];
         this.enemyFreqHistory = []; // 敌人频率历史记录
