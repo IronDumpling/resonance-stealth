@@ -562,15 +562,29 @@ function updateStruggle() {
         state.p.grabberEnemy.en = Math.min(CFG.enemyMaxEnergy, state.p.grabberEnemy.en + drainAmount);
     }
     
+    // 能量归零时，自动结束抓取状态（不消耗耐久度）
+    if (state.p.en <= 0) {
+        state.p.isGrabbed = false;
+        const grabber = state.p.grabberEnemy;
+        state.p.grabberEnemy = null;
+        state.p.struggleProgress = 0;
+        
+        // 释放抓取者状态
+        if (grabber) {
+            grabber.state = 'alert';
+            grabber.grabCooldown = CFG.grabCD;
+        }
+        
+        logMsg("ENERGY DEPLETED - GRAB RELEASED");
+        return;
+    }
+    
     // 每10帧生成一次青色粒子，表现能量流失
     state.p.grabParticleTimer++;
     if (state.p.grabParticleTimer >= 10) {
         spawnParticles(state.p.x, state.p.y, '#00ffff', 20);
         state.p.grabParticleTimer = 0;
     }
-    
-    // Energy zero death
-    // Death will be handled by checkPlayerDeath()
 }
 
 // 使用备用能量补充主能量（R键）
@@ -601,8 +615,23 @@ function updatePlayer() {
     const baseDecay = CFG.energyDecayRate * state.p.currentCore.energyMultiplier;
     state.p.en = Math.max(0, state.p.en - baseDecay);
     
-    // 能量耗尽进入休眠
+    // 能量耗尽进入休眠（在处理之前先清除抓取状态）
     if (state.p.en <= 0 && !state.p.isDormant) {
+        // 如果正在被抓取，先释放抓取状态
+        if (state.p.isGrabbed) {
+            state.p.isGrabbed = false;
+            const grabber = state.p.grabberEnemy;
+            state.p.grabberEnemy = null;
+            state.p.struggleProgress = 0;
+            
+            // 释放抓取者状态
+            if (grabber) {
+                grabber.state = 'alert';
+                grabber.grabCooldown = CFG.grabCD;
+            }
+        }
+        
+        // 进入休眠
         state.p.isDormant = true;
         state.p.en = 0;
         logMsg("SYSTEM DORMANT - PRESS [R] TO RESTART");

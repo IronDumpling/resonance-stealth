@@ -469,8 +469,19 @@
 /* Ensure UI containers work with new layout */
 #world-ui-container,
 #inventory-container {
-    position: absolute;
-    z-index: 200;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+/* Allow child elements to receive pointer events */
+#world-ui-container > *,
+#inventory-container > * {
+    pointer-events: auto;
 }
 
 #edge-glow {

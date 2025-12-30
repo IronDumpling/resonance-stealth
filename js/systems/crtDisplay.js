@@ -248,13 +248,13 @@ class CRTDisplay {
         this.ctx.fillStyle = '#000000';
         this.ctx.fillRect(0, 0, width, height);
         
-        // 阶段1: 中心白点闪现 (0-0.1s)
+        // 阶段1: 中心绿点闪现 (0-0.1s)
         if (progress < 0.083) {
             const dotProgress = progress / 0.083;
             const dotSize = 3 * dotProgress;
             const brightness = dotProgress;
             
-            this.ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+            this.ctx.fillStyle = `rgba(0, 204, 0, ${brightness})`;
             this.ctx.beginPath();
             this.ctx.arc(centerX, centerY, dotSize, 0, Math.PI * 2);
             this.ctx.fill();
@@ -265,7 +265,7 @@ class CRTDisplay {
             const lineHeight = height * lineProgress;
             const lineWidth = 2;
             
-            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillStyle = '#00cc00';
             this.ctx.fillRect(centerX - lineWidth / 2, centerY - lineHeight / 2, lineWidth, lineHeight);
         }
         // 阶段3: 水平展开 (0.4-0.9s)
@@ -278,7 +278,7 @@ class CRTDisplay {
             const eased = 1 - Math.pow(1 - expandProgress, 3);
             const finalWidth = width * eased;
             
-            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillStyle = '#00cc00';
             this.ctx.fillRect(centerX - finalWidth / 2, 0, finalWidth, rectHeight);
         }
         // 阶段4: 亮度稳定 (0.9-1.2s)
@@ -286,7 +286,7 @@ class CRTDisplay {
             const fadeProgress = (progress - 0.75) / 0.25;
             const brightness = 1 - fadeProgress * 0.2; // 从100%降到80%
             
-            this.ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+            this.ctx.fillStyle = `rgba(0, 204, 0, ${brightness})`;
             this.ctx.fillRect(0, 0, width, height);
             
             // 抖动效果
@@ -312,7 +312,7 @@ class CRTDisplay {
             const flicker = Math.sin(progress * 50);
             const brightness = 0.5 + flicker * 0.5;
             
-            this.ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+            this.ctx.fillStyle = `rgba(0, 204, 0, ${brightness})`;
             this.ctx.fillRect(0, 0, width, height);
         }
         // 阶段2: 水平收缩 (0.2-0.4s)
@@ -323,7 +323,7 @@ class CRTDisplay {
             this.ctx.fillStyle = '#000000';
             this.ctx.fillRect(0, 0, width, height);
             
-            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillStyle = '#00cc00';
             this.ctx.fillRect(centerX - rectWidth / 2, 0, rectWidth, height);
         }
         // 阶段3: 垂直收缩 (0.4-0.6s)
@@ -335,10 +335,10 @@ class CRTDisplay {
             this.ctx.fillStyle = '#000000';
             this.ctx.fillRect(0, 0, width, height);
             
-            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillStyle = '#00cc00';
             this.ctx.fillRect(centerX - lineWidth / 2, centerY - lineHeight / 2, lineWidth, lineHeight);
         }
-        // 阶段4: 白点消失 (0.6-1.0s)
+        // 阶段4: 绿点消失 (0.6-1.0s)
         else {
             const dotProgress = (progress - 0.6) / 0.4;
             const dotSize = 3 * (1 - dotProgress);
@@ -348,7 +348,7 @@ class CRTDisplay {
             this.ctx.fillRect(0, 0, width, height);
             
             if (dotSize > 0) {
-                this.ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+                this.ctx.fillStyle = `rgba(0, 204, 0, ${brightness})`;
                 this.ctx.beginPath();
                 this.ctx.arc(centerX, centerY, dotSize, 0, Math.PI * 2);
                 this.ctx.fill();

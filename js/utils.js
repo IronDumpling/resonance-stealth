@@ -62,7 +62,13 @@ function worldToScreen(wx, wy) {
     const scale = CFG.cameraFOV;
     const screenX = (wx - state.camera.x) * scale + canvas.width / 2;
     const screenY = (wy - state.camera.y) * scale + canvas.height / 2;
-    return { x: screenX, y: screenY };
+    
+    // 考虑canvas在页面中的偏移量（工作站布局中canvas不是全屏）
+    const canvasRect = canvas.getBoundingClientRect();
+    const pageX = screenX + canvasRect.left;
+    const pageY = screenY + canvasRect.top;
+    
+    return { x: pageX, y: pageY };
 }
 
 // 屏幕坐标转世界坐标（用于鼠标交互）
@@ -115,12 +121,3 @@ function flashEdgeGlow(color, duration) {
         edgeGlowFlashTimer = null;
     }, duration);
 }
-
-// 检查玩家死亡（能量归零）
-function checkPlayerDeath() {
-    if(state.p.en <= 0) {
-        alert("SIGNAL LOST. REBOOTING...");
-        location.reload();
-    }
-}
-

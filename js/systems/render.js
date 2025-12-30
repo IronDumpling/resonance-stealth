@@ -356,37 +356,30 @@ function drawEntities() {
 
     // 绘制敌人
     state.entities.enemies.forEach(e => {
-        // 绘制敌人感知范围（调试可视化）
-        if (e.detectionRadius) {
+        // 绘制敌人感知范围（只显示扇形，不显示盲区）
+        if (e.detectionRadius && e.detectionSectorAngle) {
             ctx.save();
-            // 绘制感知范围圆形（淡色轮廓）
-            ctx.strokeStyle = 'rgba(255, 255, 0, 0.2)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.arc(e.x, e.y, e.detectionRadius, 0, Math.PI * 2);
-            ctx.stroke();
             
             // 绘制敏感扇区（扇形填充）
-            if (e.detectionSectorAngle) {
-                ctx.fillStyle = 'rgba(255, 255, 0, 0.1)';
-                ctx.beginPath();
-                ctx.moveTo(e.x, e.y);
-                const startAngle = e.angle - e.detectionSectorAngle / 2;
-                const endAngle = e.angle + e.detectionSectorAngle / 2;
-                ctx.arc(e.x, e.y, e.detectionRadius, startAngle, endAngle);
-                ctx.closePath();
-                ctx.fill();
-                
-                // 绘制扇区边界线
-                ctx.strokeStyle = 'rgba(255, 255, 0, 0.4)';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(e.x, e.y);
-                ctx.lineTo(e.x + Math.cos(startAngle) * e.detectionRadius, e.y + Math.sin(startAngle) * e.detectionRadius);
-                ctx.moveTo(e.x, e.y);
-                ctx.lineTo(e.x + Math.cos(endAngle) * e.detectionRadius, e.y + Math.sin(endAngle) * e.detectionRadius);
-                ctx.stroke();
-            }
+            ctx.fillStyle = 'rgba(255, 255, 0, 0.1)';
+            ctx.beginPath();
+            ctx.moveTo(e.x, e.y);
+            const startAngle = e.angle - e.detectionSectorAngle / 2;
+            const endAngle = e.angle + e.detectionSectorAngle / 2;
+            ctx.arc(e.x, e.y, e.detectionRadius, startAngle, endAngle);
+            ctx.closePath();
+            ctx.fill();
+            
+            // 绘制扇区边界线
+            ctx.strokeStyle = 'rgba(255, 255, 0, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(e.x, e.y);
+            ctx.lineTo(e.x + Math.cos(startAngle) * e.detectionRadius, e.y + Math.sin(startAngle) * e.detectionRadius);
+            ctx.moveTo(e.x, e.y);
+            ctx.lineTo(e.x + Math.cos(endAngle) * e.detectionRadius, e.y + Math.sin(endAngle) * e.detectionRadius);
+            ctx.stroke();
+            
             ctx.restore();
         }
         

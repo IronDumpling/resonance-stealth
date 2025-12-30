@@ -281,7 +281,6 @@ function updateParticlesAndEchoes() {
 // 主更新函数
 function update() {
     updatePlayer();
-    checkPlayerDeath(); // 检查能量归零死亡
     updateCamera();
     updateItemsVisibility();
 

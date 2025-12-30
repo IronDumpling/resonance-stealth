@@ -637,13 +637,7 @@ class RadioScene extends Scene {
             inputManager.off('onWheel', INPUT_CONTEXTS.RADIO, this.wheelHandler);
         }
         
-        // 隐藏无线电UI
-        const container = document.getElementById('radio-interface');
-        if (container) {
-            container.style.display = 'none';
-        }
-        
-        // Hide radio display
+        // Hide radio display (右侧显示器上的内容)
         if (radioDisplayUI) {
             radioDisplayUI.hide();
         }

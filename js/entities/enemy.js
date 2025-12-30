@@ -65,7 +65,8 @@ function spawnEnemy() {
         // 检查是否与其他敌人重叠
         let overlapsEnemy = false;
         for (let existingEnemy of state.entities.enemies) {
-            if (checkCircleCircleCollision(ex, ey, enemyRadius, existingEnemy.x, existingEnemy.y, existingEnemy.r)) {
+            const distToEnemy = dist(ex, ey, existingEnemy.x, existingEnemy.y);
+            if (distToEnemy < minDistanceFromEnemies) {
                 overlapsEnemy = true;
                 break;
             }
@@ -251,10 +252,18 @@ function checkEnergyDetection(energySource, enemy) {
     // 4. 判断是否在敏感扇区
     const inSensitiveSector = angleDiff < enemy.detectionSectorAngle / 2;
     
-    // 5. 根据扇区选择阈值
+    // 5. 扇形raycast检测：检查视线是否被墙壁阻挡
+    // 只在敏感扇区内进行raycast检测（盲区不受墙壁阻挡影响，保持360度感知但高阈值）
+    if (inSensitiveSector) {
+        if (!checkLineOfSight(enemy.x, enemy.y, sourceX, sourceY)) {
+            return false; // 视线被墙壁阻挡，无法检测
+        }
+    }
+    
+    // 6. 根据扇区选择阈值
     const threshold = inSensitiveSector ? CFG.energyRemoteDetectionThresholdSensitive : CFG.energyRemoteDetectionThresholdBlind;
     
-    // 6. 如果能量值达到阈值，触发警觉
+    // 7. 如果能量值达到阈值，触发警觉
     if (energyValue >= threshold) {
         onEnemySensesPlayer(enemy, sourceX, sourceY);
         logMsg("ENEMY DETECTED ENERGY");

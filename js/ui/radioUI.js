@@ -391,7 +391,6 @@ class RadioUI {
         
         const messageDiv = document.createElement('div');
         messageDiv.className = 'tape-message';
-        // 只显示摩斯码，不显示解码后的文本，让玩家自己通过对照表解码
         messageDiv.innerHTML = `
             <div class="tape-morse">${morseCode}</div>
         `;
