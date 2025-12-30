@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="css/workstation.css">
     <link rel="stylesheet" href="css/crt.css">
     <link rel="stylesheet" href="css/radio.css">
+    <link rel="stylesheet" href="css/assembly.css">
 </head>
 <body>
 
@@ -32,6 +33,35 @@
                     <div id="radar-map-container">
                         <div class="radar-header">RADAR MAP</div>
                         <canvas id="radar-canvas"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Assembly Scene UI -->
+                <div id="assembly-container" style="display: none;">
+                    <div class="assembly-layout">
+                        <!-- 左侧：仓库 -->
+                        <div class="warehouse-panel">
+                            <h3>WAREHOUSE</h3>
+                            <div id="warehouse-grid" class="item-grid warehouse-grid"></div>
+                        </div>
+                        
+                        <!-- 中间：机器人 + 背包 -->
+                        <div class="robot-panel">
+                            <div class="robot-diagram">
+                                <canvas id="robot-canvas" width="300" height="400"></canvas>
+                            </div>
+                            <div class="robot-inventory-section">
+                                <h4>ROBOT INVENTORY</h4>
+                                <div id="robot-inventory-grid" class="item-grid robot-inv-grid"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- 右侧：Instructions -->
+                        <div class="instructions-panel">
+                            <h3>MISSION BRIEFING</h3>
+                            <div id="instructions-list" class="instructions-scroll"></div>
+                            <button id="btn-departure" class="departure-btn">DEPARTURE</button>
+                        </div>
                     </div>
                 </div>
                 
@@ -83,6 +113,9 @@
 
 <!-- 渲染系统 -->
 <script src="js/systems/render.js"></script>
+
+<!-- 场景模块 -->
+<script src="js/scenes/AssemblyScene.js"></script>
 
 <!-- 游戏主逻辑(最后加载) -->
 <script src="js/systems/game.js"></script>

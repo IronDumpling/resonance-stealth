@@ -47,10 +47,13 @@ function spawnEnemy() {
     let attempts = 0;
     const maxAttempts = 200; // 最大尝试次数，避免无限循环
     
+    const mapWidth = canvas.width * CFG.mapScale;
+    const mapHeight = canvas.height * CFG.mapScale;
+    
     while(!ok && attempts < maxAttempts) {
         attempts++;
-        ex = rand(50, canvas.width-50); 
-        ey = rand(50, canvas.height-50);
+        ex = rand(50, mapWidth-50); 
+        ey = rand(50, mapHeight-50);
         
         // 检查距离玩家是否足够远
         if(dist(ex, ey, state.p.x, state.p.y) <= minDistanceFromPlayer) {
@@ -93,8 +96,8 @@ function spawnEnemy() {
         const d = rand(distMin, distMax);
         const wx = ex + Math.cos(ang) * d;
         const wy = ey + Math.sin(ang) * d;
-        // 确保在画布内且不在墙体中
-        if (wx < 40 || wx > canvas.width - 40 || wy < 40 || wy > canvas.height - 40) continue;
+        // 确保在地图内且不在墙体中
+        if (wx < 40 || wx > mapWidth - 40 || wy < 40 || wy > mapHeight - 40) continue;
         if (checkWall(wx, wy)) continue;
         waypoints.push({ x: wx, y: wy });
     }
@@ -366,16 +369,13 @@ function updateEnemyUI(e) {
             resonanceDiv.innerHTML = statusText;
         }
         
-        // 通知无线电系统
-        if (state.p.isCharging) {
-            if (typeof radioSystem !== 'undefined' && radioSystem) {
-                radioSystem.setEnemyAnalysis(e.freq);
-            }
+        // 通知无线电系统显示频率条纹（只要被瞄准线击中，无论敌人什么状态）
+        if (typeof radioSystem !== 'undefined' && radioSystem) {
+            radioSystem.setEnemyAnalysis(e.freq);
         }
     } else {
         // 不碰撞时立刻隐藏UI
         ui.style.display = 'none';
-    
     }
     
     // execute hint UI 只在 stunned 状态且可处决时显示
@@ -505,7 +505,7 @@ function updateEnemyMovement(e) {
                 const d = 100 + Math.random() * 50;
                 const wx = e.x + Math.cos(ang) * d;
                 const wy = e.y + Math.sin(ang) * d;
-                if (wx >= 50 && wx <= canvas.width - 50 && wy >= 50 && wy <= canvas.height - 50 && !checkWall(wx, wy)) {
+                if (!checkWall(wx, wy)) {
                     defaultWaypoints.push({ x: wx, y: wy });
                 }
             }
@@ -585,9 +585,22 @@ function updateEnemyMovement(e) {
     
     const mx = Math.cos(e.angle) * spd;
     const my = Math.sin(e.angle) * spd;
-    if (!checkWall(e.x + mx, e.y + my)) {
-        e.x += mx;
-        e.y += my;
+    const newX = e.x + mx;
+    const newY = e.y + my;
+    
+    // 检查与其他敌人的碰撞
+    let enemyCollision = false;
+    for (let other of state.entities.enemies) {
+        if (other === e) continue;
+        if (checkCircleCircleCollision(newX, newY, e.r, other.x, other.y, other.r)) {
+            enemyCollision = true;
+            break;
+        }
+    }
+    
+    if (!checkWall(newX, newY) && !enemyCollision) {
+        e.x = newX;
+        e.y = newY;
     } else {
         // 修复：尝试多个方向，而不是只旋转90度
         let foundDirection = false;
@@ -715,6 +728,11 @@ function updateDormantEnemyAbsorption(enemy) {
 // 更新敌人
 function updateEnemies() {
     const enemiesToRemove = []; // 需要移除的敌人
+    
+    // 清除radio系统的敌人分析频率（如果没有敌人被瞄准线击中，将保持清除状态）
+    if (typeof radioSystem !== 'undefined' && radioSystem) {
+        radioSystem.setEnemyAnalysis(null);
+    }
     
     state.entities.enemies.forEach(e => {
         // 检查报废状态

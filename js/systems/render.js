@@ -264,7 +264,7 @@ function drawVisibilityAndLighting() {
     // 注意：不在这里恢复，让调用者决定何时恢复clip
 }
 
-// 绘制实体（墙壁、instructions、物品、敌人）
+// 绘制实体（墙壁、物品、敌人）
 function drawEntities() {
     // 绘制墙壁
     state.entities.walls.forEach(w => { 
@@ -272,42 +272,6 @@ function drawEntities() {
         ctx.strokeStyle = w.color || '#555';
         ctx.fillRect(w.x, w.y, w.w, w.h); 
         ctx.strokeRect(w.x, w.y, w.w, w.h); 
-    });
-
-    // 绘制 instructions（像贴在地板上一样，先渲染以便被敌人和物品遮挡）
-    state.entities.instructions.forEach(inst => {
-        // 1. 检查距离（快速过滤）
-        const d = dist(inst.x, inst.y, state.p.x, state.p.y);
-        if (d > CFG.pViewDist) return;
-        
-        // 2. 检查是否被墙壁遮挡
-        if (!checkLineOfSight(state.p.x, state.p.y, inst.x, inst.y)) return;
-        
-        // 3. 绘制instruction
-        const lines = inst.text.split('\n');
-        const lineHeight = 36;
-        const fontSize = 28;
-        
-        // 计算文本尺寸
-        ctx.font = `bold ${fontSize}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        const textHeight = lines.length * lineHeight;
-        
-        // 绘制文本（白色，带黑色阴影增强可读性）
-        ctx.save();
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = '#000000';
-        ctx.shadowBlur = 6;
-        lines.forEach((line, i) => {
-            ctx.fillText(
-                line,
-                inst.x,
-                inst.y - textHeight/2 + (i + 0.5) * lineHeight
-            );
-        });
-        ctx.shadowBlur = 0;
-        ctx.restore();
     });
 
     // 绘制物品
@@ -356,12 +320,16 @@ function drawEntities() {
 
     // 绘制敌人
     state.entities.enemies.forEach(e => {
-        // 绘制敌人感知范围（只显示扇形，不显示盲区）
-        if (e.detectionRadius && e.detectionSectorAngle) {
+        // 只显示被瞄准敌人的感知范围
+        const isTargeted = state.p.aimLineHit && 
+                           state.p.aimLineHit.type === 'enemy' && 
+                           state.p.aimLineHit.enemy === e;
+        
+        if (isTargeted && e.detectionRadius && e.detectionSectorAngle) {
             ctx.save();
             
             // 绘制敏感扇区（扇形填充）
-            ctx.fillStyle = 'rgba(255, 255, 0, 0.1)';
+            ctx.fillStyle = 'rgba(255, 255, 0, 0.15)';
             ctx.beginPath();
             ctx.moveTo(e.x, e.y);
             const startAngle = e.angle - e.detectionSectorAngle / 2;
@@ -371,14 +339,23 @@ function drawEntities() {
             ctx.fill();
             
             // 绘制扇区边界线
-            ctx.strokeStyle = 'rgba(255, 255, 0, 0.4)';
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+            ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(e.x, e.y);
             ctx.lineTo(e.x + Math.cos(startAngle) * e.detectionRadius, e.y + Math.sin(startAngle) * e.detectionRadius);
             ctx.moveTo(e.x, e.y);
             ctx.lineTo(e.x + Math.cos(endAngle) * e.detectionRadius, e.y + Math.sin(endAngle) * e.detectionRadius);
             ctx.stroke();
+            
+            // 绘制盲区（完整圆圈，淡淡的红色）
+            ctx.strokeStyle = 'rgba(255, 100, 100, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, e.detectionRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
             
             ctx.restore();
         }

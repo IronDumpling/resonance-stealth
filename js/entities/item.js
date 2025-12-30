@@ -36,12 +36,15 @@ function createItemHintUI(itemType) {
     return div;
 }
 
-// 生成物品（增强版，添加UI元素）
+// 生成物品
 function spawnItemEnhanced(type, x, y) {
+    const mapWidth = canvas.width * CFG.mapScale;
+    const mapHeight = canvas.height * CFG.mapScale;
+    
     const item = {
         type: type,
-        x: x || rand(50, canvas.width - 50),
-        y: y || rand(50, canvas.height - 50),
+        x: x || rand(50, mapWidth - 50),
+        y: y || rand(50, mapHeight - 50),
         r: 10,
         visibleTimer: 0,
         hintElement: null  // UI元素引用
@@ -53,8 +56,8 @@ function spawnItemEnhanced(type, x, y) {
         let safeLoop = 0;
         while (!ok && safeLoop < 100) {
             safeLoop++;
-            item.x = rand(50, canvas.width - 50);
-            item.y = rand(50, canvas.height - 50);
+            item.x = rand(50, mapWidth - 50);
+            item.y = rand(50, mapHeight - 50);
             
             // 检查是否在墙里
             if (checkWall(item.x, item.y)) continue;
@@ -80,7 +83,7 @@ function spawnItemEnhanced(type, x, y) {
     return item;
 }
 
-// 更新物品UI（类似updateEnemyUI）
+// 更新物品UI
 function updateItemUI(item) {
     const hint = item.hintElement;
     if (!hint) return;

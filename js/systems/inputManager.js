@@ -205,7 +205,7 @@ class InputManager {
         window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
         window.addEventListener('mousedown', (e) => this.handleMouseDown(e));
         window.addEventListener('mouseup', (e) => this.handleMouseUp(e));
-        window.addEventListener('wheel', (e) => this.handleWheel(e));
+        window.addEventListener('wheel', (e) => this.handleWheel(e), { passive: false });
         
         console.log('Input event listeners bound');
     }

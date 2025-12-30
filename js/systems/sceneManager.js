@@ -469,7 +469,8 @@ class CrtOnScene extends Scene {
             sceneManager.switchScene(SCENES.RADIO, 'fade');
             return true;
         } else if (key === '2') {
-            sceneManager.switchScene(SCENES.ROBOT, 'fade');
+            // 先进入Assembly场景进行机器人装备
+            sceneManager.switchScene(SCENES.ASSEMBLY, 'fade');
             return true;
         } else if (key === 'p') {
             // 触发CRT关机动画
@@ -779,43 +780,7 @@ class RadioScene extends Scene {
     }
 }
 
-// 组装场景 (ASSEMBLY) - 占位符
-class AssemblyScene extends Scene {
-    constructor() {
-        super(SCENES.ASSEMBLY);
-    }
-    
-    enter(data) {
-        super.enter(data);
-        logMsg("ROBOT ASSEMBLY | [ESC] RETURN TO MENU");
-    }
-    
-    update(deltaTime) {
-        // TODO: 实现组装系统更新
-    }
-    
-    render(ctx, canvas) {
-        // 占位符渲染
-        ctx.fillStyle = '#001a00';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        ctx.fillStyle = '#00ff00';
-        ctx.font = '20px "Courier New"';
-        ctx.textAlign = 'center';
-        ctx.fillText('ROBOT ASSEMBLY', canvas.width / 2, canvas.height / 2 - 40);
-        ctx.font = '16px "Courier New"';
-        ctx.fillText('(Under Construction)', canvas.width / 2, canvas.height / 2);
-        ctx.fillText('Press ESC to return', canvas.width / 2, canvas.height / 2 + 40);
-    }
-    
-    handleInput(event) {
-        if (event.key === 'Escape') {
-            sceneManager.switchScene(SCENES.CRT_ON, 'fade');
-            return true;
-        }
-        return false;
-    }
-}
+// AssemblyScene定义在 js/scenes/AssemblyScene.js
 
 // 监视器菜单场景 (MONITOR MENU) - 模式选择
 class MonitorMenuScene extends Scene {

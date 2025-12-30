@@ -5,7 +5,10 @@ function clamp(v,min,max){return Math.max(min, Math.min(max, v));}
 function lerp(a,b,t){return a + (b-a)*t;}
 
 function checkWall(x, y) {
-    if(x<0||x>canvas.width||y<0||y>canvas.height) return true;
+    // 使用扩大的地图尺寸进行边界检测
+    const mapWidth = canvas.width * CFG.mapScale;
+    const mapHeight = canvas.height * CFG.mapScale;
+    if(x<0||x>mapWidth||y<0||y>mapHeight) return true;
     for(let w of state.entities.walls) if(x>w.x && x<w.x+w.w && y>w.y && y<w.y+w.h) return true;
     return false;
 }

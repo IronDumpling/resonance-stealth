@@ -156,8 +156,8 @@ function adjustPlayerFrequency(delta, isFine = false) {
 
 function init() {
     // 初始化玩家位置
-    state.p.x = canvas.width/2;
-    state.p.y = canvas.height/2;
+    state.p.x = canvas.width * CFG.mapScale / 2;
+    state.p.y = canvas.height * CFG.mapScale / 2;
     state.p.en = CFG.maxEnergy;
     state.p.isGrabbed = false;
     state.p.grabberEnemy = null;
@@ -176,46 +176,49 @@ function init() {
     // 初始化玩家频率
     initPlayerFrequency();
     
-    // 先生成 instructions
-    state.entities.instructions = generateInstructions();
+    // Instructions移到Assembly场景显示
+    state.entities.instructions = [];
 
     // 在地图四周生成边界墙，让玩家看不到画布边缘
     const borderThickness = 60;
+    const mapWidth = canvas.width * CFG.mapScale;
+    const mapHeight = canvas.height * CFG.mapScale;
     const borderFreq = CFG.wallFreqs[CFG.wallFreqs.length - 1]; // 使用最高频率作为边界阻挡
     const borderColor = CFG.wallColors[borderFreq];
     // 上边界
     state.entities.walls.push({
         x: -borderThickness, y: -borderThickness,
-        w: canvas.width + borderThickness*2, h: borderThickness,
+        w: mapWidth + borderThickness*2, h: borderThickness,
         blockFreq: borderFreq, color: borderColor
     });
     // 下边界
     state.entities.walls.push({
-        x: -borderThickness, y: canvas.height,
-        w: canvas.width + borderThickness*2, h: borderThickness,
+        x: -borderThickness, y: mapHeight,
+        w: mapWidth + borderThickness*2, h: borderThickness,
         blockFreq: borderFreq, color: borderColor
     });
     // 左边界
     state.entities.walls.push({
         x: -borderThickness, y: 0,
-        w: borderThickness, h: canvas.height,
+        w: borderThickness, h: mapHeight,
         blockFreq: borderFreq, color: borderColor
     });
     // 右边界
     state.entities.walls.push({
-        x: canvas.width, y: 0,
-        w: borderThickness, h: canvas.height,
+        x: mapWidth, y: 0,
+        w: borderThickness, h: mapHeight,
         blockFreq: borderFreq, color: borderColor
     });
     
-    // 生成墙壁（增加数量到12个，并避免与instructions重叠）
+    // 生成墙壁（增加数量并扩大生成范围）
     let attempts = 0;
-    while(state.entities.walls.length < 12 && attempts < 300) {
+    const numWalls = 18; // 增加墙壁数量以适应更大地图
+    while(state.entities.walls.length < numWalls && attempts < 500) {
         attempts++;
         const w = rand(80, 200);
         const h = rand(80, 200);
-        const x = rand(100, canvas.width-200);
-        const y = rand(100, canvas.height-200);
+        const x = rand(100, mapWidth-200);
+        const y = rand(100, mapHeight-200);
         
         let overlap = false;
         
@@ -229,19 +232,8 @@ function init() {
         
         // 检查与出生点重叠
         if (!overlap) {
-            const px = canvas.width/2; const py = canvas.height/2;
+            const px = mapWidth/2; const py = mapHeight/2;
             if (x < px + 150 && x + w > px - 150 && y < py + 150 && y + h > py - 150) overlap = true;
-        }
-        
-        // 检查与instructions重叠
-        if (!overlap) {
-            for (const inst of state.entities.instructions) {
-                if (x < inst.x + 100 && x + w > inst.x - 100 &&
-                    y < inst.y + 50 && y + h > inst.y - 50) {
-                    overlap = true;
-                    break;
-                }
-            }
         }
         
         if (!overlap) {
@@ -254,10 +246,11 @@ function init() {
         }
     }
 
-    for(let i=0; i<5; i++) spawnEnemy();
+    // 增加敌人数量以适应更大地图
+    for(let i=0; i<7; i++) spawnEnemy();
     
     // 生成能量瓶
-    for(let i=0; i<8; i++) spawnItem('energy');
+    for(let i=0; i<12; i++) spawnItem('energy');
     
     // 初始化相机位置为玩家位置
     state.camera.x = state.p.x;
@@ -432,13 +425,18 @@ function startApplication() {
     const im = initInputManager();
     const um = initUIManager();
     
+    // 3. 初始化库存系统（在游戏启动时就初始化，供Assembly场景使用）
+    if (typeof initWarehouse === 'function') {
+        initWarehouse();
+    }
+    if (typeof initPlayerInventory === 'function') {
+        initPlayerInventory();
+    }
+    
     console.log('All systems initialized');
     
-    // 3. 设置输入路由
+    // 4. 设置输入路由
     setupInputRouting();
-    
-    // 4. 初始化游戏数据(但不启动游戏循环)
-    // 游戏会在切换到ROBOT场景时初始化
     
     // 5. 启动主循环
     lastTime = Date.now();
@@ -494,12 +492,30 @@ if (typeof RobotScene !== 'undefined') {
         // 设置输入上下文
         inputManager.setContext(INPUT_CONTEXTS.ROBOT);
         
+        // 显示游戏canvas
+        const gameCanvas = document.getElementById('gameCanvas');
+        if (gameCanvas) gameCanvas.style.display = 'block';
+        
+        // 隐藏其他UI元素
+        const radioModeDisplay = document.getElementById('radio-mode-display');
+        if (radioModeDisplay) radioModeDisplay.style.display = 'none';
+        
+        const assemblyContainer = document.getElementById('assembly-container');
+        if (assemblyContainer) {
+            assemblyContainer.classList.remove('active');
+            assemblyContainer.style.display = 'none';
+        }
+        
         // 显示游戏UI
         document.getElementById('world-ui-container').style.display = 'block';
         
         // 初始化并显示背包UI
         if (typeof createInventoryUI === 'function') {
             createInventoryUI();
+            // 立即更新UI以显示已有物品
+            if (typeof updateInventoryUI === 'function') {
+                updateInventoryUI();
+            }
             showInventoryUI();
         }
     };

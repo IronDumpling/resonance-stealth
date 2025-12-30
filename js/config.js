@@ -1,5 +1,8 @@
 // --- 配置参数 ---
 const CFG = {
+    // 地图
+    mapScale: 1.5,  // 地图尺寸倍数
+    
     // 玩家
     pSpeed: 3,
     pViewDist: 280,
