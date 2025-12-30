@@ -140,12 +140,19 @@ function spawnEnemy() {
 function createAnalyzerUI() {
     const div = document.createElement('div');
     div.className = 'analyzer-tag';
-    div.innerHTML = `<div style="text-align:center;margin-bottom:2px;">FREQ ANALYSIS</div>
-                    <div class="analyzer-bar">
-                        <div class="analyzer-center"></div>
-                        <div class="analyzer-pip" style="left:50%"></div>
+    div.innerHTML = `<div class="analyzer-overload">
+                        OL: <span class="overload-value">0</span>/100
+                        <div class="overload-bar-container">
+                            <div class="overload-bar-fill"></div>
+                        </div>
                     </div>
-                    <div class="analyzer-text" style="color:#aaa;">UNKNOWN</div>`;
+                    <div class="analyzer-energy">
+                        EN: <span class="energy-value">0</span>/80
+                        <div class="energy-bar-container">
+                            <div class="energy-bar-fill"></div>
+                        </div>
+                    </div>
+                    <div class="analyzer-resonance">SCANNING</div>`;
     uiContainer.appendChild(div);
     return div;
 }
@@ -290,54 +297,85 @@ function updateEnemyUI(e) {
         ui.style.left = screenPos.x + 'px'; 
         ui.style.top = screenPos.y + 'px';
         
-        let diff = clamp((e.freq - state.freq) / 100, -1, 1);
-        const offset = 40 + (diff * 38);
-        ui.querySelector('.analyzer-pip').style.left = offset + 'px';
+        // 更新过载值显示
+        const overloadValue = Math.floor(e.overload);
+        const overloadPercent = e.overload / CFG.maxOverload;
         
-        const text = ui.querySelector('.analyzer-text');
-        const pip = ui.querySelector('.analyzer-pip');
+        const overloadValueSpan = ui.querySelector('.overload-value');
+        const overloadBarFill = ui.querySelector('.overload-bar-fill');
+        
+        if (overloadValueSpan) {
+            overloadValueSpan.textContent = overloadValue;
+        }
+        
+        if (overloadBarFill) {
+            overloadBarFill.style.width = (overloadPercent * 100) + '%';
+            
+            // 根据过载等级设置颜色
+            let overloadColor = '#aaa';  // 0-33%: 灰色
+            if (overloadPercent >= 1.0) {
+                overloadColor = '#ff0000';  // 100%: 红色
+            } else if (overloadPercent >= 0.66) {
+                overloadColor = '#ff8800';  // 66-100%: 橙色
+            } else if (overloadPercent >= 0.33) {
+                overloadColor = '#ffff00';  // 33-66%: 黄色
+            }
+            overloadBarFill.style.backgroundColor = overloadColor;
+        }
+        
+        // 更新能量显示
+        const energyValue = Math.floor(e.en);
+        const energyPercent = e.en / CFG.enemyMaxEnergy;
+        
+        const energyValueSpan = ui.querySelector('.energy-value');
+        const energyBarFill = ui.querySelector('.energy-bar-fill');
+        
+        if (energyValueSpan) {
+            energyValueSpan.textContent = energyValue;
+        }
+        
+        if (energyBarFill) {
+            energyBarFill.style.width = (energyPercent * 100) + '%';
+            // 能量条颜色：绿色到黄色到红色
+            let energyColor = '#00ff00';  // 高能量：绿色
+            if (energyPercent < 0.3) {
+                energyColor = '#ff0000';  // 低能量：红色
+            } else if (energyPercent < 0.6) {
+                energyColor = '#ffaa00';  // 中等能量：橙色
+            }
+            energyBarFill.style.backgroundColor = energyColor;
+        }
+        
+        // 更新共振状态显示（只显示共振状态）
+        const resonanceDiv = ui.querySelector('.analyzer-resonance');
         const freqDiff = Math.abs(state.freq - e.freq);
         
-        // 构建显示文本，包含能量和过载信息
         let statusText = "";
         if(freqDiff <= CFG.perfectResTol) {
             // 完美共振：亮绿色
-            pip.style.backgroundColor = '#00ff00';
-            statusText = "<span style='color:#00ff00'>[◆ PERFECT RESONANCE]</span>";
+            statusText = "<span style='color:#00ff00;font-size:14px;'>◆ PERFECT RESONANCE</span>";
         } else if(freqDiff <= CFG.normalResTol) {
             // 普通共振：浅绿色
-            pip.style.backgroundColor = '#88ff88';
-            statusText = "<span style='color:#88ff88'>[● RESONANCE]</span>";
-        } else if(diff < 0) {
-            pip.style.backgroundColor = '#0088ff';
-            statusText = "<span style='color:#0088ff'>▼ LOWER FREQ</span>"; 
+            statusText = "<span style='color:#88ff88;font-size:14px;'>● RESONANCE</span>";
         } else {
-            pip.style.backgroundColor = '#ff4400';
-            statusText = "<span style='color:#ff4400'>▲ HIGHER FREQ</span>";
+            // 不在共振范围内
+            statusText = "<span style='color:#888;font-size:12px;'>NO RESONANCE</span>";
         }
         
-        // 添加能量和过载信息（带颜色编码）
-        const enText = `EN: ${Math.floor(e.en)}/${CFG.enemyMaxEnergy}`;
-        
-        // 过载值颜色编码：根据危险程度变化
-        const overloadPercent = e.overload / CFG.maxOverload;
-        let overloadColor = '#aaa';  // 默认灰色
-        if (overloadPercent >= 1.0) {
-            overloadColor = '#ff0000';  // 满过载：红色
-        } else if (overloadPercent >= 0.66) {
-            overloadColor = '#ff8800';  // 高过载：橙色
-        } else if (overloadPercent >= 0.33) {
-            overloadColor = '#ffff00';  // 中过载：黄色
+        if (resonanceDiv) {
+            resonanceDiv.innerHTML = statusText;
         }
         
-        const overloadValue = Math.floor(e.overload);
-        const overloadBar = '█'.repeat(Math.floor(overloadPercent * 5)) + '░'.repeat(5 - Math.floor(overloadPercent * 5));
-        const overloadText = `<span style='color:${overloadColor}'>OL: ${overloadValue}/${CFG.maxOverload} [${overloadBar}]</span>`;
-        
-        text.innerHTML = statusText + `<br><span style='font-size:0.8em;'>${enText}</span><br><span style='font-size:0.8em;'>${overloadText}</span>`;
+        // 通知无线电系统
+        if (state.p.isCharging) {
+            if (typeof radioSystem !== 'undefined' && radioSystem) {
+                radioSystem.setEnemyAnalysis(e.freq);
+            }
+        }
     } else {
         // 不碰撞时立刻隐藏UI
         ui.style.display = 'none';
+    
     }
     
     // execute hint UI 只在 stunned 状态且可处决时显示
@@ -916,6 +954,19 @@ function updateEnemies() {
     state.entities.enemies.forEach(e => {
         updateEnemyUI(e);
     });
+    
+    // 统一清除无线电系统的敌人分析（如果没有敌人被瞄准）
+    // 检查是否有任何敌人当前被瞄准且玩家正在蓄力
+    const hasEnemyTargeted = state.entities.enemies.some(e => {
+        const canShowAnalyze = (e.state === 'idle' || e.state === 'patrol' || e.state === 'alert' || e.state === 'searching' || e.state === 'dormant');
+        const isRaycastHit = state.p.aimLineHit && state.p.aimLineHit.type === 'enemy' && state.p.aimLineHit.enemy === e;
+        return canShowAnalyze && isRaycastHit && state.p.isCharging;
+    });
+    
+    // 如果没有敌人被瞄准，清除频率
+    if (!hasEnemyTargeted && typeof radioSystem !== 'undefined' && radioSystem) {
+        radioSystem.clearEnemyAnalysis();
+    }
     
     // 移除死亡的敌人（同时移除其辐射场）
     enemiesToRemove.forEach(e => {

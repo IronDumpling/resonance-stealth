@@ -174,6 +174,7 @@ class RadioSystem {
         this.antennaAngle = 0; // 天线指向角度
         this.signals = [];
         this.waterfallHistory = [];
+        this.enemyFreqHistory = []; // 敌人频率历史记录
         this.lastSignalSpawnTime = 0;
         this.signalSpawnInterval = 120; // 2分钟生成一个信号
         
@@ -193,6 +194,9 @@ class RadioSystem {
         // Ping状态
         this.isPinging = false;
         this.pingStartTime = 0;
+        
+        // 敌人频率分析
+        this.enemyAnalysisFreq = null;
         
         console.log('Radio System initialized');
     }
@@ -474,6 +478,13 @@ class RadioSystem {
         if (this.waterfallHistory.length > RADIO_CONFIG.WATERFALL_HEIGHT) {
             this.waterfallHistory.pop();
         }
+        
+        // 记录敌人频率到历史记录
+        this.enemyFreqHistory.unshift(this.enemyAnalysisFreq); // 可能是 null 或频率值
+        
+        if (this.enemyFreqHistory.length > RADIO_CONFIG.WATERFALL_HEIGHT) {
+            this.enemyFreqHistory.pop();
+        }
     }
     
     /**
@@ -483,6 +494,20 @@ class RadioSystem {
         while (angle > 180) angle -= 360;
         while (angle < -180) angle += 360;
         return angle;
+    }
+    
+    /**
+     * 设置敌人分析频率（用于瀑布图显示）
+     */
+    setEnemyAnalysis(freq) {
+        this.enemyAnalysisFreq = freq;
+    }
+    
+    /**
+     * 清除敌人分析频率
+     */
+    clearEnemyAnalysis() {
+        this.enemyAnalysisFreq = null;
     }
     
     /**

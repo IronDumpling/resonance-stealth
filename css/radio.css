@@ -107,8 +107,8 @@
     bottom: 25px;
     left: 50%;
     width: 2px;
-    background: #ffff00;
-    box-shadow: 0 0 5px #ffff00;
+    background: #ff0000;
+    box-shadow: 0 0 5px #ff0000;
     pointer-events: none;
     transition: left 0.1s ease;
 }
