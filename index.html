@@ -95,14 +95,12 @@
 
 <!-- 系统模块 -->
 <script src="js/systems/sceneManager.js"></script>
-<script src="js/systems/crtDisplay.js"></script>
 <script src="js/systems/inputManager.js"></script>
 <script src="js/systems/radioSystem.js"></script>
 <script src="js/systems/inventory.js"></script>
 <script src="js/ui/uiManager.js"></script>
 <script src="js/ui/radioUI.js"></script>
 <script src="js/ui/radioDisplayUI.js"></script>
-<script src="js/ui/radarMap.js"></script>
 <script src="js/ui/inventoryUI.js"></script>
 
 <!-- 实体模块 -->
@@ -112,10 +110,18 @@
 <script src="js/entities/item.js"></script>
 
 <!-- 渲染系统 -->
-<script src="js/systems/render.js"></script>
+<script src="js/rendering/worldRenderer.js"></script>
+<script src="js/rendering/crtDisplay.js"></script>
+<script src="js/rendering/radarMap.js"></script>
 
-<!-- 场景模块 -->
+<!-- 场景模块 (必须在sceneManager.js之后加载) -->
+<script src="js/scenes/BootScene.js"></script>
+<script src="js/scenes/CrtOffScene.js"></script>
+<script src="js/scenes/CrtOnScene.js"></script>
+<script src="js/scenes/RobotScene.js"></script>
+<script src="js/scenes/RadioScene.js"></script>
 <script src="js/scenes/AssemblyScene.js"></script>
+<script src="js/scenes/MonitorMenuScene.js"></script>
 
 <!-- 游戏主逻辑(最后加载) -->
 <script src="js/systems/game.js"></script>

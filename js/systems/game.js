@@ -477,63 +477,6 @@ function setupInputRouting() {
     inputManager.setContext(INPUT_CONTEXTS.CRT_CONTROL);
 }
 
-// 修改RobotScene以正确初始化游戏
-if (typeof RobotScene !== 'undefined') {
-    const originalEnter = RobotScene.prototype.enter;
-    RobotScene.prototype.enter = function(data) {
-        originalEnter.call(this, data);
-        
-        // 初始化游戏(如果还没初始化)
-        if (!state.entities.walls.length) {
-            initInputHandlers(); // 保留现有输入处理
-            init();
-        }
-        
-        // 设置输入上下文
-        inputManager.setContext(INPUT_CONTEXTS.ROBOT);
-        
-        // 显示游戏canvas
-        const gameCanvas = document.getElementById('gameCanvas');
-        if (gameCanvas) gameCanvas.style.display = 'block';
-        
-        // 隐藏其他UI元素
-        const radioModeDisplay = document.getElementById('radio-mode-display');
-        if (radioModeDisplay) radioModeDisplay.style.display = 'none';
-        
-        const assemblyContainer = document.getElementById('assembly-container');
-        if (assemblyContainer) {
-            assemblyContainer.classList.remove('active');
-            assemblyContainer.style.display = 'none';
-        }
-        
-        // 显示游戏UI
-        document.getElementById('world-ui-container').style.display = 'block';
-        
-        // 初始化并显示背包UI
-        if (typeof createInventoryUI === 'function') {
-            createInventoryUI();
-            // 立即更新UI以显示已有物品
-            if (typeof updateInventoryUI === 'function') {
-                updateInventoryUI();
-            }
-            showInventoryUI();
-        }
-    };
-    
-    const originalExit = RobotScene.prototype.exit;
-    RobotScene.prototype.exit = function() {
-        originalExit.call(this);
-        
-        // 隐藏游戏UI
-        document.getElementById('world-ui-container').style.display = 'none';
-        
-        // 隐藏背包UI
-        if (typeof hideInventoryUI === 'function') {
-            hideInventoryUI();
-        }
-    };
-}
-
 // 等待DOM加载完成后启动
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', startApplication);
