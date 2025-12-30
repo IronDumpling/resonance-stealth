@@ -141,7 +141,7 @@ function initPlayerFrequency() {
 
 // 调整玩家频率（同时同步到无线电）
 function adjustPlayerFrequency(delta, isFine = false) {
-    const step = isFine ? 0.1 : 5;
+    const step = isFine ? 1 : 5; // shift键精调（±1Hz），否则粗调（±5Hz）
     const core = state.p.currentCore;
     
     state.freq += delta * step;
@@ -368,12 +368,8 @@ function initInputHandlers() {
         state.mouse.y = worldPos.y; 
     };
 
-    window.onwheel = e => {
-        // shift键精调（±1Hz），否则粗调（±5Hz）
-        const step = e.shiftKey ? 1 : 5;
-        const d = Math.sign(e.deltaY) * -step;
-        state.freq = clamp(state.freq+d, CFG.freqMin, CFG.freqMax);
-    };
+    // 滚轮事件由新的 InputManager 系统处理（见 sceneManager.js）
+    // 不再需要在这里绑定滚轮事件
 }
 
 // ========================================
@@ -476,15 +472,8 @@ function setupInputRouting() {
         state.mouse.y = worldPos.y;
     });
     
-    inputManager.on('onWheel', null, (event) => {
-        // 在ROBOT场景中调整频率
-        if (sceneManager.getCurrentScene() === SCENES.ROBOT) {
-            // shift键精调（±1Hz），否则粗调（±5Hz）
-            const step = event.shiftKey ? 1 : 5;
-            const d = Math.sign(event.delta) * -step;
-            state.freq = clamp(state.freq + d, CFG.freqMin, CFG.freqMax);
-        }
-    });
+    // 滚轮事件由各个场景自己处理（RobotScene 和 RadioScene）
+    // 不在这里注册全局滚轮处理器，避免重复处理
     
     // 设置初始输入上下文（BOOT场景使用CRT_CONTROL上下文）
     inputManager.setContext(INPUT_CONTEXTS.CRT_CONTROL);

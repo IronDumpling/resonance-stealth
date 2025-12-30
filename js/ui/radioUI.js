@@ -440,8 +440,9 @@ class RadioUI {
         this.renderCompass();
         this.renderMeter(signal);
         
-        // 更新游标位置
+        // 更新游标位置和频率刻度
         this.updateTunerLine();
+        this.updateFreqScale();
     }
     
     /**
@@ -509,6 +510,25 @@ class RadioUI {
         const range = this.radio.freqMax - this.radio.freqMin;
         const percent = ((this.radio.currentFrequency - this.radio.freqMin) / range) * 100;
         tunerLine.style.left = `${percent}%`;
+    }
+    
+    /**
+     * 更新频率刻度显示（动态适应核心范围）
+     */
+    updateFreqScale() {
+        const freqScale = document.querySelector('.freq-scale');
+        if (!freqScale) return;
+        
+        const min = this.radio.freqMin;
+        const max = this.radio.freqMax;
+        const step = (max - min) / 5; // 6个刻度点，5个间隔
+        
+        const spans = freqScale.querySelectorAll('span');
+        if (spans.length === 6) {
+            for (let i = 0; i < 6; i++) {
+                spans[i].textContent = Math.round(min + step * i);
+            }
+        }
     }
     
     /**

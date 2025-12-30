@@ -534,8 +534,10 @@ class RobotScene extends Scene {
         // 注册滚轮事件用于频率调整
         if (typeof inputManager !== 'undefined') {
             this.wheelHandler = (event) => {
-                const isFine = event.originalEvent.shiftKey;
-                const delta = event.delta > 0 ? 1 : -1;
+                // 使用 shiftKey 判断是否精调（优先使用直接字段，否则从 originalEvent 获取）
+                const isFine = event.shiftKey || event.originalEvent.shiftKey;
+                // 向上滚动提升频率，向下滚动降低频率
+                const delta = event.delta > 0 ? -1 : 1;
                 if (typeof adjustPlayerFrequency === 'function') {
                     adjustPlayerFrequency(delta, isFine);
                 }
@@ -655,7 +657,9 @@ class RadioScene extends Scene {
             // 注册滚轮事件监听（用于调频）
             this.wheelHandler = (event) => {
                 if (this.radio) {
-                    if (event.originalEvent.shiftKey) {
+                    // 使用 shiftKey 判断是否精调（优先使用直接字段，否则从 originalEvent 获取）
+                    const isShiftPressed = event.shiftKey || event.originalEvent.shiftKey;
+                    if (isShiftPressed) {
                         // 精调
                         this.radio.tuneFine(event.delta > 0 ? -1 : 1);
                         if (this.radioUI) {

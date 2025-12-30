@@ -338,6 +338,9 @@ class InputManager {
         const enhancedEvent = {
             originalEvent: event,
             delta: event.deltaY,
+            shiftKey: event.shiftKey,  // 直接提供 shiftKey 便于访问
+            ctrlKey: event.ctrlKey,
+            altKey: event.altKey,
             context: this.currentContext
         };
         
