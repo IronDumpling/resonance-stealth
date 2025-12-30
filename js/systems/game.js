@@ -127,6 +127,33 @@ function generateInstructions() {
     return instructions;
 }
 
+// 初始化玩家频率为核心范围中点
+function initPlayerFrequency() {
+    const core = state.p.currentCore;
+    state.freq = (core.freqMin + core.freqMax) / 2;
+    
+    // 同步到无线电系统
+    if (typeof radioSystem !== 'undefined' && radioSystem) {
+        radioSystem.setFrequencyRange(core.freqMin, core.freqMax);
+        radioSystem.syncWithRobotFrequency(state.freq);
+    }
+}
+
+// 调整玩家频率（同时同步到无线电）
+function adjustPlayerFrequency(delta, isFine = false) {
+    const step = isFine ? 0.1 : 5;
+    const core = state.p.currentCore;
+    
+    state.freq += delta * step;
+    state.freq = Math.max(core.freqMin, Math.min(core.freqMax, state.freq));
+    state.freq = Math.round(state.freq * 10) / 10;
+    
+    // 同步到无线电
+    if (typeof radioSystem !== 'undefined' && radioSystem) {
+        radioSystem.syncWithRobotFrequency(state.freq);
+    }
+}
+
 function init() {
     // 初始化玩家位置
     state.p.x = canvas.width/2;
@@ -145,6 +172,9 @@ function init() {
     state.entities.radiations = [];
     state.entities.items = [];
     state.entities.instructions = [];
+    
+    // 初始化玩家频率
+    initPlayerFrequency();
     
     // 先生成 instructions
     state.entities.instructions = generateInstructions();

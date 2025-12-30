@@ -507,8 +507,9 @@ class RadioUI {
         const tunerLine = document.querySelector('.tuner-line');
         if (!tunerLine) return;
         
-        const range = RADIO_CONFIG.FREQ_MAX - RADIO_CONFIG.FREQ_MIN;
-        const percent = ((this.radio.currentFrequency - RADIO_CONFIG.FREQ_MIN) / range) * 100;
+        // 使用动态频率范围
+        const range = this.radio.freqMax - this.radio.freqMin;
+        const percent = ((this.radio.currentFrequency - this.radio.freqMin) / range) * 100;
         tunerLine.style.left = `${percent}%`;
     }
     

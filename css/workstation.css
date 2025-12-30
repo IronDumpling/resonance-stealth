@@ -467,8 +467,7 @@
 }
 
 /* Ensure UI containers work with new layout */
-#world-ui-container,
-#inventory-container {
+#world-ui-container {
     position: fixed;
     top: 0;
     left: 0;
@@ -479,7 +478,10 @@
 }
 
 /* Allow child elements to receive pointer events */
-#world-ui-container > *,
+#world-ui-container > * {
+    pointer-events: auto;
+}
+
 #inventory-container > * {
     pointer-events: auto;
 }

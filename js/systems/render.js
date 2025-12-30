@@ -623,11 +623,6 @@ function drawPlayerStatusUI() {
     ctx.fillStyle = '#888888';
     ctx.fillText(`RESERVE: ${Math.floor(state.p.reserveEn)}`, padding, reserveY + 14);
     
-    // 频率
-    const freqY = reserveY + 20;
-    ctx.fillStyle = '#00ff00';
-    ctx.fillText(`FREQ: ${state.freq} Hz`, padding, freqY + 14);
-    
     // 消息日志（左下角）
     if (state.currentMessage && state.messageTimer > 0) {
         const messageY = canvas.height - 30;

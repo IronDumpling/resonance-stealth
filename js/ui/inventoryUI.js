@@ -10,15 +10,6 @@ function createInventoryUI() {
     }
     
     container.innerHTML = '';
-    container.style.cssText = `
-        position: absolute;
-        right: 20px;
-        top: 120px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        z-index: 100;
-    `;
     
     // 创建6个物品槽
     for (let i = 0; i < CFG.inventorySize; i++) {
@@ -39,9 +30,37 @@ function createInventoryUI() {
         `;
         container.appendChild(slot);
     }
+    
+    // 更新容器位置（基于canvas位置）
+    updateInventoryPosition();
+}
+
+// 更新背包UI位置（使其显示在CRT屏幕内的右侧）
+function updateInventoryPosition() {
+    const container = document.getElementById('inventory-container');
+    const canvas = document.getElementById('gameCanvas');
+    
+    if (!container || !canvas) return;
+    
+    const canvasRect = canvas.getBoundingClientRect();
+    
+    // 定位到canvas右侧内部，距离右边20px，距离顶部120px
+    container.style.cssText = `
+        position: fixed;
+        right: ${window.innerWidth - canvasRect.right + 20}px;
+        top: ${canvasRect.top + 120}px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 1100;
+        pointer-events: none;
+    `;
 }
 
 function updateInventoryUI() {
+    // 更新位置（以防窗口大小改变）
+    updateInventoryPosition();
+    
     for (let i = 0; i < CFG.inventorySize; i++) {
         const slot = document.getElementById(`inv-slot-${i}`);
         if (!slot) continue;
