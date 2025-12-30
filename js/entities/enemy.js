@@ -369,16 +369,13 @@ function updateEnemyUI(e) {
             resonanceDiv.innerHTML = statusText;
         }
         
-        // 通知无线电系统
-        if (state.p.isCharging) {
-            if (typeof radioSystem !== 'undefined' && radioSystem) {
-                radioSystem.setEnemyAnalysis(e.freq);
-            }
+        // 通知无线电系统显示频率条纹（只要被瞄准线击中，无论敌人什么状态）
+        if (typeof radioSystem !== 'undefined' && radioSystem) {
+            radioSystem.setEnemyAnalysis(e.freq);
         }
     } else {
         // 不碰撞时立刻隐藏UI
         ui.style.display = 'none';
-    
     }
     
     // execute hint UI 只在 stunned 状态且可处决时显示
@@ -731,6 +728,11 @@ function updateDormantEnemyAbsorption(enemy) {
 // 更新敌人
 function updateEnemies() {
     const enemiesToRemove = []; // 需要移除的敌人
+    
+    // 清除radio系统的敌人分析频率（如果没有敌人被瞄准线击中，将保持清除状态）
+    if (typeof radioSystem !== 'undefined' && radioSystem) {
+        radioSystem.setEnemyAnalysis(null);
+    }
     
     state.entities.enemies.forEach(e => {
         // 检查报废状态

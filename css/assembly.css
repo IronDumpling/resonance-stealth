@@ -32,6 +32,8 @@
     border: 2px solid #00ff00;
     padding: 8px;
     overflow-y: auto;
+    box-sizing: border-box;
+    min-width: 0;
 }
 
 .warehouse-panel h3 {
@@ -58,6 +60,8 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    box-sizing: border-box;
+    min-width: 0;
 }
 
 .robot-diagram {
@@ -99,6 +103,8 @@
     padding: 8px;
     display: flex;
     flex-direction: column;
+    box-sizing: border-box;
+    min-width: 0;
 }
 
 .instructions-panel h3 {
@@ -112,12 +118,17 @@
 
 .instructions-scroll {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     color: #00ff00;
     font-family: 'Courier New', monospace;
     font-size: 12px;
     line-height: 1.5;
     padding-right: 8px;
+    word-wrap: break-word;
+    word-break: break-word;
+    box-sizing: border-box;
 }
 
 .instruction-item {

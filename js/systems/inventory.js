@@ -28,7 +28,10 @@ function initPlayerInventory() {
 
 // 添加物品到背包
 function addToInventory(itemType) {
-    if (state.p.inventory.length >= CFG.inventorySize) {
+    // 检查是否有空位（null槽位）
+    const emptySlotIndex = state.p.inventory.findIndex(item => item === null);
+    
+    if (emptySlotIndex === -1) {
         logMsg("INVENTORY FULL");
         return false;
     }
@@ -38,7 +41,8 @@ function addToInventory(itemType) {
         id: Math.random().toString(36).substr(2, 9)
     };
     
-    state.p.inventory.push(item);
+    // 放入第一个空槽位
+    state.p.inventory[emptySlotIndex] = item;
     
     // 更新UI
     if (typeof updateInventoryUI === 'function') {
@@ -50,9 +54,10 @@ function addToInventory(itemType) {
 
 // 从背包移除物品（按类型，移除第一个匹配的）
 function removeFromInventory(itemType) {
-    const index = state.p.inventory.findIndex(item => item.type === itemType);
+    const index = state.p.inventory.findIndex(item => item && item.type === itemType);
     if (index !== -1) {
-        state.p.inventory.splice(index, 1);
+        // 将该槽位设置为null而不是删除，保持背包大小固定
+        state.p.inventory[index] = null;
         
         // 更新UI
         if (typeof updateInventoryUI === 'function') {
@@ -66,7 +71,7 @@ function removeFromInventory(itemType) {
 
 // 获取背包中某类型物品的数量
 function getInventoryCount(itemType) {
-    return state.p.inventory.filter(item => item.type === itemType).length;
+    return state.p.inventory.filter(item => item && item.type === itemType).length;
 }
 
 // 使用能量瓶

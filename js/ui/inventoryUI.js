@@ -65,9 +65,9 @@ function updateInventoryUI() {
         const slot = document.getElementById(`inv-slot-${i}`);
         if (!slot) continue;
         
-        if (i < state.p.inventory.length) {
-            const item = state.p.inventory[i];
-            
+        const item = state.p.inventory[i];
+        
+        if (item) {
             // 根据物品类型设置图标
             switch (item.type) {
                 case 'energy_flask':
@@ -82,9 +82,18 @@ function updateInventoryUI() {
                     slot.textContent = '◇';
                     slot.style.color = '#8888ff';
                     break;
+                case 'core':
+                    slot.textContent = '◉';
+                    slot.style.color = '#ffaa00';
+                    break;
+                default:
+                    slot.textContent = '?';
+                    slot.style.color = '#ffffff';
+                    break;
             }
             slot.style.borderColor = '#00ff00';
         } else {
+            // 空槽位
             slot.textContent = '';
             slot.style.borderColor = '#333333';
         }

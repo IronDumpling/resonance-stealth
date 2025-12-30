@@ -512,6 +512,10 @@ if (typeof RobotScene !== 'undefined') {
         // 初始化并显示背包UI
         if (typeof createInventoryUI === 'function') {
             createInventoryUI();
+            // 立即更新UI以显示已有物品
+            if (typeof updateInventoryUI === 'function') {
+                updateInventoryUI();
+            }
             showInventoryUI();
         }
     };
