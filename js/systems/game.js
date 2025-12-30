@@ -58,7 +58,7 @@ const state = {
         isDormant: false,                   // 是否休眠
         isDestroyed: false                  // 是否报废
     },
-    keys: { w:0, a:0, s:0, d:0, space:0, f:0, r:0, e:0 },
+    keys: { w:0, a:0, s:0, d:0, space:0, f:0, r:0, e:0, shift:0 },
     mouse: { x:0, y:0 },
     freq: 150,
     focusLevel: 0,
@@ -69,62 +69,11 @@ const state = {
     
     camera: { x: 0, y: 0 },
     entities: {
-        walls: [], enemies: [], waves: [], echoes: [], particles: [], items: [], wallEchoes: [], instructions: [], radiations: []
+        walls: [], enemies: [], waves: [], echoes: [], particles: [], items: [], wallEchoes: [], radiations: []
     }
 };
 
 // --- 初始化 ---
-function generateInstructions() {
-    const spawnX = canvas.width / 2;
-    const spawnY = canvas.height / 2;
-    const instructions = [];
-    
-    for (let i = 0; i < INSTRUCTIONS.length; i++) {
-        const inst = INSTRUCTIONS[i];
-        let x, y, attempts = 0;
-        let valid = false;
-        
-        // 尝试找到不重叠的位置
-        while (!valid && attempts < 100) {
-            attempts++;
-            // 从出生点向外辐射生成（使用固定角度分布）
-            const angle = (i * Math.PI * 2 / INSTRUCTIONS.length) + (Math.random() - 0.5) * 0.8;
-            x = spawnX + Math.cos(angle) * inst.distance;
-            y = spawnY + Math.sin(angle) * inst.distance;
-            
-            // 确保在画布内
-            if (x < 100 || x > canvas.width - 100 || 
-                y < 100 || y > canvas.height - 100) {
-                continue;
-            }
-            
-            // 检查是否与其他instruction重叠
-            let overlapsInst = false;
-            for (const other of instructions) {
-                if (dist(x, y, other.x, other.y) < 150) {
-                    overlapsInst = true;
-                    break;
-                }
-            }
-            
-            if (!overlapsInst) {
-                valid = true;
-            }
-        }
-        
-        if (valid) {
-            instructions.push({
-                id: inst.id,
-                x: x,
-                y: y,
-                text: inst.text,
-                distance: inst.distance
-            });
-        }
-    }
-    
-    return instructions;
-}
 
 // 初始化玩家频率为核心范围中点
 function initPlayerFrequency() {
@@ -170,13 +119,9 @@ function init() {
     state.entities.walls = [];
     state.entities.radiations = [];
     state.entities.items = [];
-    state.entities.instructions = [];
     
     // 初始化玩家频率
     initPlayerFrequency();
-    
-    // Instructions移到Assembly场景显示
-    state.entities.instructions = [];
 
     // 在地图四周生成边界墙，让玩家看不到画布边缘
     const borderThickness = 60;
@@ -340,6 +285,10 @@ function initInputHandlers() {
         if(state.keys.hasOwnProperty(k) || k===' ') {
             state.keys[k===' '?'space':k] = true;
         }
+        // 处理Shift键
+        if(e.key === 'Shift') {
+            state.keys.shift = true;
+        }
         if(k==='e') tryInteract(); // E键通用交互
     };
 
@@ -348,6 +297,10 @@ function initInputHandlers() {
         if(state.keys.hasOwnProperty(k) || k===' ') {
             state.keys[k===' '?'space':k] = false;
             if(k===' ') releaseScan();
+        }
+        // 处理Shift键
+        if(e.key === 'Shift') {
+            state.keys.shift = false;
         }
     };
 

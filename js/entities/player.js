@@ -55,9 +55,9 @@ function updatePlayerRadiation() {
         if(dx||dy) {
             const isSprinting = state.keys.shift || false;
             if (isSprinting) {
-                energyConsumption = baseDecay * 3.0; // 奔跑时3倍
+                energyConsumption = baseDecay * 2.5; // 奔跑时2.5倍
             } else {
-                energyConsumption = baseDecay * 2.0; // 移动时2倍
+                energyConsumption = baseDecay * 1.5; // 移动时1.5倍
             }
         }
     }
@@ -164,13 +164,12 @@ function releaseScan() {
     // 计算当前角度（弧度）
     const currentSpread = lerp(CFG.maxSpread, CFG.minSpread, state.focusLevel);
     
-    // 能量消耗公式（0~10）：频率越高、角度越聚焦，消耗越大
+    // 能量消耗公式：只和频率相关，短按和长按能耗相同
     const freqNorm = (state.freq - CFG.freqMin) / (CFG.freqMax - CFG.freqMin); // 0~1
-    const focusNorm = clamp(1 - currentSpread / CFG.maxSpread, 0, 1);          // 0~1（360°=0，极窄≈1）
-    const rawCost = 5 * freqNorm + 5 * focusNorm;                              // 理论范围约0~10
+    const rawCost = 5 * freqNorm;  // 只基于频率，范围约0~5
     const energyCost = clamp(Math.round(rawCost), 0, 10);
     
-    // 检查能量是否足够（检查最大消耗长按能量）
+    // 检查能量是否足够
     if(state.p.en < energyCost) {
         logMsg("LOW ENERGY - CANNOT EMIT");
         state.p.isCharging = false;
@@ -610,9 +609,26 @@ function updatePlayer() {
         return; // 休眠时不更新其他逻辑
     }
     
-    // 能量自然衰减（受核心影响）
+    // 能量自然衰减（受核心影响，根据移动状态变化）
     const baseDecay = CFG.energyDecayRate * state.p.currentCore.energyMultiplier;
-    state.p.en = Math.max(0, state.p.en - baseDecay);
+    let energyDecay = baseDecay; // 默认不移动：1倍
+    
+    // 检测移动状态
+    if (!state.p.isGrabbed && !state.p.isGrabbingEnemy) {
+        let dx=0, dy=0;
+        if(state.keys.w) dy-=1; if(state.keys.s) dy+=1;
+        if(state.keys.a) dx-=1; if(state.keys.d) dx+=1;
+        if(dx||dy) {
+            const isSprinting = state.keys.shift || false;
+            if (isSprinting) {
+                energyDecay = baseDecay * 2.5; // 奔跑时2.5倍
+            } else {
+                energyDecay = baseDecay * 1.5; // 移动时1.5倍
+            }
+        }
+    }
+    
+    state.p.en = Math.max(0, state.p.en - energyDecay);
     
     // 能量耗尽进入休眠（在处理之前先清除抓取状态）
     if (state.p.en <= 0 && !state.p.isDormant) {
@@ -666,6 +682,13 @@ function updatePlayer() {
         if(dx||dy) {
             const len = Math.hypot(dx,dy);
             let spd = (state.p.isCharging ? CFG.pSpeed * 0.3 : CFG.pSpeed) * state.p.currentCore.speedMultiplier;
+            
+            // 奔跑时速度增加
+            const isSprinting = state.keys.shift || false;
+            if (isSprinting) {
+                spd *= 1.5; // 奔跑时速度1.5倍
+            }
+            
             // 速度降低：过载值 >= 2/3 时，速度降低50%
             if (state.p.overload >= CFG.maxOverload * 2 / 3) {
                 spd *= 0.5;

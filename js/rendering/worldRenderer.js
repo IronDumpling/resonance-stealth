@@ -465,7 +465,7 @@ function drawRadiations() {
         const gradient = ctx.createRadialGradient(rad.x, rad.y, 0, rad.x, rad.y, rad.maxRadius);
         
         // 计算中心透明度（基于能量强度）
-        const maxEnergy = CFG.energyDecayRate * 3.0; // 最大能量消耗（奔跑时）
+        const maxEnergy = CFG.energyDecayRate * 2.5; // 最大能量消耗（奔跑时）
         const energyRatio = Math.min(1.0, rad.centerEnergy / maxEnergy);
         const centerAlpha = 0.1 + energyRatio * 0.15; // 中心透明度 0.1-0.25
         
@@ -640,7 +640,7 @@ function draw() {
     // 绘制视野裁剪和光照（设置clip）
     drawVisibilityAndLighting();
 
-    // 绘制实体（墙壁、instructions、物品、敌人，在clip内）
+    // 绘制实体（墙壁、物品、敌人，在clip内）
     drawEntities();
     
     // 恢复视野裁剪（恢复clip）

@@ -62,16 +62,7 @@ function spawnItemEnhanced(type, x, y) {
             // 检查是否在墙里
             if (checkWall(item.x, item.y)) continue;
             
-            // 检查是否与instructions重叠
-            let overlapsInst = false;
-            for (const inst of state.entities.instructions) {
-                if (dist(item.x, item.y, inst.x, inst.y) < 60) {
-                    overlapsInst = true;
-                    break;
-                }
-            }
-            
-            if (!overlapsInst) ok = true;
+            ok = true;
         }
         
         if (!ok) return null; // 无法找到合适位置
