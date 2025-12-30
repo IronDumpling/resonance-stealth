@@ -507,14 +507,58 @@ class RobotScene extends Scene {
             });
         }
         
+        // 同步无线电频率范围
+        if (radioSystem && typeof state !== 'undefined' && state.p && state.p.currentCore) {
+            const core = state.p.currentCore;
+            radioSystem.setFrequencyRange(core.freqMin, core.freqMax);
+            radioSystem.syncWithRobotFrequency(state.freq);
+            
+            // 设置回调：无线电调整时同步到机器人
+            radioSystem.onFrequencyChange = (freq) => {
+                if (typeof state !== 'undefined') {
+                    state.freq = freq;
+                }
+            };
+        }
+        
+        // 确保无线电UI激活
+        if (radioUI) {
+            radioUI.activate();
+        }
+        
         // 确保无线电系统激活并运行
         if (sceneManager) {
             sceneManager.setRadioState(RADIO_STATE.ACTIVE);
+        }
+        
+        // 注册滚轮事件用于频率调整
+        if (typeof inputManager !== 'undefined') {
+            this.wheelHandler = (event) => {
+                // 使用 shiftKey 判断是否精调（优先使用直接字段，否则从 originalEvent 获取）
+                const isFine = event.shiftKey || event.originalEvent.shiftKey;
+                // 向上滚动提升频率，向下滚动降低频率
+                const delta = event.delta > 0 ? -1 : 1;
+                if (typeof adjustPlayerFrequency === 'function') {
+                    adjustPlayerFrequency(delta, isFine);
+                }
+            };
+            inputManager.on('onWheel', INPUT_CONTEXTS.ROBOT, this.wheelHandler);
         }
     }
     
     exit() {
         super.exit();
+        
+        // 移除滚轮事件
+        if (this.wheelHandler && typeof inputManager !== 'undefined') {
+            inputManager.off('onWheel', INPUT_CONTEXTS.ROBOT, this.wheelHandler);
+        }
+        
+        // 清除回调
+        if (radioSystem) {
+            radioSystem.onFrequencyChange = null;
+        }
+        
         // 保存游戏状态
         
         // 清理所有物品UI（场景切换时）
@@ -568,6 +612,13 @@ class RadioScene extends Scene {
         // 使用全局的无线电系统（已在BootScene初始化）
         if (radioSystem) {
             this.radio = radioSystem;
+            
+            // 设置回调：无线电调整时同步到机器人
+            radioSystem.onFrequencyChange = (freq) => {
+                if (typeof state !== 'undefined') {
+                    state.freq = freq;
+                }
+            };
         } else {
             console.error('Radio system not initialized!');
             return;
@@ -606,7 +657,9 @@ class RadioScene extends Scene {
             // 注册滚轮事件监听（用于调频）
             this.wheelHandler = (event) => {
                 if (this.radio) {
-                    if (event.originalEvent.shiftKey) {
+                    // 使用 shiftKey 判断是否精调（优先使用直接字段，否则从 originalEvent 获取）
+                    const isShiftPressed = event.shiftKey || event.originalEvent.shiftKey;
+                    if (isShiftPressed) {
                         // 精调
                         this.radio.tuneFine(event.delta > 0 ? -1 : 1);
                         if (this.radioUI) {
@@ -635,6 +688,11 @@ class RadioScene extends Scene {
         // 移除滚轮事件监听
         if (this.wheelHandler && typeof inputManager !== 'undefined') {
             inputManager.off('onWheel', INPUT_CONTEXTS.RADIO, this.wheelHandler);
+        }
+        
+        // 清除回调
+        if (radioSystem) {
+            radioSystem.onFrequencyChange = null;
         }
         
         // Hide radio display (右侧显示器上的内容)

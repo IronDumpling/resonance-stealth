@@ -433,17 +433,16 @@ class RadioUI {
         const signal = this.radio.getStrongestSignal();
         this.updateSignalInfo(signal);
         
-        // 只在激活状态下渲染瀑布图
-        if (this.isActive) {
-            this.renderWaterfall();
-        }
+        // 始终渲染瀑布图（包括敌人分析线）
+        this.renderWaterfall();
         
         // 始终渲染指南针和信号表
         this.renderCompass();
         this.renderMeter(signal);
         
-        // 更新游标位置
+        // 更新游标位置和频率刻度
         this.updateTunerLine();
+        this.updateFreqScale();
     }
     
     /**
@@ -507,9 +506,29 @@ class RadioUI {
         const tunerLine = document.querySelector('.tuner-line');
         if (!tunerLine) return;
         
-        const range = RADIO_CONFIG.FREQ_MAX - RADIO_CONFIG.FREQ_MIN;
-        const percent = ((this.radio.currentFrequency - RADIO_CONFIG.FREQ_MIN) / range) * 100;
+        // 使用动态频率范围
+        const range = this.radio.freqMax - this.radio.freqMin;
+        const percent = ((this.radio.currentFrequency - this.radio.freqMin) / range) * 100;
         tunerLine.style.left = `${percent}%`;
+    }
+    
+    /**
+     * 更新频率刻度显示（动态适应核心范围）
+     */
+    updateFreqScale() {
+        const freqScale = document.querySelector('.freq-scale');
+        if (!freqScale) return;
+        
+        const min = this.radio.freqMin;
+        const max = this.radio.freqMax;
+        const step = (max - min) / 5; // 6个刻度点，5个间隔
+        
+        const spans = freqScale.querySelectorAll('span');
+        if (spans.length === 6) {
+            for (let i = 0; i < 6; i++) {
+                spans[i].textContent = Math.round(min + step * i);
+            }
+        }
     }
     
     /**
@@ -554,6 +573,73 @@ class RadioUI {
                     Math.ceil(rowHeight)
                 );
             }
+        }
+        
+        // 绘制敌人分析频率条纹历史（橙色，宽度为共振范围±10Hz）
+        // 遍历历史记录，让橙色条纹像瀑布一样向下滚动
+        const enemyHistory = this.radio.enemyFreqHistory || [];
+        const resonanceRange = 10; // ±10Hz 共振范围
+        
+        if (enemyHistory.length > 0) {
+            // 使用混合模式让橙色条纹叠加在瀑布图上
+            ctx.globalCompositeOperation = 'lighter';
+            
+            const displayRows = Math.min(history.length, 50);
+            const rowHeight = canvas.height / displayRows;
+            
+            // 遍历每一行历史记录
+            for (let row = 0; row < Math.min(enemyHistory.length, displayRows); row++) {
+                const enemyFreq = enemyHistory[row];
+                
+                // 如果该行有敌人频率（不是 null），则绘制橙色条纹
+                if (enemyFreq !== null && enemyFreq !== undefined) {
+                    const freqMin = enemyFreq - resonanceRange;
+                    const freqMax = enemyFreq + resonanceRange;
+                    
+                    const xStart = this.radio.frequencyToIndex(freqMin, canvas.width);
+                    const xEnd = this.radio.frequencyToIndex(freqMax, canvas.width);
+                    const width = xEnd - xStart;
+                    
+                    // 绘制橙色条纹
+                    for (let x = xStart; x < xEnd; x++) {
+                        const distFromCenter = Math.abs(x - (xStart + width / 2)) / (width / 2);
+                        const alpha = 0.5 + (1 - distFromCenter) * 0.3; // 中心更亮
+                        
+                        ctx.fillStyle = `rgba(255, 153, 0, ${alpha})`;
+                        ctx.fillRect(
+                            x,
+                            row * rowHeight,
+                            1,
+                            Math.ceil(rowHeight)
+                        );
+                    }
+                    
+                    // 在第一行（最新的）添加标签
+                    if (row === 0) {
+                        const xCenter = this.radio.frequencyToIndex(enemyFreq, canvas.width);
+                        
+                        // 画中心标记线
+                        ctx.strokeStyle = '#ff9900';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(xCenter, 0);
+                        ctx.lineTo(xCenter, rowHeight);
+                        ctx.stroke();
+                        
+                        // 添加标签
+                        ctx.fillStyle = '#ff9900';
+                        ctx.font = 'bold 10px monospace';
+                        ctx.textAlign = 'center';
+                        ctx.shadowColor = '#000';
+                        ctx.shadowBlur = 3;
+                        ctx.fillText('TARGET', xCenter, 12);
+                        ctx.shadowBlur = 0;
+                    }
+                }
+            }
+            
+            // 恢复混合模式
+            ctx.globalCompositeOperation = 'source-over';
         }
     }
     

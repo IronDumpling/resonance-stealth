@@ -802,3 +802,21 @@ function rayCircleIntersect(rx, ry, rdx, rdy, cx, cy, cr) {
     return dot - halfChord; // 返回第一个交点
 }
 
+/**
+ * 切换核心
+ */
+function switchCore(newCore) {
+    state.p.currentCore = newCore;
+    
+    // 重置频率到新核心范围的中点
+    state.freq = (newCore.freqMin + newCore.freqMax) / 2;
+    
+    // 更新无线电系统的频率范围
+    if (typeof radioSystem !== 'undefined' && radioSystem) {
+        radioSystem.setFrequencyRange(newCore.freqMin, newCore.freqMax);
+        radioSystem.syncWithRobotFrequency(state.freq);
+    }
+    
+    logMsg(`核心切换: ${newCore.name} | 频率范围: ${newCore.freqMin}-${newCore.freqMax} MHz`);
+}
+

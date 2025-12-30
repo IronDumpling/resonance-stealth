@@ -30,7 +30,7 @@ canvas { display: block; }
     position: absolute;
     background: rgba(0, 0, 0, 0.85);
     border: 1px solid #33ccff;
-    padding: 6px;
+    padding: 8px 10px;
     color: #fff;
     font-size: 12px;
     pointer-events: none;
@@ -39,18 +39,74 @@ canvas { display: block; }
     display: none;
     box-shadow: 0 0 10px #33ccff;
     z-index: 100;
+    min-width: 120px;
 }
-.analyzer-bar {
-    width: 80px; height: 6px; background: #333; margin: 4px 0; position: relative; border-radius: 2px;
+
+.analyzer-overload {
+    padding: 4px 0;
+    text-align: center;
+    font-size: 11px;
+    font-weight: bold;
+    border-bottom: 1px solid #33ccff;
+    margin-bottom: 4px;
 }
-.analyzer-pip {
-    width: 4px; height: 10px; background: #fff; position: absolute; top: -2px; transition: left 0.1s;
+
+.overload-value {
+    font-size: 14px;
+    color: #fff;
 }
-.analyzer-center {
-    width: 2px; height: 10px; background: #33ccff; position: absolute; left: 40px; top: -2px;
+
+.overload-bar-container {
+    width: 100%;
+    height: 8px;
+    background: #222;
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+    border: 1px solid #444;
 }
-.analyzer-text {
-    font-size: 12px; font-weight: bold; text-align: center;
+
+.overload-bar-fill {
+    height: 100%;
+    background: #aaa;
+    transition: width 0.2s, background-color 0.2s;
+}
+
+.analyzer-energy {
+    padding: 4px 0;
+    text-align: center;
+    font-size: 11px;
+    font-weight: bold;
+    border-bottom: 1px solid #33ccff;
+    margin-bottom: 4px;
+}
+
+.energy-value {
+    font-size: 14px;
+    color: #fff;
+}
+
+.energy-bar-container {
+    width: 100%;
+    height: 8px;
+    background: #222;
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+    border: 1px solid #444;
+}
+
+.energy-bar-fill {
+    height: 100%;
+    background: #00ff00;
+    transition: width 0.2s, background-color 0.2s;
+}
+
+.analyzer-resonance {
+    padding: 8px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: bold;
 }
 
 /* 交互提示 (通用) */

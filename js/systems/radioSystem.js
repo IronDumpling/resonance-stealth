@@ -174,8 +174,14 @@ class RadioSystem {
         this.antennaAngle = 0; // 天线指向角度
         this.signals = [];
         this.waterfallHistory = [];
+        this.enemyFreqHistory = []; // 敌人频率历史记录
         this.lastSignalSpawnTime = 0;
         this.signalSpawnInterval = 120; // 2分钟生成一个信号
+        
+        // 动态频率范围（由机器人核心决定）
+        this.freqMin = 100;  // 初始值，会被核心范围覆盖
+        this.freqMax = 200;
+        this.onFrequencyChange = null; // 回调函数，用于通知机器人系统
         
         // 玩家位置（避难所位置）
         this.shelterX = 0;
@@ -188,6 +194,9 @@ class RadioSystem {
         // Ping状态
         this.isPinging = false;
         this.pingStartTime = 0;
+        
+        // 敌人频率分析
+        this.enemyAnalysisFreq = null;
         
         console.log('Radio System initialized');
     }
@@ -217,13 +226,39 @@ class RadioSystem {
     }
     
     /**
+     * 设置频率范围（由机器人核心决定）
+     */
+    setFrequencyRange(min, max) {
+        this.freqMin = min;
+        this.freqMax = max;
+        // 确保当前频率在新范围内
+        this.currentFrequency = Math.max(min, Math.min(max, this.currentFrequency));
+        this.currentFrequency = Math.round(this.currentFrequency * 10) / 10;
+        this.updateSignalStrengths();
+    }
+    
+    /**
+     * 与机器人频率同步
+     */
+    syncWithRobotFrequency(freq) {
+        this.currentFrequency = freq;
+        this.updateSignalStrengths();
+    }
+    
+    /**
      * 粗调频率
      */
     tuneCoarse(delta) {
         this.currentFrequency += delta * RADIO_CONFIG.COARSE_STEP;
-        this.currentFrequency = Math.max(RADIO_CONFIG.FREQ_MIN, 
-            Math.min(RADIO_CONFIG.FREQ_MAX, this.currentFrequency));
+        this.currentFrequency = Math.max(this.freqMin, 
+            Math.min(this.freqMax, this.currentFrequency));
         this.currentFrequency = Math.round(this.currentFrequency * 10) / 10;
+        
+        // 通知机器人系统
+        if (this.onFrequencyChange) {
+            this.onFrequencyChange(this.currentFrequency);
+        }
+        
         this.updateSignalStrengths();
     }
     
@@ -232,9 +267,15 @@ class RadioSystem {
      */
     tuneFine(delta) {
         this.currentFrequency += delta * RADIO_CONFIG.FINE_STEP;
-        this.currentFrequency = Math.max(RADIO_CONFIG.FREQ_MIN, 
-            Math.min(RADIO_CONFIG.FREQ_MAX, this.currentFrequency));
+        this.currentFrequency = Math.max(this.freqMin, 
+            Math.min(this.freqMax, this.currentFrequency));
         this.currentFrequency = Math.round(this.currentFrequency * 10) / 10;
+        
+        // 通知机器人系统
+        if (this.onFrequencyChange) {
+            this.onFrequencyChange(this.currentFrequency);
+        }
+        
         this.updateSignalStrengths();
     }
     
@@ -423,8 +464,8 @@ class RadioSystem {
      * 频率转索引
      */
     frequencyToIndex(freq, width) {
-        const range = RADIO_CONFIG.FREQ_MAX - RADIO_CONFIG.FREQ_MIN;
-        return Math.floor(((freq - RADIO_CONFIG.FREQ_MIN) / range) * width);
+        const range = this.freqMax - this.freqMin;
+        return Math.floor(((freq - this.freqMin) / range) * width);
     }
     
     /**
@@ -437,6 +478,13 @@ class RadioSystem {
         if (this.waterfallHistory.length > RADIO_CONFIG.WATERFALL_HEIGHT) {
             this.waterfallHistory.pop();
         }
+        
+        // 记录敌人频率到历史记录
+        this.enemyFreqHistory.unshift(this.enemyAnalysisFreq); // 可能是 null 或频率值
+        
+        if (this.enemyFreqHistory.length > RADIO_CONFIG.WATERFALL_HEIGHT) {
+            this.enemyFreqHistory.pop();
+        }
     }
     
     /**
@@ -446,6 +494,20 @@ class RadioSystem {
         while (angle > 180) angle -= 360;
         while (angle < -180) angle += 360;
         return angle;
+    }
+    
+    /**
+     * 设置敌人分析频率（用于瀑布图显示）
+     */
+    setEnemyAnalysis(freq) {
+        this.enemyAnalysisFreq = freq;
+    }
+    
+    /**
+     * 清除敌人分析频率
+     */
+    clearEnemyAnalysis() {
+        this.enemyAnalysisFreq = null;
     }
     
     /**
@@ -484,7 +546,7 @@ class RadioSystem {
         
         const config = {
             type: type,
-            frequency: RADIO_CONFIG.FREQ_MIN + Math.random() * (RADIO_CONFIG.FREQ_MAX - RADIO_CONFIG.FREQ_MIN),
+            frequency: this.freqMin + Math.random() * (this.freqMax - this.freqMin),
             direction: Math.random() * 360,
             distance: 1 + Math.random() * 9, // 1-10 km
             message: messages[Math.floor(Math.random() * messages.length)],
