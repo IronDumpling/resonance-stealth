@@ -1,0 +1,231 @@
+/* CRT显示器效果样式 */
+
+/* CRT容器 - 模拟老式显示器外壳 */
+#crt-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #1a1a1a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    z-index: 1; /* CRT容器作为基础层 */
+}
+
+/* CRT屏幕区域 */
+#crt-screen {
+    position: relative;
+    width: 95%;
+    height: 95%;
+    background: #000;
+    border: 20px solid #2a2a2a;
+    border-radius: 8px;
+    box-shadow: 
+        inset 0 0 50px rgba(0, 0, 0, 0.8),
+        0 0 30px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+/* 扫描线效果 */
+#crt-screen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.15),
+        rgba(0, 0, 0, 0.15) 1px,
+        transparent 1px,
+        transparent 2px
+    );
+    pointer-events: none;
+    z-index: 1000;
+    animation: scanlines 8s linear infinite;
+}
+
+@keyframes scanlines {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(2px); }
+}
+
+/* 屏幕曲率效果(使用伪元素实现边缘暗化) */
+#crt-screen::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(
+        ellipse at center,
+        transparent 0%,
+        transparent 60%,
+        rgba(0, 0, 0, 0.3) 80%,
+        rgba(0, 0, 0, 0.6) 100%
+    );
+    pointer-events: none;
+    z-index: 999;
+}
+
+/* CRT屏幕反光效果 */
+.crt-glare {
+    position: absolute;
+    top: 5%;
+    left: 10%;
+    width: 40%;
+    height: 30%;
+    background: radial-gradient(
+        ellipse at center,
+        rgba(255, 255, 255, 0.05) 0%,
+        transparent 70%
+    );
+    pointer-events: none;
+    z-index: 998;
+    transform: rotate(-15deg);
+}
+
+/* CRT绿色磷光效果 */
+.crt-phosphor {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 255, 0, 0.02);
+    pointer-events: none;
+    z-index: 997;
+    mix-blend-mode: screen;
+}
+
+/* 待机指示灯 */
+.power-indicator {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #00ff00;
+    box-shadow: 0 0 10px #00ff00;
+    animation: power-pulse 2s ease-in-out infinite;
+    z-index: 1001;
+}
+
+@keyframes power-pulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+}
+
+.power-indicator.off {
+    background: #333;
+    box-shadow: none;
+    animation: none;
+    opacity: 0.5;
+}
+
+/* 游戏画布 - 放在CRT屏幕内 */
+#crt-screen canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    z-index: 1; /* 确保canvas在CRT效果层之下但高于背景 */
+}
+
+/* CRT文本样式 */
+.crt-text {
+    font-family: 'Courier New', 'Consolas', monospace;
+    color: #00ff00;
+    text-shadow: 0 0 5px #00ff00;
+    letter-spacing: 0.05em;
+}
+
+.crt-text-dim {
+    color: #00aa00;
+    text-shadow: 0 0 3px #00aa00;
+}
+
+.crt-text-bright {
+    color: #88ff88;
+    text-shadow: 0 0 8px #00ff00;
+}
+
+/* CRT闪烁效果 */
+@keyframes crt-flicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.95; }
+}
+
+.crt-flicker {
+    animation: crt-flicker 0.15s infinite;
+}
+
+/* CRT开机/关机过渡效果 */
+.crt-transition {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    pointer-events: none;
+    z-index: 2000;
+}
+
+/* 通知样式 */
+.notification {
+    animation: notification-enter 0.3s ease-out;
+}
+
+@keyframes notification-enter {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    #crt-screen {
+        border-width: 10px;
+    }
+    
+    .power-indicator {
+        width: 8px;
+        height: 8px;
+        bottom: 10px;
+        right: 10px;
+    }
+}
+
+/* 调试模式：显示UI层级边界 */
+body.debug-ui [id^="ui-layer-"] {
+    outline: 1px dashed rgba(255, 0, 0, 0.3);
+}
+
+body.debug-ui [id^="ui-layer-"]::before {
+    content: attr(id);
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    font-size: 10px;
+    color: rgba(255, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.8);
+    padding: 2px 5px;
+    pointer-events: none;
+    z-index: 10000;
+}
+

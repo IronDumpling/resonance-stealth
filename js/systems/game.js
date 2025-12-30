@@ -1,14 +1,13 @@
 // 主游戏逻辑
 
 // 全局变量（在HTML中初始化）
-let canvas, ctx, uiContainer, pickupHint, edgeGlow;
+let canvas, ctx, uiContainer, edgeGlow;
 
 // 初始化全局变量
 function initGlobals() {
     canvas = document.getElementById('gameCanvas');
     ctx = canvas.getContext('2d');
     uiContainer = document.getElementById('world-ui-container');
-    pickupHint = document.getElementById('pickup-hint');
     edgeGlow = document.getElementById('edge-glow');
     
     canvas.width = window.innerWidth;
@@ -24,6 +23,11 @@ const state = {
         isGrabbed: false,
         grabberEnemy: null,      // 抓取玩家的敌人引用
         struggleProgress: 0,      // 挣脱进度 (0-100)
+        grabImmunity: 0,         // 抓取无敌时间（挣脱后的保护期）
+        grabHintElement: null,   // 玩家抓取敌人的UI提示
+        
+        // 背包系统
+        inventory: [],           // 背包数组，最多6个物品
         isCharging: false,
         chargeStartTime: 0,       // 开始蓄力的时间戳（秒）
         en: CFG.maxEnergy, 
@@ -32,15 +36,29 @@ const state = {
         resonanceCD: 0, 
         grabParticleTimer: 0,
         shouldShowAimLine: false,  // 是否显示辅助瞄准线
+        overload: 0,               // 玩家过载值（与敌人一致）
+        isGrabbingEnemy: null,     // 当前抓取的敌人引用
+        grabHintElement: null,     // Grab Hint UI元素引用
+        aimLineHit: null,          // 瞄准线raycast碰撞结果
+        
+        // 核心系统
+        currentCore: CORE_TYPES.SCAVENGER,  // 当前装备的核心
+        durability: CFG.maxDurability,      // 耐久值
+        isDormant: false,                   // 是否休眠
+        isDestroyed: false                  // 是否报废
     },
     keys: { w:0, a:0, s:0, d:0, space:0, f:0, r:0, e:0 },
     mouse: { x:0, y:0 },
     freq: 150,
     focusLevel: 0,
     
+    // UI消息系统
+    currentMessage: '',
+    messageTimer: 0,
+    
     camera: { x: 0, y: 0 },
     entities: {
-        walls: [], enemies: [], waves: [], echoes: [], particles: [], items: [], wallEchoes: [], instructions: []
+        walls: [], enemies: [], waves: [], echoes: [], particles: [], items: [], wallEchoes: [], instructions: [], radiations: []
     }
 };
 
@@ -97,33 +115,10 @@ function generateInstructions() {
     return instructions;
 }
 
-function spawnItem(type) {
-    let ix, iy, ok=false;
-    let safeLoop = 0;
-    while(!ok && safeLoop < 100) {
-        safeLoop++;
-        ix = rand(50, canvas.width-50); iy = rand(50, canvas.height-50);
-        
-        // 检查是否在墙里
-        if(checkWall(ix, iy)) continue;
-        
-        // 检查是否与instructions重叠（保持60像素距离）
-        let overlapsInst = false;
-        for (const inst of state.entities.instructions) {
-            if (dist(ix, iy, inst.x, inst.y) < 60) {
-                overlapsInst = true;
-                break;
-            }
-        }
-        
-        if (!overlapsInst) ok = true;
-    }
-    if(ok) {
-        state.entities.items.push({
-            type: type, x: ix, y: iy, r: 10, visibleTimer: 0 // 默认不可见
-        });
-    }
-}
+// 物品生成函数已移至 item.js
+// spawnItem(type, x, y)
+// spawnCoreAtEnemy(enemy, coreType)
+// spawnCoreAtPosition(x, y, coreType)
 
 function init() {
     // 初始化玩家位置
@@ -135,8 +130,12 @@ function init() {
     state.p.struggleProgress = 0;
     state.p.chargeStartTime = 0;
     state.p.shouldShowAimLine = false;
+    state.p.overload = 0;
+    state.p.isGrabbingEnemy = null;
+    state.p.aimLineHit = null;
     
     state.entities.walls = [];
+    state.entities.radiations = [];
     state.entities.items = [];
     state.entities.instructions = [];
     
@@ -226,9 +225,6 @@ function init() {
     // 初始化相机位置为玩家位置
     state.camera.x = state.p.x;
     state.camera.y = state.p.y;
-    
-    updateUI();
-    requestAnimationFrame(loop);
 }
 
 // 更新相机位置（跟随玩家）
@@ -257,30 +253,6 @@ function updateItemsVisibility() {
             i.visibleTimer = 10; // 只要在视野里，就保持可见
         }
     });
-}
-
-// 检查拾取物
-function checkPickups() {
-    let hasPickupTarget = false;
-    state.entities.items.forEach(i => {
-        if(i.visibleTimer > 0 && dist(i.x, i.y, state.p.x, state.p.y) < 40) {
-            hasPickupTarget = true;
-        }
-    });
-    return hasPickupTarget;
-}
-
-// 更新交互提示
-function updateInteractionHints(hasPickupTarget) {
-    if(hasPickupTarget) {
-        // 显示 pickup hint 在玩家位置
-        const screenPos = worldToScreen(state.p.x, state.p.y - 40);
-        pickupHint.style.display = 'block';
-        pickupHint.style.left = screenPos.x + 'px';
-        pickupHint.style.top = screenPos.y + 'px';
-    } else {
-        pickupHint.style.display = 'none';
-    }
 }
 
 // 更新粒子和回声
@@ -318,13 +290,19 @@ function update() {
     // 第二遍：清理标记为删除的波纹
     state.entities.waves = state.entities.waves.filter(w => !w._toRemove);
     
-    // 更新敌人和检查交互
+    // 更新敌人和物品UI
     updateEnemies();
-    const hasPickupTarget = checkPickups();
-    updateInteractionHints(hasPickupTarget);
+    updateItemsUI();
     
     updateParticlesAndEchoes();
-    updateUI();
+    
+    // 更新消息计时器
+    if (state.messageTimer > 0) {
+        state.messageTimer--;
+        if (state.messageTimer <= 0) {
+            state.currentMessage = '';
+        }
+    }
 }
 
 // --- 输入处理 ---
@@ -355,20 +333,170 @@ function initInputHandlers() {
     };
 
     window.onwheel = e => {
-        const d = Math.sign(e.deltaY) * -5;
+        // shift键精调（±1Hz），否则粗调（±5Hz）
+        const step = e.shiftKey ? 1 : 5;
+        const d = Math.sign(e.deltaY) * -step;
         state.freq = clamp(state.freq+d, CFG.freqMin, CFG.freqMax);
-        updateUI();
     };
 }
 
-function loop() { 
-    update(); 
-    draw(); 
-    requestAnimationFrame(loop); 
+// ========================================
+// 新架构集成 (Phase 1)
+// ========================================
+
+// 主循环 - 现在由场景管理器驱动
+let lastTime = Date.now();
+let deltaTime = 0;
+
+function mainLoop() {
+    // 计算deltaTime
+    const now = Date.now();
+    deltaTime = (now - lastTime) / 1000; // 转换为秒
+    lastTime = now;
+    
+    // 更新系统
+    if (sceneManager) {
+        sceneManager.update(deltaTime);
+    }
+    
+    if (crtDisplay) {
+        crtDisplay.update(deltaTime);
+    }
+    
+    if (uiManager) {
+        uiManager.update(deltaTime);
+    }
+    
+    // 渲染
+    if (crtDisplay && sceneManager) {
+        crtDisplay.render(() => {
+            sceneManager.render(ctx, canvas);
+        });
+    }
+    
+    requestAnimationFrame(mainLoop);
 }
 
-// 启动游戏
-initGlobals();
-initInputHandlers();
-init();
+// 机器人游戏更新和渲染(由RobotScene调用)
+function updateAndDrawRobot() { 
+    update(); 
+    draw(); 
+}
+
+// ========================================
+// 启动应用程序
+// ========================================
+
+function startApplication() {
+    console.log('=== Resonance Stealth Terminal ===');
+    console.log('Initializing systems...');
+    
+    // 1. 初始化全局变量
+    initGlobals();
+    
+    // 2. 初始化新系统
+    const sm = initSceneManager();
+    const crt = initCRTDisplay(canvas, ctx);
+    const im = initInputManager();
+    const um = initUIManager();
+    
+    console.log('All systems initialized');
+    
+    // 3. 设置输入路由
+    setupInputRouting();
+    
+    // 4. 初始化游戏数据(但不启动游戏循环)
+    // 游戏会在切换到ROBOT场景时初始化
+    
+    // 5. 启动主循环
+    lastTime = Date.now();
+    mainLoop();
+    
+    console.log('Application started');
+    console.log('Current scene:', sceneManager.getCurrentScene());
+}
+
+// 设置输入路由 - 将输入管理器连接到场景管理器
+function setupInputRouting() {
+    // 全局输入处理(所有场景)
+    inputManager.on('onKeyDown', null, (event) => {
+        const currentScene = sceneManager.getScene(sceneManager.getCurrentScene());
+        if (currentScene && currentScene.handleInput) {
+            currentScene.handleInput(event.originalEvent);
+        }
+    });
+    
+    inputManager.on('onKeyUp', null, (event) => {
+        // 处理keyup事件
+    });
+    
+    inputManager.on('onMouseMove', null, (event) => {
+        // 更新鼠标状态(用于现有游戏)
+        const rect = canvas.getBoundingClientRect();
+        const canvasX = event.x - rect.left;
+        const canvasY = event.y - rect.top;
+        const worldPos = screenToWorld(canvasX, canvasY);
+        state.mouse.x = worldPos.x;
+        state.mouse.y = worldPos.y;
+    });
+    
+    inputManager.on('onWheel', null, (event) => {
+        // 在ROBOT场景中调整频率
+        if (sceneManager.getCurrentScene() === SCENES.ROBOT) {
+            // shift键精调（±1Hz），否则粗调（±5Hz）
+            const step = event.shiftKey ? 1 : 5;
+            const d = Math.sign(event.delta) * -step;
+            state.freq = clamp(state.freq + d, CFG.freqMin, CFG.freqMax);
+        }
+    });
+    
+    // 设置初始输入上下文（BOOT场景使用CRT_CONTROL上下文）
+    inputManager.setContext(INPUT_CONTEXTS.CRT_CONTROL);
+}
+
+// 修改RobotScene以正确初始化游戏
+if (typeof RobotScene !== 'undefined') {
+    const originalEnter = RobotScene.prototype.enter;
+    RobotScene.prototype.enter = function(data) {
+        originalEnter.call(this, data);
+        
+        // 初始化游戏(如果还没初始化)
+        if (!state.entities.walls.length) {
+            initInputHandlers(); // 保留现有输入处理
+            init();
+        }
+        
+        // 设置输入上下文
+        inputManager.setContext(INPUT_CONTEXTS.ROBOT);
+        
+        // 显示游戏UI
+        document.getElementById('world-ui-container').style.display = 'block';
+        
+        // 初始化并显示背包UI
+        if (typeof createInventoryUI === 'function') {
+            createInventoryUI();
+            showInventoryUI();
+        }
+    };
+    
+    const originalExit = RobotScene.prototype.exit;
+    RobotScene.prototype.exit = function() {
+        originalExit.call(this);
+        
+        // 隐藏游戏UI
+        document.getElementById('world-ui-container').style.display = 'none';
+        
+        // 隐藏背包UI
+        if (typeof hideInventoryUI === 'function') {
+            hideInventoryUI();
+        }
+    };
+}
+
+// 等待DOM加载完成后启动
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startApplication);
+} else {
+    startApplication();
+}
 

@@ -297,6 +297,22 @@ function handleWaveBounce(w, wall, energyOnBounce, waveIndex) {
 function handleWavePenetration(w, wall, waveIndex) {
     const penetrationLoss = 0.3; // 穿透损失30%能量
     
+    // 记录墙壁吸收的能量（用于raycast分析显示）
+    if (w.source === 'player') {
+        // 初始化墙壁对象的absorbedEnergy（如果不存在）
+        if (!wall.absorbedEnergy) wall.absorbedEnergy = 0;
+        
+        const existingEcho = state.entities.wallEchoes.find(we => we.wall === wall);
+        if (!existingEcho) {
+            state.entities.wallEchoes.push({
+                wall: wall,
+                life: 1.0,
+                energy: 0,
+                absorbedEnergy: wall.absorbedEnergy  // 从墙壁对象读取
+            });
+        }
+    }
+    
     // 计算被阻挡的角度范围（穿透的部分）
     const blockedRanges = getWaveBlockedAngles(w, wall);
     
@@ -340,6 +356,22 @@ function handleWavePenetration(w, wall, waveIndex) {
                 let normalizedAngle = newAngle;
                 while (normalizedAngle < 0) normalizedAngle += Math.PI * 2;
                 while (normalizedAngle >= Math.PI * 2) normalizedAngle -= Math.PI * 2;
+                
+                // 计算穿透损失的能量
+                const lostEnergy = w.baseEnergy * penetrationLoss * (penetratedSpread / w.spread);
+                
+                // 记录墙壁吸收的能量（持久化存储在墙壁对象上）
+                if (w.source === 'player') {
+                    // 直接存储在墙壁对象上，确保数据不会因为wallEcho被移除而丢失
+                    if (!wall.absorbedEnergy) wall.absorbedEnergy = 0;
+                    wall.absorbedEnergy += lostEnergy;
+                    
+                    // 同时更新wallEcho（如果存在）
+                    const existingEcho = state.entities.wallEchoes.find(we => we.wall === wall);
+                    if (existingEcho) {
+                        existingEcho.absorbedEnergy = wall.absorbedEnergy;
+                    }
+                }
                 
                 newWaves.push({
                     x: w.x, y: w.y, r: w.r, maxR: w.maxR,
@@ -522,6 +554,27 @@ function handleWaveEnemyPenetration(w, enemy, waveIndex) {
                 let normalizedAngle = newAngle;
                 while (normalizedAngle < 0) normalizedAngle += Math.PI * 2;
                 while (normalizedAngle >= Math.PI * 2) normalizedAngle -= Math.PI * 2;
+                
+                // 计算穿透损失的能量
+                const lostEnergy = w.baseEnergy * penetrationLoss * (penetratedSpread / w.spread);
+                // 生物吸收的能量
+                const absorbedEnergy = lostEnergy * CFG.waveAbsorbRatio;
+                
+                // 恢复敌人能量
+                const oldEn = enemy.en;
+                enemy.en = Math.min(CFG.enemyMaxEnergy, enemy.en + absorbedEnergy);
+                
+                // 如果敌人处于休眠状态且能量恢复，唤醒敌人
+                if (enemy.state === 'dormant' && oldEn <= 0 && enemy.en > 0) {
+                    enemy.state = 'patrol';
+                    logMsg("TARGET AWAKENED");
+                }
+                
+                // 检测吸收能量是否达到察觉阈值
+                if (absorbedEnergy >= CFG.energyAbsorbDetectionThreshold && w.source === 'player') {
+                    onEnemySensesPlayer(enemy, w.x, w.y);
+                    logMsg("ENEMY DETECTED WAVE ABSORPTION");
+                }
                 
                 newWaves.push({
                     x: w.x, y: w.y, r: w.r, maxR: w.maxR,
@@ -706,6 +759,14 @@ function handleWavePlayerPenetration(w, waveIndex) {
                 while (normalizedAngle < 0) normalizedAngle += Math.PI * 2;
                 while (normalizedAngle >= Math.PI * 2) normalizedAngle -= Math.PI * 2;
                 
+                // 计算穿透损失的能量
+                const lostEnergy = w.baseEnergy * penetrationLoss * (penetratedSpread / w.spread);
+                // 生物吸收的能量
+                const absorbedEnergy = lostEnergy * CFG.waveAbsorbRatio;
+                
+                // 恢复玩家能量
+                state.p.en = Math.min(CFG.maxEnergy, state.p.en + absorbedEnergy);
+                
                 newWaves.push({
                     x: w.x, y: w.y, r: w.r, maxR: w.maxR,
                     angle: normalizedAngle,
@@ -797,6 +858,37 @@ function handleWavePlayerInteraction(w, oldR, waveIndex) {
         const coveredArcLength = Math.min(playerDiameter, maxArcLength);
         const totalEnergyOnPlayer = w.energyPerPoint * coveredArcLength;
         
+        // 根据波能量动态计算玩家过载值增长
+        // 计算基础能量阈值（与敌人相同）
+        const minCircumference = CFG.initialRadius * CFG.minSpread;
+        const minEnergyPerPoint = CFG.baseWaveEnergy / minCircumference;
+        const playerDiam = CFG.playerRadius * 2;
+        const standardCoveredArcLength = CFG.initialRadius * Math.min(playerDiam / CFG.initialRadius, CFG.minSpread);
+        const minTotalEnergy = minEnergyPerPoint * standardCoveredArcLength;
+        
+        // 玩家过载值增长（与敌人使用相同的公式）
+        const energyRatio = totalEnergyOnPlayer / minTotalEnergy;
+        const dampedRatio = Math.sqrt(Math.max(0, energyRatio));
+        
+        let overloadGain = 0;
+        if (isPerfectResonance) {
+            overloadGain = CFG.maxOverload * dampedRatio;
+        } else {
+            overloadGain = (CFG.maxOverload / 3) * dampedRatio;
+        }
+        
+        // 计算实际增加的过载值（限制不超过最大值）
+        const oldOverload = state.p.overload;
+        state.p.overload = Math.min(CFG.maxOverload, state.p.overload + overloadGain);
+        const actualGain = state.p.overload - oldOverload;
+        
+        // 设置玩家硬直时间
+        if (actualGain > 0) {
+            if (!state.p.overloadedStunTimer) state.p.overloadedStunTimer = 0;
+            const stunDuration = actualGain * CFG.overloadStunMultiplier;
+            state.p.overloadedStunTimer = Math.max(state.p.overloadedStunTimer, stunDuration);
+        }
+        
         let energyCost = CFG.forcedWaveCost;
         
         // 消耗能量（能量不足时归零）
@@ -819,8 +911,10 @@ function handleWavePlayerInteraction(w, oldR, waveIndex) {
         // 玩家被迫发出自发波（与敌人受迫共振对称）
         emitWave(state.p.x, state.p.y, 0, Math.PI * 2, state.freq, 'player');
         state.p.resonanceCD = CFG.resonanceCD;
-        updateUI();
     }
+    
+    // 玩家过载条自然衰减
+    state.p.overload = Math.max(0, state.p.overload - CFG.overloadDecayRate);
     
     // 波形反馈：根据"硬度"决定反弹或穿透的几何行为
     if (willBounce) {
@@ -906,19 +1000,14 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                 // 玩家波纹才显示信息
                 if (w.source === 'player') {
                     if (willBounce) {
-                        // 反弹：根据能量显示清晰轮廓或分析UI
+                        // 反弹：根据能量显示清晰轮廓（不再显示分析UI）
                         if (showAnalyzeUI) {
-                            // 高能量：显示分析UI
+                            // 高能量：显示清晰轮廓
                             state.entities.echoes.push({
-                                x: enemy.x, y: enemy.y, r: enemy.r, 
-                                type: 'analyze',
-                                life: isLongDuration ? 5.0 : 2.0,
-                                enemyId: enemy.id,
-                                isResonance: isNormalResonance,
-                                isPerfect: isPerfectResonance
+                                x: enemy.x, y: enemy.y, r: enemy.r,
+                                type: 'enemy_bounce',
+                                life: isClearOutline ? 1.0 : 0.5
                             });
-                            enemy.lastPingTime = Date.now();
-                            enemy.pingType = 'analyze';
                         } else {
                             // 中低能量：显示清晰轮廓
                             state.entities.echoes.push({
@@ -928,24 +1017,19 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                             });
                         }
                     } else {
-                        // 穿透：显示模糊轮廓（短暂）
+                        // 穿透：显示模糊轮廓（不再显示分析UI）
                         if (showAnalyzeUI) {
-                            // 高能量穿透（低频聚焦）：短暂分析UI
+                            // 高能量穿透：模糊轮廓
                             state.entities.echoes.push({
-                                x: enemy.x, y: enemy.y, r: enemy.r, 
-                                type: 'analyze',
-                                life: isLongDuration ? 2.0 : 1.0,
-                                enemyId: enemy.id,
-                                isResonance: isNormalResonance,
-                                isPerfect: isPerfectResonance
+                                x: enemy.x, y: enemy.y, r: enemy.r,
+                                type: 'enemy_blur',
+                                life: 0.3
                             });
-                            enemy.lastPingTime = Date.now();
-                            enemy.pingType = 'analyze';
                         } else {
                             // 低能量穿透：模糊轮廓
                             state.entities.echoes.push({
                                 x: enemy.x, y: enemy.y, r: enemy.r,
-                                type: 'enemy_blur',  // 新类型：模糊轮廓
+                                type: 'enemy_blur',
                                 life: 0.3
                             });
                         }
@@ -963,8 +1047,37 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                     const minTotalEnergy = minEnergyPerPoint * standardCoveredArcLength;
                     const overloadThreshold = minTotalEnergy * 0.1;
                     
+                    // 重新设计的过载值增长系统
+                    // 使用平方根衰减避免高能量密度导致过载暴增
+                    // 目标：完美共振+最小spread = 100（一次满），普通共振 = 30-40（需2-3次）
+                    
+                    const energyRatio = totalEnergy / minTotalEnergy;
+                    const dampedRatio = Math.sqrt(Math.max(0, energyRatio)); // 平方根衰减
+                    
+                    let overloadGain = 0;
+                    if (isPerfectResonance) {
+                        // 完美共振：能量比1.0时达到100（一次满）
+                        // 能量比0.25时达到50（两次满）
+                        overloadGain = CFG.maxOverload * dampedRatio;
+                    } else {
+                        // 普通共振：最高约33（需要3次），能量低时更少
+                        overloadGain = (CFG.maxOverload / 3) * dampedRatio;
+                    }
+                    
+                    // 计算实际增加的过载值（限制不超过最大值）
+                    const oldOverload = enemy.overload;
+                    enemy.overload = Math.min(CFG.maxOverload, enemy.overload + overloadGain);
+                    const actualGain = enemy.overload - oldOverload;
+                    
+                    // 设置硬直时间：过载增长越多，硬直越久（给玩家准备时间）
+                    // actualGain * 2 帧 = 约 0.03-2秒 的硬直
+                    if (actualGain > 0) {
+                        if (!enemy.overloadedStunTimer) enemy.overloadedStunTimer = 0;
+                        const stunDuration = actualGain * CFG.overloadStunMultiplier;
+                        enemy.overloadedStunTimer = Math.max(enemy.overloadedStunTimer, stunDuration);
+                    }
+                    
                     // 层次1：视觉反馈（总是显示，让玩家知道发生了共振）
-                    // 如果冷却中且能量不足，只显示视觉反馈，不执行任何效果
                     state.entities.echoes.push({
                         x: enemy.x, y: enemy.y, r: enemy.r,
                         type: 'enemy_resonance',
@@ -972,13 +1085,22 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                         isPerfect: isPerfectResonance
                     });
                     
-                    // 层次2：高能量效果（忽略冷却，允许立即进入stun）
-                    if (totalEnergy >= overloadThreshold) {
-                        // 进入stun状态，不发出受迫共振波，不设置冷却
-                        enemy.state = 'stunned';
-                        enemy.isPerfectStun = isPerfectResonance;
-                        enemy.timer = isPerfectResonance ? CFG.stunTime : CFG.stunTime / 2; // 完美共振10秒，普通共振5秒
-                        enemy.canBeDetonated = true; // 标记可处决
+                    // 层次2：过载检查（先检查是否过载满，满了则进入stunned）
+                    // 必须在发波前检查，避免 stunned 状态下还发波
+                    if (enemy.overload >= CFG.maxOverload) {
+                        if (enemy.isDormant) {
+                            // 休眠敌人过载后仍保持休眠，但可以被处决
+                            enemy.state = 'stunned';
+                            enemy.canBeDetonated = true;
+                            enemy.isPerfectStun = false; // 休眠敌人不会有完美共振
+                            enemy.timer = CFG.stunTime;
+                        } else {
+                            // 正常敌人的过载逻辑
+                            enemy.state = 'stunned';
+                            enemy.isPerfectStun = isPerfectResonance;
+                            enemy.timer = isPerfectResonance ? CFG.stunTime : CFG.stunTime / 2;
+                            enemy.canBeDetonated = true;
+                        }
                         
                         // 日志消息
                         if (isPerfectResonance) {
@@ -987,15 +1109,29 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                             logMsg("TARGET STUNNED");
                         }
                     }
-                    // 层次3：低能量效果（检查冷却，防止频繁发波）
-                    else if (enemy.resonanceCD <= 0) {
-                        // 能量不足，只进行普通的受迫发波，设置冷却
-                        emitWave(enemy.x, enemy.y, 0, Math.PI*2, enemy.freq, 'enemy', enemy.id);
-                        enemy.resonanceCD = CFG.resonanceCD;
+                    
+                    // 层次3：受迫共振波（铺板现象，只要共振就发波）
+                    // 条件：冷却完毕、有足够能量、不在stunned/detonating状态
+                    // 注意：硬直期间也可以发波（物理现象，与敌人行动能力无关）
+                    if (enemy.resonanceCD <= 0 && 
+                        enemy.state !== 'stunned' && 
+                        enemy.state !== 'detonating') {
                         
-                        // 敌人会警觉并追踪波纹来源位置
-                        if (enemy.state === 'idle' || enemy.state === 'alert' || enemy.state === 'patrol' || enemy.state === 'searching') {
-                            onEnemySensesPlayer(enemy, w.x, w.y);
+                        // 计算能量消耗
+                        const freqNorm = (enemy.freq - CFG.freqMin) / (CFG.freqMax - CFG.freqMin);
+                        const focusNorm = 1; // 敌人发波为全向
+                        const rawCost = 5 * freqNorm + 5 * focusNorm;
+                        const energyCost = clamp(Math.round(rawCost), 0, 10);
+                        
+                        if (enemy.en >= energyCost) {
+                            enemy.en = Math.max(0, enemy.en - energyCost);
+                            emitWave(enemy.x, enemy.y, 0, Math.PI*2, enemy.freq, 'enemy', enemy.id);
+                            enemy.resonanceCD = CFG.resonanceCD;
+                            
+                            // 敌人会警觉并追踪波纹来源位置（硬直状态下不会移动，但仍会记录玩家位置）
+                            if (enemy.state === 'idle' || enemy.state === 'alert' || enemy.state === 'patrol' || enemy.state === 'searching') {
+                                onEnemySensesPlayer(enemy, w.x, w.y);
+                            }
                         }
                     }
                 }
@@ -1125,9 +1261,27 @@ function updateWave(w, i) {
     w.energyPerPoint = w.baseEnergy / (circumference > 0.01 ? circumference : 0.01);
     
     // 检查是否超出范围或能量耗尽
-    if(w.r > w.maxR || w.energyPerPoint <= 0) {
+    if(w.r > w.maxR || w.energyPerPoint <= 0 || w.energyPerPoint < CFG.minEnergyPerPoint) {
         w._toRemove = true;
         return;
+    }
+    
+    // 感知范围内波能量检测：对每个生物波，检查是否在敌人的感知范围内
+    if (w.source === 'player' || w.source === 'enemy') {
+        for (let enemy of state.entities.enemies) {
+            if (enemy.state === 'stunned' || enemy.state === 'dormant' || enemy.state === 'detonating') {
+                continue;
+            }
+            
+            const d = dist(enemy.x, enemy.y, w.x, w.y);
+            // 检查波是否在敌人的感知范围内
+            if (d <= enemy.detectionRadius) {
+                // 检查波是否扫过敌人（使用oldR和w.r判断扩散环是否扫过）
+                if (d >= oldR && d <= w.r) {
+                    checkEnergyDetection({ type: 'wave', x: w.x, y: w.y, energyPerPoint: w.energyPerPoint }, enemy);
+                }
+            }
+        }
     }
     
     // 先检测与敌人的碰撞（分割波纹）

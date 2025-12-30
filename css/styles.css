@@ -10,7 +10,8 @@ canvas { display: block; }
 /* UI 层 */
 #ui-layer {
     position: absolute; top: 20px; left: 20px;
-    color: #33ccff; pointer-events: none; z-index: 10;
+    color: #33ccff; pointer-events: none; z-index: 20;
+    display: none; /* 默认隐藏，在ROBOT场景中显示 */
 }
 .hud-row {
     margin-bottom: 8px; font-size: 16px;
@@ -61,11 +62,36 @@ canvas { display: block; }
     transform: translate(-50%, -150%);
     z-index: 101;
     pointer-events: none;
+    transition: opacity 0.2s ease-in-out;
 }
+
 /* 处决特定样式 */
-.execute-hint { color: #ff0000; border-color: #ff0000; text-shadow: 0 0 5px #ff0000; }
-/* 拾取特定样式 */
-#pickup-hint { color: #00ff00; border-color: #00ff00; text-shadow: 0 0 5px #00ff00; }
+.execute-hint { 
+    color: #ff0000; 
+    border-color: #ff0000; 
+    text-shadow: 0 0 5px #ff0000; 
+}
+
+/* 物品提示样式 (动态颜色由JS设置) */
+.item-hint {
+    font-size: 12px;
+    padding: 3px 8px;
+    white-space: nowrap;
+}
+
+/* 挣扎提示样式 */
+.struggle-hint {
+    color: #ffaa00;
+    border-color: #ffaa00;
+    text-shadow: 0 0 5px #ffaa00;
+}
+
+/* 抓取提示样式 */
+.grab-hint {
+    color: #00ffff;
+    border-color: #00ffff;
+    text-shadow: 0 0 5px #00ffff;
+}
 
 /* 边缘红光效果 能量低或被grab时显示，也用于闪烁效果 */
 #edge-glow {

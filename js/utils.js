@@ -78,35 +78,10 @@ function spawnParticles(x,y,c,n) {
     for(let i=0;i<n;i++) state.entities.particles.push({x:x,y:y,vx:(Math.random()-0.5)*5,vy:(Math.random()-0.5)*5,life:1,c:c,s:Math.random()*3});
 }
 
-// UI 辅助
-function logMsg(t) { document.getElementById('msg-log').innerText=t; }
-
-function updateUI() {
-    // 能量显示（作为生命值和弹药）
-    const mainEn = Math.floor(state.p.en);
-    const energyPercent = state.p.en / CFG.maxEnergy;
-    document.getElementById('energy-val').innerText = `${mainEn}/${CFG.maxEnergy}`;
-    document.getElementById('energy-row').style.color = energyPercent < 0.3 ? 'red' : '#33ccff';
-    
-    // 备用能量显示
-    const reserveEn = Math.floor(state.p.reserveEn || 0);
-    document.getElementById('reserve-val').innerText = reserveEn;
-    
-    // 频率显示
-    document.getElementById('freq-box').innerText = Math.floor(state.freq) + " Hz";
-    
-    // 更新边缘红光显示（能量低于30%或被grab时显示）
-    // 只有在没有闪烁时才更新持续显示
-    if (edgeGlow && !edgeGlowFlashTimer) {
-        const shouldShowEdgeGlow = energyPercent < 0.3 || state.p.isGrabbed;
-        if (shouldShowEdgeGlow) {
-            // 确保是红色
-            edgeGlow.style.boxShadow = 'inset 0 0 20px 8px rgba(255, 0, 0, 0.8)';
-            edgeGlow.style.opacity = '1';
-        } else {
-            edgeGlow.style.opacity = '0';
-        }
-    }
+// UI 辅助 - 显示消息
+function logMsg(t) { 
+    state.currentMessage = t;
+    state.messageTimer = 180; // 显示3秒（60fps）
 }
 
 // edge-glow 闪烁效果
@@ -138,8 +113,6 @@ function flashEdgeGlow(color, duration) {
     edgeGlowFlashTimer = setTimeout(() => {
         edgeGlow.style.opacity = '0';
         edgeGlowFlashTimer = null;
-        // 恢复红色（如果能量低或被grab）
-        updateUI();
     }, duration);
 }
 

@@ -2,32 +2,66 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>Resonance: Stealth</title>
+    <title>Resonance: Stealth Terminal</title>
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/crt.css">
+    <link rel="stylesheet" href="css/radio.css">
 </head>
 <body>
 
-<div id="edge-glow"></div>
-
-<div id="ui-layer">
-    <div class="hud-row" id="energy-row">ENERGY: <span id="energy-val">100/100</span></div>
-    <div class="hud-row" id="reserve-row">RESERVE: <span id="reserve-val">0</span></div>
-    <div class="hud-row">TUNER: <span id="freq-box">150 Hz</span></div>
-    <div class="hud-row" id="msg-log" style="color:#ffaa00; height:20px; font-size:14px;">System Online.</div>
+<!-- CRT显示器容器 -->
+<div id="crt-container">
+    <div id="crt-screen">
+        <!-- 游戏画布 -->
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- CRT效果层 -->
+        <div class="crt-glare"></div>
+        <div class="crt-phosphor"></div>
+    </div>
+    
+    <!-- 电源指示灯 -->
+    <div class="power-indicator off"></div>
 </div>
 
+<!-- 边缘发光效果 -->
+<div id="edge-glow"></div>
+
+<!-- 游戏UI层已整合到Canvas渲染中 -->
+
+<!-- 世界UI容器 -->
 <div id="world-ui-container"></div>
-<!-- Interaction Hints -->
-<div id="pickup-hint" class="interact-hint">[E] PICKUP</div>
 
-<canvas id="gameCanvas"></canvas>
+<!-- 背包UI（右侧列表） -->
+<div id="inventory-container" style="display: none;"></div>
 
+<!-- 加载脚本 -->
+<!-- 核心配置 -->
 <script src="js/config.js"></script>
+
+<!-- 工具函数 -->
 <script src="js/utils.js"></script>
+
+<!-- 系统模块 -->
+<script src="js/systems/sceneManager.js"></script>
+<script src="js/systems/crtDisplay.js"></script>
+<script src="js/systems/inputManager.js"></script>
+<script src="js/systems/radioSystem.js"></script>
+<script src="js/systems/inventory.js"></script>
+<script src="js/ui/uiManager.js"></script>
+<script src="js/ui/radioUI.js"></script>
+<script src="js/ui/inventoryUI.js"></script>
+
+<!-- 实体模块 -->
 <script src="js/entities/wave.js"></script>
 <script src="js/entities/player.js"></script>
 <script src="js/entities/enemy.js"></script>
+<script src="js/entities/item.js"></script>
+
+<!-- 渲染系统 -->
 <script src="js/systems/render.js"></script>
+
+<!-- 游戏主逻辑(最后加载) -->
 <script src="js/systems/game.js"></script>
 </body>
 </html>
