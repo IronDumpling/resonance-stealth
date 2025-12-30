@@ -112,17 +112,26 @@ class RadioDisplayUI {
         const inputContainer = document.getElementById('decode-input');
         if (!inputContainer) return;
         
+        this.decodedHistory = []; // 存储已解码的信息
+        
         const inputHTML = `
             <label for="morse-decode-field">DECODE MESSAGE:</label>
-            <input type="text" id="morse-decode-field" placeholder="Enter decoded text..." maxlength="50">
+            <div class="decode-input-row">
+                <input type="text" id="morse-decode-field" placeholder="Enter decoded text..." maxlength="50">
+                <button id="decode-submit-btn" class="decode-submit-btn">SUBMIT</button>
+            </div>
             <div id="decode-feedback" class="decode-feedback"></div>
-            <div id="received-morse" class="received-morse">Waiting for signal...</div>
+            <div id="decoded-history" class="decoded-history">
+                <div class="history-label">DECODED MESSAGES:</div>
+                <div id="history-list" class="history-list"></div>
+            </div>
         `;
         
         inputContainer.innerHTML = inputHTML;
         
         // Get input element
         this.decodeInput = document.getElementById('morse-decode-field');
+        const submitBtn = document.getElementById('decode-submit-btn');
         
         // Bind input event
         if (this.decodeInput) {
@@ -133,6 +142,74 @@ class RadioDisplayUI {
                 }
             });
         }
+        
+        if (submitBtn) {
+            submitBtn.addEventListener('click', () => {
+                this.submitDecode();
+            });
+        }
+    }
+    
+    /**
+     * Submit decoded message
+     */
+    submitDecode() {
+        if (!this.decodeInput) {
+            console.error('Decode input not found');
+            return;
+        }
+        
+        const text = this.decodeInput.value.trim().toUpperCase();
+        if (!text) {
+            console.log('Empty input, not submitting');
+            return;
+        }
+        
+        // 添加到历史记录
+        const timestamp = new Date().toLocaleTimeString();
+        this.decodedHistory.push({
+            text: text,
+            time: timestamp
+        });
+        
+        console.log('Message added to history:', text);
+        
+        // 更新历史显示
+        this.updateDecodedHistory();
+        
+        // 清空输入框
+        this.decodeInput.value = '';
+        
+        // 清空反馈
+        const feedback = document.getElementById('decode-feedback');
+        if (feedback) {
+            feedback.textContent = 'Message submitted!';
+            feedback.className = 'decode-feedback success';
+            setTimeout(() => {
+                feedback.textContent = '';
+                feedback.className = 'decode-feedback';
+            }, 2000);
+        }
+        
+        logMsg(`DECODED: ${text}`);
+    }
+    
+    /**
+     * Update decoded history display
+     */
+    updateDecodedHistory() {
+        const historyList = document.getElementById('history-list');
+        if (!historyList) return;
+        
+        // 显示最近的5条记录
+        const recentHistory = this.decodedHistory.slice(-5).reverse();
+        
+        historyList.innerHTML = recentHistory.map(entry => `
+            <div class="history-entry">
+                <span class="history-time">[${entry.time}]</span>
+                <span class="history-text">${entry.text}</span>
+            </div>
+        `).join('');
     }
     
     /**
@@ -147,14 +224,19 @@ class RadioDisplayUI {
             return;
         }
         
-        // Set canvas size
+        // Set canvas size - 减去header高度
+        const headerHeight = 30; // radar-header的高度
         radarCanvas.width = radarContainer.clientWidth;
-        radarCanvas.height = radarContainer.clientHeight;
+        radarCanvas.height = radarContainer.clientHeight - headerHeight;
         
         // Create radar map instance
         this.radarMap = new RadarMap(radarCanvas, this.radio);
         
-        console.log('Radar map initialized');
+        // 确保radar map的中心点正确设置
+        this.radarMap.centerX = radarCanvas.width / 2;
+        this.radarMap.centerY = radarCanvas.height / 2;
+        
+        console.log('Radar map initialized:', radarCanvas.width, 'x', radarCanvas.height);
     }
     
     /**
@@ -229,23 +311,6 @@ class RadioDisplayUI {
         }
     }
     
-    /**
-     * Submit decode
-     */
-    submitDecode() {
-        if (!this.decodeInput) return;
-        
-        const input = this.decodeInput.value.toUpperCase().trim();
-        
-        if (input === this.currentMessage) {
-            logMsg(`DECODE SUCCESS: ${this.currentMessage}`);
-            // TODO: Award points or unlock content
-            this.decodeInput.value = '';
-            this.checkDecode();
-        } else {
-            logMsg('DECODE FAILED');
-        }
-    }
     
     /**
      * Show the display

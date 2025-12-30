@@ -369,11 +369,15 @@
     background: #f5f5dc;
     border: 2px solid #8b7355;
     border-radius: 2px;
-    height: 80px;
+    min-height: 0;
+    max-height: 300px;
     overflow-y: auto;
     padding: 5px;
     cursor: pointer;
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: min-height 0.5s ease-out;
+    display: flex;
+    flex-direction: column;
 }
 
 .paper-tape:hover {
@@ -384,25 +388,46 @@
     font-family: 'Courier New', monospace;
     font-size: 11px;
     color: #000;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 
 .tape-message {
-    margin-bottom: 8px;
-    padding: 4px;
+    margin-bottom: 10px;
+    padding: 6px;
     background: rgba(255, 255, 255, 0.3);
     border-left: 3px solid #8b7355;
-    transition: opacity 0.3s;
+    transition: all 0.5s ease-out;
+    animation: tapeGrow 0.5s ease-out;
+}
+
+@keyframes tapeGrow {
+    from {
+        max-height: 0;
+        opacity: 0;
+        transform: scaleY(0);
+        transform-origin: top;
+    }
+    to {
+        max-height: 200px;
+        opacity: 1;
+        transform: scaleY(1);
+    }
 }
 
 .tape-morse {
     font-weight: bold;
-    letter-spacing: 2px;
+    letter-spacing: 3px;
     color: #8b4513;
+    font-size: 16px;
+    line-height: 1.4;
 }
 
 .tape-text {
-    margin-top: 2px;
+    margin-top: 4px;
     color: #000;
+    font-size: 13px;
 }
 
 .tape-hint {

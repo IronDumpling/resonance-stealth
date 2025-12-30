@@ -297,8 +297,8 @@ class RadioUI {
             this.knobRotations.fine += dir * 15;
             this.updateKnobRotation('knob-fine', this.knobRotations.fine);
         } else if (knob === 'antenna') {
-            this.radio.rotateAntenna(dir * 5);
-            this.knobRotations.antenna += dir * 10;
+            this.radio.rotateAntenna(dir * 1); // 从5度改为1度，更精细调节
+            this.knobRotations.antenna += dir * 2; // 旋钮视觉旋转也相应减少
             this.updateKnobRotation('knob-ant', this.knobRotations.antenna);
         }
     }
@@ -386,27 +386,30 @@ class RadioUI {
      */
     addTapeMessage(message, morseCode) {
         const tapeContent = document.getElementById('tape-content');
-        if (!tapeContent) return;
+        const paperTape = document.getElementById('paper-tape');
+        if (!tapeContent || !paperTape) return;
         
         const messageDiv = document.createElement('div');
         messageDiv.className = 'tape-message';
+        // 只显示摩斯码，不显示解码后的文本，让玩家自己通过对照表解码
         messageDiv.innerHTML = `
             <div class="tape-morse">${morseCode}</div>
-            <div class="tape-text">${message}</div>
         `;
         
-        // 打印动画
-        messageDiv.style.opacity = '0';
+        // 添加新消息
         tapeContent.appendChild(messageDiv);
         
-        setTimeout(() => {
-            messageDiv.style.opacity = '1';
-        }, 50);
+        // 计算新的高度并触发伸长动画
+        const newHeight = Math.min(tapeContent.scrollHeight, 300);
+        paperTape.style.minHeight = `${newHeight}px`;
         
-        // 自动滚动
+        // 自动滚动到底部
         setTimeout(() => {
-            tapeContent.scrollTop = tapeContent.scrollHeight;
+            paperTape.scrollTop = paperTape.scrollHeight;
         }, 100);
+        
+        // 添加打印声音效果提示（可选）
+        console.log('📠 New morse code printed on tape');
     }
     
     /**
@@ -452,16 +455,48 @@ class RadioUI {
         const freqEl = document.getElementById('signal-freq');
         
         if (signal && signal.receivedStrength > 10) {
-            if (callsignEl) callsignEl.textContent = signal.callsign;
-            if (freqEl) freqEl.textContent = `${signal.frequency.toFixed(1)} MHz`;
+            // 获取根据信号强度降级的信息
+            const degradedInfo = signal.getDegradedMessage(signal.receivedStrength);
             
-            // 如果是新信号或信号内容变化，添加到纸带
-            if (signal.message && !signal._tapeAdded) {
-                this.addTapeMessage(signal.message, signal.morseWaveform);
-                signal._tapeAdded = true;
+            if (callsignEl) {
+                callsignEl.textContent = degradedInfo.callsign;
+                // 根据信号质量设置颜色
+                if (degradedInfo.quality === 'clear') {
+                    callsignEl.style.color = '#00ff00';
+                } else if (degradedInfo.quality === 'noisy') {
+                    callsignEl.style.color = '#ffff00';
+                } else if (degradedInfo.quality === 'poor') {
+                    callsignEl.style.color = '#ff8800';
+                } else {
+                    callsignEl.style.color = '#ff0000';
+                }
+            }
+            
+            if (freqEl) {
+                freqEl.textContent = `${signal.frequency.toFixed(1)} MHz`;
+            }
+            
+            // 根据信号强度决定是否添加到纸带
+            const strengthKey = `_tape_${Math.floor(signal.receivedStrength / 10)}`;
+            if (signal.message && !signal[strengthKey]) {
+                this.addTapeMessage(degradedInfo.message, degradedInfo.morseCode);
+                signal[strengthKey] = true;
+                
+                // 显示信号质量提示
+                if (degradedInfo.quality !== 'clear') {
+                    const qualityMsg = {
+                        'noisy': 'SIGNAL NOISY - ADJUST TUNING',
+                        'poor': 'SIGNAL POOR - ADJUST FREQUENCY & ANTENNA',
+                        'weak': 'SIGNAL TOO WEAK'
+                    };
+                    logMsg(qualityMsg[degradedInfo.quality] || '');
+                }
             }
         } else {
-            if (callsignEl) callsignEl.textContent = '--';
+            if (callsignEl) {
+                callsignEl.textContent = '--';
+                callsignEl.style.color = '#00ff00';
+            }
             if (freqEl) freqEl.textContent = '-- MHz';
         }
     }

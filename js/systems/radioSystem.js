@@ -79,7 +79,6 @@ class RadioSignal {
         
         // 生成摩斯码
         this.morseCode = this.textToMorse(this.message);
-        this.morseWaveform = this.morseToWaveform(this.morseCode);
     }
     
     textToMorse(text) {
@@ -88,8 +87,73 @@ class RadioSignal {
         ).join(' ');
     }
     
-    morseToWaveform(morse) {
-        return morse.replace(/\./g, '▂').replace(/-/g, '▂▂▂');
+    /**
+     * 根据信号强度生成不完整的信息
+     * @param {number} strength - 信号强度 (0-100)
+     */
+    getDegradedMessage(strength) {
+        if (strength >= 80) {
+            // 完整信息
+            return {
+                callsign: this.callsign,
+                message: this.message,
+                morseCode: this.morseCode,
+                quality: 'clear'
+            };
+        } else if (strength >= 50) {
+            // 部分信息损坏
+            const corruptionRate = 1 - (strength - 50) / 30; // 50%时损坏50%，80%时损坏0%
+            return {
+                callsign: this.corruptText(this.callsign, corruptionRate * 0.3),
+                message: this.corruptText(this.message, corruptionRate * 0.4),
+                morseCode: this.corruptMorse(this.morseCode, corruptionRate * 0.4),
+                quality: 'noisy'
+            };
+        } else if (strength >= 20) {
+            // 严重损坏
+            return {
+                callsign: this.corruptText(this.callsign, 0.7),
+                message: this.corruptText(this.message, 0.8),
+                morseCode: this.corruptMorse(this.morseCode, 0.8),
+                quality: 'poor'
+            };
+        } else {
+            // 几乎不可读
+            return {
+                callsign: '---',
+                message: '...',
+                morseCode: '.-?-.?',
+                quality: 'weak'
+            };
+        }
+    }
+    
+    /**
+     * 损坏文本
+     */
+    corruptText(text, rate) {
+        return text.split('').map(char => {
+            if (Math.random() < rate) {
+                const corrupted = ['?', '#', '*', '@', '~'];
+                return corrupted[Math.floor(Math.random() * corrupted.length)];
+            }
+            return char;
+        }).join('');
+    }
+    
+    /**
+     * 损坏摩斯码
+     */
+    corruptMorse(morse, rate) {
+        return morse.split('').map(char => {
+            if (Math.random() < rate) {
+                if (char === '.' || char === '-') {
+                    return Math.random() > 0.5 ? '?' : char;
+                }
+                return char;
+            }
+            return char;
+        }).join('');
     }
     
     update(deltaTime) {
@@ -188,22 +252,24 @@ class RadioSystem {
      */
     updateSignalStrengths() {
         for (let signal of this.signals) {
-            // 频率匹配度（高斯衰减）
+            // 频率匹配度（高斯衰减）- 调整使其更容易达到高值
             const freqDiff = Math.abs(signal.frequency - this.currentFrequency);
             let frequencyMatch = 0;
             if (freqDiff < RADIO_CONFIG.SIGNAL_BANDWIDTH) {
-                frequencyMatch = Math.exp(-Math.pow(freqDiff / RADIO_CONFIG.SIGNAL_BANDWIDTH, 2));
+                // 增加容差，更容易达到高匹配度
+                frequencyMatch = Math.exp(-Math.pow(freqDiff / (RADIO_CONFIG.SIGNAL_BANDWIDTH * 2), 2));
             }
             
-            // 方向匹配度（余弦函数）
-            const angleDiff = this.normalizeAngle(signal.direction - this.antennaAngle);
-            const directionMatch = Math.cos(angleDiff * Math.PI / 180) * 0.5 + 0.5;
+            // 方向匹配度（余弦函数）- 优化使其在正确方向时更强
+            const angleDiff = Math.abs(this.normalizeAngle(signal.direction - this.antennaAngle));
+            // 使用更窄的波束宽度，但峰值更高
+            const directionMatch = Math.pow(Math.cos(angleDiff * Math.PI / 180), 2) * 0.7 + 0.3; // 平方使峰值更尖锐
             
             // 距离衰减
-            const distanceAttenuation = 1 / (1 + signal.distance * 0.1);
+            const distanceAttenuation = 1 / (1 + signal.distance * 0.03);
             
             // 计算接收强度
-            signal.receivedStrength = signal.strength * frequencyMatch * directionMatch * distanceAttenuation;
+            signal.receivedStrength = signal.strength * frequencyMatch * directionMatch * distanceAttenuation * 1.5;
         }
     }
     
