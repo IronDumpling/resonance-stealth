@@ -14,12 +14,21 @@ function handlePlayerDormancy() {
         }
     }
     
-    // 按R键重启（消耗备用能量）
-    if (state.keys.r && state.p.reserveEn >= CFG.restartEnergyCost) {
-        state.p.reserveEn -= CFG.restartEnergyCost;
-        state.p.en = CFG.restartEnergyGain;
-        state.p.isDormant = false;
-        logMsg("SYSTEM REBOOTED");
+    // 按R键重启（使用能量瓶）
+    if (state.keys.r) {
+        // 检查是否有能量瓶
+        if (getInventoryCount('energy_flask') > 0) {
+            // 消耗能量瓶并使用addEnergy增加能量
+            if (removeFromInventory('energy_flask')) {
+                addEnergy(CFG.energyFlaskVal);
+                state.p.isDormant = false;
+                logMsg("SYSTEM REBOOTED");
+                state.keys.r = false; // 防止连续触发
+            }
+        } else {
+            logMsg("NO ENERGY FLASK - CANNOT RESTART");
+            state.keys.r = false; // 防止连续触发
+        }
     }
 }
 
@@ -228,7 +237,7 @@ function releaseScan() {
     state.p.shouldShowAimLine = false; // 释放时不显示辅助瞄准线
 }
 
-// 提升主能量（自动处理溢出到备用，并显示绿色闪烁）
+// 提升主能量（溢出部分直接消失，并显示绿色闪烁）
 function addEnergy(amount) {
     if (amount <= 0) return;
     
@@ -241,17 +250,7 @@ function addEnergy(amount) {
         flashEdgeGlow('green', 150);
     }
     
-    // 溢出部分存入备用
-    const overflow = amount - toMain;
-    if (overflow > 0) {
-        addReserveEnergy(overflow);
-    }
-}
-
-// 提升备用能量
-function addReserveEnergy(amount) {
-    if (amount <= 0) return;
-    state.p.reserveEn += amount;
+    // 溢出部分直接消失，不存储
 }
 
 // 统一交互逻辑 (暗杀抓取 + 拾取 + 处决)
@@ -587,8 +586,8 @@ function updateStruggle() {
     }
 }
 
-// 使用备用能量补充主能量（R键）
-function updateReserveEnergy() {
+// 使用能量瓶补充主能量（R键）
+function updateEnergyFlask() {
     if (state.keys.r && state.p.en < CFG.maxEnergy) {
         // 使用背包中的能量瓶
         if (useEnergyFlask()) {
@@ -648,7 +647,7 @@ function updatePlayer() {
     
     updateFocus(); 
     updateStruggle();
-    updateReserveEnergy();
+    updateEnergyFlask();
     updatePlayerGrab();
     updatePlayerGrabHint();
     

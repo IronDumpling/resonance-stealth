@@ -13,10 +13,6 @@ const CFG = {
     
     energyFlaskVal: 30,        // 能量瓶恢复量
     
-    // 休眠与重启
-    restartEnergyCost: 30,     // 重启消耗的备用能量
-    restartEnergyGain: 30,     // 重启后获得的能量
-    
     // 耐久消耗（仅在抓取/被抓取挣扎时消耗）
     struggleDurabilityLoss: 2,         // 被抓取挣脱时耐久损失（每次按F）
     beingStruggledDurabilityLoss: 1.5, // 抓取敌人时，敌人挣脱导致的耐久损失（每次）

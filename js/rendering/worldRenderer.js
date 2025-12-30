@@ -595,11 +595,6 @@ function drawPlayerStatusUI() {
     ctx.fillStyle = '#ffffff';
     ctx.fillText(`DURABILITY: ${Math.floor(state.p.durability)}/${CFG.maxDurability}`, padding + 5, durabilityY + 14);
     
-    // 备用能量
-    const reserveY = durabilityY + barHeight + gap;
-    ctx.fillStyle = '#888888';
-    ctx.fillText(`RESERVE: ${Math.floor(state.p.reserveEn)}`, padding, reserveY + 14);
-    
     // 消息日志（左下角）
     if (state.currentMessage && state.messageTimer > 0) {
         const messageY = canvas.height - 30;
