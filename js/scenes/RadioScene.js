@@ -134,8 +134,8 @@ class RadioScene extends Scene {
         const key = (event.key || (event.originalEvent && event.originalEvent.key) || '').toLowerCase();
         const action = event.action;
         
-        // ESC or M - 返回RobotScene
-        if (action === 'menu' || action === 'toggle_mode' || key === 'escape' || key === 'm') {
+        // ESC - 返回RobotScene (M key now used for marking)
+        if (action === 'menu' || key === 'escape') {
             if (sceneManager) {
                 sceneManager.switchScene(SCENES.ROBOT, 'fade');
             }
@@ -160,25 +160,14 @@ class RadioScene extends Scene {
             return true;
         }
         
-        // 操作按钮
-        if (action === 'decode' || key === 'd') {
-            this.radio.recordDirection();
-            if (this.radioUI) {
-                this.radioUI.flashButton('btn-direction');
+        // W key - 发射波纹
+        if (action === 'emit_wave' || key === 'w') {
+            const wave = this.radio.emitPlayerWave();
+            if (radioDisplayUI && radioDisplayUI.radarMap) {
+                radioDisplayUI.radarMap.showEmittedWave(wave);
             }
-            return true;
-        }
-        if (action === 'ping' || key === 'p') {
-            this.radio.sendPing();
             if (this.radioUI) {
-                this.radioUI.flashButton('btn-ping');
-            }
-            return true;
-        }
-        if (action === 'mark_location') {
-            const marker = this.radio.markSignalOnMap();
-            if (marker && this.radioUI) {
-                this.radioUI.flashButton('btn-mark');
+                this.radioUI.flashButton('btn-wave');
             }
             return true;
         }

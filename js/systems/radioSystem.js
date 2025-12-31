@@ -79,6 +79,19 @@ class RadioSignal {
         
         // 生成摩斯码
         this.morseCode = this.textToMorse(this.message);
+        
+        // 世界坐标（从direction和distance计算）
+        // Direction: 0° = East, 90° = South, 180° = West, 270° = North
+        const angleRad = this.direction * Math.PI / 180;
+        const distanceMeters = this.distance * 1000; // Convert km to meters
+        
+        // 坐标将由radioSystem在addSignal时设置
+        this.x = null;
+        this.y = null;
+        
+        // 存储用于后续计算
+        this._angleRad = angleRad;
+        this._distanceMeters = distanceMeters;
     }
     
     textToMorse(text) {
@@ -198,6 +211,10 @@ class RadioSystem {
         // 敌人频率分析
         this.enemyAnalysisFreq = null;
         
+        // 波纹系统
+        this.emittedWaves = []; // 玩家发出的波
+        this.receivedResponses = []; // 接收到的响应波
+        
         console.log('Radio System initialized');
     }
     
@@ -206,8 +223,15 @@ class RadioSystem {
      */
     addSignal(config) {
         const signal = new RadioSignal(config);
+        
+        // 计算世界坐标（基于避难所位置）
+        const angleRad = signal._angleRad;
+        const distanceMeters = signal._distanceMeters;
+        signal.x = this.shelterX + Math.cos(angleRad) * distanceMeters;
+        signal.y = this.shelterY + Math.sin(angleRad) * distanceMeters;
+        
         this.signals.push(signal);
-        console.log(`Signal added: ${signal.callsign} at ${signal.frequency} MHz`);
+        console.log(`Signal added: ${signal.callsign} at (${signal.x.toFixed(1)}, ${signal.y.toFixed(1)}), freq ${signal.frequency} MHz`);
         logMsg(`NEW SIGNAL DETECTED: ${signal.callsign}`);
         return signal;
     }
@@ -222,6 +246,132 @@ class RadioSystem {
             this.signals.splice(index, 1);
             console.log(`Signal removed: ${signal.callsign}`);
             logMsg(`SIGNAL LOST: ${signal.callsign}`);
+        }
+    }
+    
+    /**
+     * 发射玩家波纹
+     */
+    emitPlayerWave() {
+        const wave = {
+            id: `wave_${Date.now()}`,
+            x: this.shelterX,
+            y: this.shelterY,
+            r: 0,
+            maxR: 10000, // 10km range
+            speed: 300, // m/s (simplified light speed)
+            freq: this.currentFrequency,
+            emitTime: Date.now()
+        };
+        this.emittedWaves.push(wave);
+        logMsg(`WAVE EMITTED AT ${this.currentFrequency.toFixed(1)} MHz`);
+        return wave;
+    }
+    
+    /**
+     * 更新波纹系统
+     */
+    updateWaves(deltaTime) {
+        // 更新发出的波纹（玩家发出的波）
+        for (let i = this.emittedWaves.length - 1; i >= 0; i--) {
+            const wave = this.emittedWaves[i];
+            
+            // 跳过响应波（在第二个循环中处理）
+            if (wave.signal) continue;
+            
+            // 扩展波纹半径
+            wave.r += wave.speed * deltaTime;
+            
+            // 检查是否超出范围
+            if (wave.r > wave.maxR) {
+                this.emittedWaves.splice(i, 1);
+                continue;
+            }
+            
+            // 检查与信号的碰撞
+            for (const signal of this.signals) {
+                if (!signal.x || !signal.y) continue;
+                
+                const dx = signal.x - wave.x;
+                const dy = signal.y - wave.y;
+                const distToSignal = Math.sqrt(dx * dx + dy * dy);
+                
+                // 检查波纹是否扫过信号（使用上一帧和当前帧的半径）
+                const lastR = wave.r - wave.speed * deltaTime;
+                if (distToSignal >= lastR && distToSignal <= wave.r) {
+                    // 检查频率匹配（使用信号的带宽作为共振范围）
+                    // SIGNAL_BANDWIDTH 是总带宽（MHz），共振容差是半宽
+                    const resonanceTolerance = RADIO_CONFIG.SIGNAL_BANDWIDTH / 2; // ±1.0 MHz (如果带宽是2.0 MHz)
+                    const freqDiff = Math.abs(wave.freq - signal.frequency);
+                    if (freqDiff <= resonanceTolerance) {
+                        // 计算从信号到玩家的距离（用于响应波）
+                        const dxToPlayer = this.shelterX - signal.x;
+                        const dyToPlayer = this.shelterY - signal.y;
+                        const distToPlayer = Math.sqrt(dxToPlayer * dxToPlayer + dyToPlayer * dyToPlayer);
+                        
+                        // 触发共振，创建响应波
+                        const responseWave = {
+                            id: `response_${Date.now()}_${signal.id}`,
+                            x: signal.x,
+                            y: signal.y,
+                            targetX: this.shelterX,
+                            targetY: this.shelterY,
+                            r: 0,
+                            maxR: distToPlayer, // 响应波的最大范围是从信号到玩家的距离
+                            speed: wave.speed,
+                            freq: signal.frequency, // 响应波使用信号的频率
+                            signal: signal,
+                            emitTime: Date.now(),
+                            distance: distToSignal / 1000 // meters to km（玩家波到信号的距离）
+                        };
+                        this.emittedWaves.push(responseWave);
+                        
+                        console.log(`Signal ${signal.callsign} resonating at ${wave.freq.toFixed(1)} MHz - Response wave created`);
+                    }
+                }
+            }
+        }
+        
+        // 更新响应波纹（检查是否到达玩家）
+        for (let i = this.emittedWaves.length - 1; i >= 0; i--) {
+            const wave = this.emittedWaves[i];
+            if (!wave.signal) continue; // 不是响应波，跳过
+            
+            // 更新响应波的半径（向玩家扩展）
+            wave.r += wave.speed * deltaTime;
+            
+            const dx = wave.targetX - wave.x;
+            const dy = wave.targetY - wave.y;
+            const distToTarget = Math.sqrt(dx * dx + dy * dy);
+            
+            // 检查是否到达玩家
+            if (wave.r >= distToTarget) {
+                // 标记信号为已发现
+                wave.signal.discovered = true;
+                
+                // 计算延迟时间（毫秒）
+                const delay = (wave.distance * 2 * 1000) / wave.speed;
+                
+                // 添加到接收响应
+                this.receivedResponses.push({
+                    signal: wave.signal,
+                    morse: wave.signal.morseCode,
+                    delay: delay,
+                    distance: wave.distance,
+                    callsign: wave.signal.callsign,
+                    strength: wave.signal.receivedStrength,
+                    frequency: wave.signal.frequency,
+                    timestamp: Date.now()
+                });
+                
+                // 移除响应波
+                this.emittedWaves.splice(i, 1);
+                
+                console.log(`Received response from ${wave.signal.callsign} - Distance: ${wave.distance.toFixed(2)} km, Delay: ${delay.toFixed(2)} ms`);
+            } else if (wave.r > wave.maxR) {
+                // 响应波超出范围，移除
+                this.emittedWaves.splice(i, 1);
+            }
         }
     }
     
@@ -520,6 +670,9 @@ class RadioSystem {
                 this.removeSignal(this.signals[i].id);
             }
         }
+        
+        // 更新波纹系统
+        this.updateWaves(deltaTime);
         
         // 更新瀑布图（每帧更新）
         this.updateWaterfall();

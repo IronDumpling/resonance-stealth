@@ -178,17 +178,9 @@ class RadioUI {
                 
                 <!-- 操作按钮 -->
                 <div class="button-row">
-                    <button class="action-btn" id="btn-direction">
+                    <button class="action-btn" id="btn-wave">
                         <span class="btn-led"></span>
-                        RECORD DIR [D]
-                    </button>
-                    <button class="action-btn" id="btn-ping">
-                        <span class="btn-led"></span>
-                        SEND PING [P]
-                    </button>
-                    <button class="action-btn" id="btn-mark">
-                        <span class="btn-led"></span>
-                        MARK MAP [M]
+                        EMIT WAVE [W]
                     </button>
                 </div>
                 
@@ -255,22 +247,12 @@ class RadioUI {
         });
         
         // 操作按钮
-        document.getElementById('btn-direction')?.addEventListener('click', () => {
+        document.getElementById('btn-wave')?.addEventListener('click', () => {
             if (!this.isActive) return;  // 未激活时不响应
-            this.radio.recordDirection();
-            this.flashButton('btn-direction');
-        });
-        
-        document.getElementById('btn-ping')?.addEventListener('click', () => {
-            if (!this.isActive) return;  // 未激活时不响应
-            this.radio.sendPing();
-            this.flashButton('btn-ping');
-        });
-        
-        document.getElementById('btn-mark')?.addEventListener('click', () => {
-            if (!this.isActive) return;  // 未激活时不响应
-            this.radio.markSignalOnMap();
-            this.flashButton('btn-mark');
+            if (this.radio && typeof this.radio.emitPlayerWave === 'function') {
+                this.radio.emitPlayerWave();
+            }
+            this.flashButton('btn-wave');
         });
         
         // 纸带点击显示摩斯码表

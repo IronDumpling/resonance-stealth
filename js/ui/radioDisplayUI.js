@@ -253,6 +253,57 @@ class RadioDisplayUI {
         
         // Update received morse display
         this.updateReceivedMorse();
+        
+        // Check for new received responses
+        this.checkReceivedResponses();
+    }
+    
+    /**
+     * Check for and print new received responses
+     */
+    checkReceivedResponses() {
+        if (!this.radio || !this.radio.receivedResponses) return;
+        
+        // Process and remove new responses
+        while (this.radio.receivedResponses.length > 0) {
+            const response = this.radio.receivedResponses.shift();
+            this.printReceivedMorse(response);
+        }
+    }
+    
+    /**
+     * Print received morse code to paper tape
+     */
+    printReceivedMorse(responseData) {
+        const { morse, delay, distance, callsign, strength, frequency } = responseData;
+        
+        const tapeContent = document.getElementById('tape-content');
+        if (!tapeContent) return;
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'tape-message received';
+        messageDiv.innerHTML = `
+            <div class="tape-header">
+                <span class="tape-callsign">${callsign}</span>
+                <span class="tape-freq">${frequency.toFixed(1)} MHz</span>
+            </div>
+            <div class="tape-morse">${morse}</div>
+            <div class="tape-info">
+                <span>Delay: ${delay.toFixed(2)}ms</span>
+                <span>Dist: ~${distance.toFixed(2)} km</span>
+                <span>Signal: ${Math.round(strength)}%</span>
+            </div>
+        `;
+        
+        tapeContent.appendChild(messageDiv);
+        
+        // Auto-scroll
+        const paperTape = document.getElementById('paper-tape');
+        if (paperTape) {
+            paperTape.scrollTop = paperTape.scrollHeight;
+        }
+        
+        console.log(`Morse printed: ${callsign} - ${morse}`);
     }
     
     /**

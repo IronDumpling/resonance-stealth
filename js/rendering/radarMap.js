@@ -21,6 +21,10 @@ class RadarMap {
         // Ping waves
         this.pingWaves = [];
         
+        // Player waves and response waves
+        this.waves = [];
+        this.responseWaves = [];
+        
         // Animation
         this.scanAngle = 0;
         this.blinkTimer = 0;
@@ -56,6 +60,11 @@ class RadarMap {
                 this.pingWaves.splice(i, 1);
             }
         }
+        
+        // Sync waves with radioSystem
+        if (this.radio && this.radio.emittedWaves) {
+            this.waves = this.radio.emittedWaves;
+        }
     }
     
     /**
@@ -76,11 +85,19 @@ class RadarMap {
         // Draw range circles
         this.drawRangeCircles();
         
+        // Draw signal sources (if implemented)
+        if (typeof this.drawSignalSources === 'function') {
+            this.drawSignalSources();
+        }
+        
         // Draw scan line
         this.drawScanLine();
         
         // Draw antenna direction
         this.drawAntenna();
+        
+        // Draw waves
+        this.drawWaves();
         
         // Draw ping waves
         this.drawPingWaves();
@@ -156,6 +173,55 @@ class RadarMap {
             ctx.font = '10px monospace';
             ctx.textAlign = 'center';
             ctx.fillText(`${range}km`, this.centerX, this.centerY - radius - 5);
+        }
+    }
+    
+    /**
+     * Draw signal sources
+     */
+    drawSignalSources() {
+        if (!this.radio || !this.radio.signals) return;
+        
+        const ctx = this.ctx;
+        
+        // Draw only discovered signal sources on the radar
+        for (const signal of this.radio.signals) {
+            if (!signal.x || !signal.y) continue; // Skip signals without coordinates
+            if (!signal.discovered) continue; // Only show discovered signals
+            
+            // Convert world coordinates to radar coordinates
+            const dx = signal.x - this.radio.shelterX;
+            const dy = signal.y - this.radio.shelterY;
+            const distance = Math.sqrt(dx * dx + dy * dy) / 1000; // meters to km
+            const angle = Math.atan2(dy, dx);
+            
+            const radarX = this.centerX + Math.cos(angle) * distance * this.scale;
+            const radarY = this.centerY + Math.sin(angle) * distance * this.scale;
+            
+            // Draw signal indicator (pulsing dot)
+            const pulsePhase = (Date.now() / 500) % 1;
+            const pulseSize = 3 + Math.sin(pulsePhase * Math.PI * 2) * 1.5;
+            
+            // Color based on signal type
+            let color = '#ffff00'; // Default yellow
+            if (signal.type === 'astronaut') color = '#ff00ff'; // Magenta
+            else if (signal.type === 'beacon') color = '#00ffff'; // Cyan
+            
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 8;
+            
+            ctx.beginPath();
+            ctx.arc(radarX, radarY, pulseSize, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.shadowBlur = 0;
+            
+            // Draw frequency label (small text)
+            ctx.fillStyle = color;
+            ctx.font = '9px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${signal.frequency.toFixed(1)}`, radarX, radarY - 8);
         }
     }
     
@@ -289,7 +355,13 @@ class RadarMap {
             const radarY = this.centerY + Math.sin(angle) * distance * this.scale;
             
             // Draw marker
-            ctx.fillStyle = marker.signal.type === 'astronaut' ? '#ff00ff' : '#ffff00';
+            if (marker.signal) {
+                // Signal marker
+                ctx.fillStyle = marker.signal.type === 'astronaut' ? '#ff00ff' : '#ffff00';
+            } else {
+                // Generic marker
+                ctx.fillStyle = '#ffffff';
+            }
             ctx.shadowColor = ctx.fillStyle;
             ctx.shadowBlur = 10;
             
@@ -303,7 +375,8 @@ class RadarMap {
             ctx.fillStyle = ctx.fillStyle;
             ctx.font = '10px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText(marker.signal.callsign, radarX, radarY - 10);
+            const label = marker.signal ? marker.signal.callsign : (marker.label || 'MARK');
+            ctx.fillText(label, radarX, radarY - 10);
         }
     }
     
@@ -378,6 +451,54 @@ class RadarMap {
             radius: 0,
             alpha: 1.0
         });
+    }
+    
+    /**
+     * Show emitted wave (for visual tracking)
+     */
+    showEmittedWave(wave) {
+        // Wave is already in radioSystem.emittedWaves, 
+        // which we sync in update() method
+        console.log(`Wave visualization added for wave at ${wave.freq} MHz`);
+    }
+    
+    /**
+     * Draw waves (called in render)
+     */
+    drawWaves() {
+        if (!this.waves || this.waves.length === 0) return;
+        
+        const ctx = this.ctx;
+        
+        for (const wave of this.waves) {
+            // Convert world coordinates to radar coordinates
+            const dx = wave.x - this.radio.shelterX;
+            const dy = wave.y - this.radio.shelterY;
+            const radarX = this.centerX + (dx / 1000) * this.scale;
+            const radarY = this.centerY + (dy / 1000) * this.scale;
+            
+            // Convert radius to radar scale
+            const radarR = (wave.r / 1000) * this.scale;
+            
+            // Calculate alpha based on age
+            const age = (Date.now() - wave.emitTime) / 1000; // seconds
+            const maxAge = 10; // 10 seconds fade
+            const alpha = Math.max(0, 1 - age / maxAge);
+            
+            // Distinguish player waves from response waves
+            if (wave.signal) {
+                // Response wave (yellow, going back to player)
+                ctx.strokeStyle = `rgba(255, 255, 0, ${alpha * 0.6})`;
+            } else {
+                // Player wave (cyan)
+                ctx.strokeStyle = `rgba(0, 255, 255, ${alpha * 0.8})`;
+            }
+            
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(radarX, radarY, radarR, 0, Math.PI * 2);
+            ctx.stroke();
+        }
     }
     
     /**
