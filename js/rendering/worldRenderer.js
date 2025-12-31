@@ -437,10 +437,11 @@ function drawBase() {
     // 绘制外发光层（触发范围指示）
     if (base.isEvacuating) {
         const glowRadius = base.triggerRadius;
+        const baseBlue = { r: 0, g: 170, b: 255 }; // #00aaff
         const gradient = ctx.createRadialGradient(base.x, base.y, 0, base.x, base.y, glowRadius);
-        gradient.addColorStop(0, `rgba(0, 255, 0, ${0.1 * pulseIntensity})`);
-        gradient.addColorStop(0.5, `rgba(0, 255, 0, ${0.05 * pulseIntensity})`);
-        gradient.addColorStop(1, 'rgba(0, 255, 0, 0)');
+        gradient.addColorStop(0, `rgba(${baseBlue.r}, ${baseBlue.g}, ${baseBlue.b}, ${0.1 * pulseIntensity})`);
+        gradient.addColorStop(0.5, `rgba(${baseBlue.r}, ${baseBlue.g}, ${baseBlue.b}, ${0.05 * pulseIntensity})`);
+        gradient.addColorStop(1, `rgba(${baseBlue.r}, ${baseBlue.g}, ${baseBlue.b}, 0)`);
         
         ctx.fillStyle = gradient;
         ctx.beginPath();
@@ -452,24 +453,25 @@ function drawBase() {
     const size = base.radius * 2;
     const halfSize = base.radius;
     
-    // 主体填充（深绿色/青色）
+    // 主体填充（蓝色荧光）
+    const baseBlue = { r: 0, g: 170, b: 255 }; // #00aaff
     ctx.fillStyle = base.isEvacuating ? 
-        `rgba(0, 200, 150, ${0.8 + pulseIntensity * 0.2})` : 
-        'rgba(0, 150, 100, 0.8)';
+        `rgba(${baseBlue.r}, ${baseBlue.g}, ${baseBlue.b}, ${0.8 + pulseIntensity * 0.2})` : 
+        `rgba(${baseBlue.r}, ${baseBlue.g}, ${baseBlue.b}, 0.8)`;
     ctx.fillRect(base.x - halfSize, base.y - halfSize, size, size);
     
-    // 边框（亮绿色，带发光）
+    // 边框（亮蓝色，带发光）
     ctx.strokeStyle = base.isEvacuating ? 
-        `rgba(0, 255, 200, ${0.9 + pulseIntensity * 0.1})` : 
-        'rgba(0, 255, 150, 0.9)';
+        `rgba(${baseBlue.r}, ${baseBlue.g}, ${baseBlue.b}, ${0.9 + pulseIntensity * 0.1})` : 
+        `rgba(${baseBlue.r}, ${baseBlue.g}, ${baseBlue.b}, 0.9)`;
     ctx.lineWidth = 3;
     ctx.shadowBlur = 15;
-    ctx.shadowColor = '#00ffaa';
+    ctx.shadowColor = '#00aaff';
     ctx.strokeRect(base.x - halfSize, base.y - halfSize, size, size);
     ctx.shadowBlur = 0;
     
     // 内部结构线
-    ctx.strokeStyle = `rgba(0, 255, 200, ${0.5 + pulseIntensity * 0.3})`;
+    ctx.strokeStyle = `rgba(${baseBlue.r}, ${baseBlue.g}, ${baseBlue.b}, ${0.5 + pulseIntensity * 0.3})`;
     ctx.lineWidth = 1;
     // 垂直线
     ctx.beginPath();
@@ -485,8 +487,8 @@ function drawBase() {
     // 中心点（脉冲效果）
     const centerRadius = 5 + (base.isEvacuating ? Math.sin(base.pulsePhase * Math.PI * 2) * 3 : 0);
     ctx.fillStyle = base.isEvacuating ? 
-        `rgba(0, 255, 200, ${0.9 + pulseIntensity * 0.1})` : 
-        'rgba(0, 255, 150, 0.7)';
+        `rgba(${baseBlue.r}, ${baseBlue.g}, ${baseBlue.b}, ${0.9 + pulseIntensity * 0.1})` : 
+        `rgba(${baseBlue.r}, ${baseBlue.g}, ${baseBlue.b}, 0.7)`;
     ctx.shadowBlur = 10;
     ctx.shadowColor = '#00ffaa';
     ctx.beginPath();

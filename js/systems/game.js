@@ -103,9 +103,14 @@ function adjustPlayerFrequency(delta, isFine = false) {
 }
 
 function init() {
+    // 初始化基地位置（地图中心）
+    const baseX = canvas.width * CFG.mapScale / 2;
+    const baseY = canvas.height * CFG.mapScale / 2;
+    
     // 初始化玩家位置
-    state.p.x = canvas.width * CFG.mapScale / 2;
-    state.p.y = canvas.height * CFG.mapScale / 2;
+    const playerOffsetY = 120; // 向上偏移120像素，确保在触发范围外
+    state.p.x = baseX;
+    state.p.y = baseY - playerOffsetY;
     state.p.en = CFG.maxEnergy;
     state.p.isGrabbed = false;
     state.p.grabberEnemy = null;
@@ -139,9 +144,9 @@ function init() {
     state.camera.x = state.p.x;
     state.camera.y = state.p.y;
     
-    // 初始化基地（在玩家初始位置）
+    // 初始化基地（在地图中心）
     if (typeof spawnBase === 'function') {
-        spawnBase(state.p.x, state.p.y);
+        spawnBase(baseX, baseY);
     }
 }
 

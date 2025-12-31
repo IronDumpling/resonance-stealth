@@ -7,7 +7,7 @@ function spawnBase(x, y) {
     const base = {
         x: x,
         y: y,
-        radius: 40,                    // 基地视觉半径
+        radius: 40,                     // 基地视觉半径
         triggerRadius: 80,              // 触发撤离的半径（小范围）
         evacuationTimer: 0,             // 撤离计时器（秒）
         evacuationDuration: 5.0,        // 撤离所需时间（5秒）
