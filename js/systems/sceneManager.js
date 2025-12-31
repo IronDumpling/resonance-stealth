@@ -34,7 +34,7 @@ class SceneManager {
         this.previousScene = null;
         this.transitionProgress = 0;
         this.isTransitioning = false;
-        this.transitionDuration = 1.0; // 默认过渡时间(秒)
+        this.transitionDuration = 0.3; // 默认过渡时间(秒)
         this.transitionType = 'fade';   // fade, slide, instant
         
         // 场景实例存储

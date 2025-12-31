@@ -171,7 +171,7 @@ class RobotScene extends Scene {
         const x = canvas.width - 10;
         const y = canvas.height - 10;
         const bgWidth = textMetrics.width + padding * 2;
-        const bgHeight = 20;
+        const bgHeight = 30;
         
         // 绘制背景
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';

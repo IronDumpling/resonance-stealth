@@ -8,8 +8,8 @@ class MonitorMenuScene extends Scene {
         super(SCENES.MONITOR_MENU);
         this.selectedOption = 0;
         this.options = [
-            { id: 'robot_assembly', label: '1. ROBOT ASSEMBLY' },
-            { id: 'power_off', label: '2. POWER OFF' }
+            { id: 'robot_assembly', label: '1. ROBOT_ASSEMBLY' },
+            { id: 'power_off', label: '2. POWER_OFF' }
         ];
         this.blinkTimer = 0;
         this.showCursor = true;
@@ -53,7 +53,7 @@ class MonitorMenuScene extends Scene {
             sceneManager.switchDisplayMode(DISPLAY_MODES.MENU);
         }
         
-        logMsg("SELECT: [1] ROBOT ASSEMBLY | [2] POWER OFF");
+        logMsg("SELECT: [1] ROBOT_ASSEMBLY | [2] POWER_OFF");
     }
     
     update(deltaTime) {
@@ -74,7 +74,7 @@ class MonitorMenuScene extends Scene {
         ctx.fillStyle = '#00ff00';
         ctx.font = 'bold 28px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('ARCH_OS v4.0.2', canvas.width / 2, canvas.height * 0.25);
+        ctx.fillText('ARC_OS v4.0.2', canvas.width / 2, canvas.height * 0.25);
         
         // Draw separator
         ctx.strokeStyle = '#00ff00';
