@@ -207,22 +207,50 @@ function getWaveBlockedAnglesByCircle(wave, enemy) {
 
 // 处理波纹反弹（分割波纹）
 function handleWaveBounce(w, wall, energyOnBounce, waveIndex) {
-    // 记录墙壁轮廓（仅玩家波纹，避免重复添加）
+    // 检查是否是base（base有radius属性，wall有w和h属性）
+    const isBase = wall.radius !== undefined;
+    
+    // 记录轮廓（仅玩家波纹，避免重复添加）
     if (w.source === 'player') {
-        const existingEcho = state.entities.wallEchoes.find(we => we.wall === wall);
-        if (!existingEcho) {
-            state.entities.wallEchoes.push({
-                wall: wall,
-                life: 1.0,
-                energy: energyOnBounce
-            });
+        if (isBase) {
+            // Base echo（蓝色荧光）
+            if (!state.entities.baseEchoes) {
+                state.entities.baseEchoes = [];
+            }
+            const existingEcho = state.entities.baseEchoes.find(be => be.base === wall);
+            if (!existingEcho) {
+                state.entities.baseEchoes.push({
+                    base: wall,
+                    life: 1.0,
+                    energy: energyOnBounce
+                });
+            } else {
+                existingEcho.life = Math.min(1.0, existingEcho.life + 0.3);
+            }
         } else {
-            existingEcho.life = Math.min(1.0, existingEcho.life + 0.3);
+            // Wall echo
+            const existingEcho = state.entities.wallEchoes.find(we => we.wall === wall);
+            if (!existingEcho) {
+                state.entities.wallEchoes.push({
+                    wall: wall,
+                    life: 1.0,
+                    energy: energyOnBounce
+                });
+            } else {
+                existingEcho.life = Math.min(1.0, existingEcho.life + 0.3);
+            }
         }
     }
     
     // 计算被阻挡的角度范围
-    const blockedRanges = getWaveBlockedAngles(w, wall);
+    let blockedRanges;
+    if (isBase) {
+        // 对于base，需要创建一个临时对象，将radius映射为r
+        const tempBase = { x: wall.x, y: wall.y, r: wall.radius };
+        blockedRanges = getWaveBlockedAnglesByCircle(w, tempBase);
+    } else {
+        blockedRanges = getWaveBlockedAngles(w, wall);
+    }
     
     if (blockedRanges && blockedRanges.length > 0) {
         blockedRanges.sort((a, b) => a.start - b.start);
@@ -927,6 +955,89 @@ function handleWavePlayerInteraction(w, oldR, waveIndex) {
     }
 }
 
+// 检测波纹与基地的碰撞
+function checkWaveBaseCollision(wave, base) {
+    if (!base) return { hit: false };
+    
+    // base是方形的，类似于wall
+    // base.radius是边长的一半，所以总尺寸是 base.radius * 2
+    const baseSize = base.radius * 2;
+    const baseX = base.x - base.radius;
+    const baseY = base.y - base.radius;
+    const baseW = baseSize;
+    const baseH = baseSize;
+    
+    // 使用与wall相同的检测方法：射线与矩形相交
+    const numRays = Math.max(8, Math.ceil(wave.spread * 8 / Math.PI));
+    const startAngle = wave.angle - wave.spread / 2;
+    const angleStep = wave.spread / numRays;
+    
+    let closestHit = null;
+    let closestDist = Infinity;
+    let hitNormal = null;
+    
+    for (let i = 0; i <= numRays; i++) {
+        const rayAngle = startAngle + angleStep * i;
+        const dx = Math.cos(rayAngle);
+        const dy = Math.sin(rayAngle);
+        
+        const hit = rayRectIntersect(wave.x, wave.y, dx, dy, baseX, baseY, baseW, baseH);
+        // 检查碰撞点是否在波纹圆周附近（允许一定误差）
+        if (hit !== null && hit > 0 && Math.abs(hit - wave.r) < CFG.waveSpeed * 2 && hit < closestDist) {
+            closestDist = hit;
+            const hitX = wave.x + dx * hit;
+            const hitY = wave.y + dy * hit;
+            
+            // 计算法线方向（确定是哪个面被击中）
+            const distToLeft = Math.abs(hitX - baseX);
+            const distToRight = Math.abs(hitX - (baseX + baseW));
+            const distToTop = Math.abs(hitY - baseY);
+            const distToBottom = Math.abs(hitY - (baseY + baseH));
+            
+            const minDist = Math.min(distToLeft, distToRight, distToTop, distToBottom);
+            
+            if (minDist === distToLeft) hitNormal = { x: -1, y: 0 };
+            else if (minDist === distToRight) hitNormal = { x: 1, y: 0 };
+            else if (minDist === distToTop) hitNormal = { x: 0, y: -1 };
+            else hitNormal = { x: 0, y: 1 };
+            
+            closestHit = { x: hitX, y: hitY, dist: hit };
+        }
+    }
+    
+    if (closestHit) {
+        return {
+            hit: true,
+            point: { x: closestHit.x, y: closestHit.y },
+            dist: closestHit.dist,
+            normal: hitNormal
+        };
+    }
+    return { hit: false };
+}
+
+// 处理波纹与基地的碰撞
+function handleWaveBaseInteraction(w, oldR, waveIndex) {
+    if (!state.entities.base) return 'none';
+    
+    const base = state.entities.base;
+    const collision = checkWaveBaseCollision(w, base);
+    
+    if (collision.hit) {
+        const distToBase = collision.dist;
+        // 检查碰撞是否发生在当前帧（波纹扩散环扫过base）
+        if (distToBase >= oldR - CFG.waveSpeed && distToBase <= w.r + CFG.waveSpeed) {
+            // 基地总是阻挡所有wave（使用最高频率）
+            // 对于base，我们总是反弹（不穿透）
+            const energyOnBounce = w.energyPerPoint;
+            const wasHandled = handleWaveBounce(w, base, energyOnBounce, waveIndex);
+            return wasHandled ? 'bounced' : 'removed';
+        }
+    }
+    
+    return 'none';
+}
+
 // 处理波纹与墙壁的碰撞
 function handleWaveWallInteraction(w, oldR, waveIndex) {
     for (let wall of state.entities.walls) {
@@ -1302,6 +1413,13 @@ function updateWave(w, i) {
     // 检测与墙壁的碰撞
     const wallCollisionResult = handleWaveWallInteraction(w, oldR, i);
     if (wallCollisionResult === 'bounced' || wallCollisionResult === 'penetrated') {
+        w._toRemove = true;
+        return;
+    }
+    
+    // 检测与基地的碰撞
+    const baseCollisionResult = handleWaveBaseInteraction(w, oldR, i);
+    if (baseCollisionResult === 'bounced' || baseCollisionResult === 'penetrated') {
         w._toRemove = true;
         return;
     }

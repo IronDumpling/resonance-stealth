@@ -197,6 +197,31 @@ function drawWallEchoes() {
     ctx.globalAlpha = 1;
 }
 
+// 绘制基地轮廓（蓝色荧光）
+function drawBaseEchoes() {
+    if (!state.entities.baseEchoes) return;
+    
+    state.entities.baseEchoes.forEach(be => {
+        const base = be.base;
+        const alpha = be.life * 0.8; // 最大透明度80%（比wall更亮）
+        ctx.globalAlpha = alpha;
+        
+        // 蓝色荧光效果
+        ctx.strokeStyle = '#00aaff'; // 亮蓝色
+        ctx.lineWidth = 3;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#00aaff';
+        
+        // 绘制方形轮廓
+        const size = base.radius * 2;
+        const halfSize = base.radius;
+        ctx.strokeRect(base.x - halfSize, base.y - halfSize, size, size);
+        
+        ctx.shadowBlur = 0;
+    });
+    ctx.globalAlpha = 1;
+}
+
 // 绘制波纹
 function drawWaves() {
     // 计算最大能量（300Hz、5度角、初始半径）
@@ -393,6 +418,83 @@ function drawEntities() {
         ctx.fill();
         ctx.globalAlpha = 1;
     });
+    
+    // 绘制基地
+    drawBase();
+}
+
+// 绘制基地
+function drawBase() {
+    if (!state.entities.base) return;
+    
+    const base = state.entities.base;
+    ctx.save();
+    
+    // 计算脉冲效果（如果正在撤离）
+    const pulseIntensity = base.isEvacuating ? 
+        (0.5 + Math.sin(base.pulsePhase * Math.PI * 2) * 0.3) : 0.3;
+    
+    // 绘制外发光层（触发范围指示）
+    if (base.isEvacuating) {
+        const glowRadius = base.triggerRadius;
+        const gradient = ctx.createRadialGradient(base.x, base.y, 0, base.x, base.y, glowRadius);
+        gradient.addColorStop(0, `rgba(0, 255, 0, ${0.1 * pulseIntensity})`);
+        gradient.addColorStop(0.5, `rgba(0, 255, 0, ${0.05 * pulseIntensity})`);
+        gradient.addColorStop(1, 'rgba(0, 255, 0, 0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(base.x, base.y, glowRadius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    // 绘制基地主体（方形建筑）
+    const size = base.radius * 2;
+    const halfSize = base.radius;
+    
+    // 主体填充（深绿色/青色）
+    ctx.fillStyle = base.isEvacuating ? 
+        `rgba(0, 200, 150, ${0.8 + pulseIntensity * 0.2})` : 
+        'rgba(0, 150, 100, 0.8)';
+    ctx.fillRect(base.x - halfSize, base.y - halfSize, size, size);
+    
+    // 边框（亮绿色，带发光）
+    ctx.strokeStyle = base.isEvacuating ? 
+        `rgba(0, 255, 200, ${0.9 + pulseIntensity * 0.1})` : 
+        'rgba(0, 255, 150, 0.9)';
+    ctx.lineWidth = 3;
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#00ffaa';
+    ctx.strokeRect(base.x - halfSize, base.y - halfSize, size, size);
+    ctx.shadowBlur = 0;
+    
+    // 内部结构线
+    ctx.strokeStyle = `rgba(0, 255, 200, ${0.5 + pulseIntensity * 0.3})`;
+    ctx.lineWidth = 1;
+    // 垂直线
+    ctx.beginPath();
+    ctx.moveTo(base.x, base.y - halfSize);
+    ctx.lineTo(base.x, base.y + halfSize);
+    ctx.stroke();
+    // 水平线
+    ctx.beginPath();
+    ctx.moveTo(base.x - halfSize, base.y);
+    ctx.lineTo(base.x + halfSize, base.y);
+    ctx.stroke();
+    
+    // 中心点（脉冲效果）
+    const centerRadius = 5 + (base.isEvacuating ? Math.sin(base.pulsePhase * Math.PI * 2) * 3 : 0);
+    ctx.fillStyle = base.isEvacuating ? 
+        `rgba(0, 255, 200, ${0.9 + pulseIntensity * 0.1})` : 
+        'rgba(0, 255, 150, 0.7)';
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#00ffaa';
+    ctx.beginPath();
+    ctx.arc(base.x, base.y, centerRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    ctx.restore();
 }
 
 // 绘制辅助瞄准线
@@ -632,6 +734,53 @@ function drawPlayerStatusUI() {
     ctx.restore();
 }
 
+// 绘制撤离进度条
+function drawEvacuationProgress() {
+    if (!state.entities.base || !state.entities.base.isEvacuating) return;
+    
+    const base = state.entities.base;
+    // 计算撤离进度（0-1）
+    const progress = typeof getEvacuationProgress === 'function' ? 
+        getEvacuationProgress() : 
+        Math.min(1, base.evacuationTimer / base.evacuationDuration);
+    const remainingTime = base.evacuationDuration - base.evacuationTimer;
+    
+    const barWidth = 400;
+    const barHeight = 30;
+    const barX = (canvas.width - barWidth) / 2;
+    const barY = canvas.height - 150;
+    
+    ctx.save();
+    
+    // 背景
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+    
+    // 进度条（绿色渐变）
+    const gradient = ctx.createLinearGradient(barX, barY, barX + barWidth * progress, barY);
+    gradient.addColorStop(0, '#00ff00');
+    gradient.addColorStop(1, '#00aa00');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(barX + 2, barY + 2, (barWidth - 4) * progress, barHeight - 4);
+    
+    // 边框
+    ctx.strokeStyle = '#00ff00';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(barX, barY, barWidth, barHeight);
+    
+    // 文字
+    ctx.fillStyle = '#00ff00';
+    ctx.font = 'bold 20px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    const timeText = remainingTime > 0 ? `${remainingTime.toFixed(1)}s` : 'COMPLETE';
+    ctx.fillText('RETURNING TO BASE...', canvas.width / 2, barY - 25);
+    ctx.fillText(timeText, canvas.width / 2, barY + barHeight / 2);
+    
+    ctx.restore();
+}
+
 // 主绘制函数
 function draw() {
     // 绘制背景
@@ -648,6 +797,9 @@ function draw() {
     
     // 绘制墙壁轮廓
     drawWallEchoes();
+    
+    // 绘制基地轮廓（蓝色荧光）
+    drawBaseEchoes();
 
     // 绘制辐射场（在波纹之前）
     drawRadiations();
@@ -678,6 +830,9 @@ function draw() {
     
     // 绘制UI（挣脱进度条，不受相机变换影响）
     drawStruggleBar();
+    
+    // 绘制撤离进度条
+    drawEvacuationProgress();
     
     // 绘制玩家状态UI（能量、耐久、核心信息）
     drawPlayerStatusUI();

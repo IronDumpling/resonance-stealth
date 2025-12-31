@@ -69,7 +69,7 @@ const state = {
     
     camera: { x: 0, y: 0 },
     entities: {
-        walls: [], enemies: [], waves: [], echoes: [], particles: [], items: [], wallEchoes: [], radiations: []
+        walls: [], enemies: [], waves: [], echoes: [], particles: [], items: [], wallEchoes: [], radiations: [], base: null, baseEchoes: []
     }
 };
 
@@ -119,75 +119,14 @@ function init() {
     state.entities.walls = [];
     state.entities.radiations = [];
     state.entities.items = [];
+    state.entities.baseEchoes = [];
     
     // 初始化玩家频率
     initPlayerFrequency();
 
-    // 在地图四周生成边界墙，让玩家看不到画布边缘
-    const borderThickness = 60;
-    const mapWidth = canvas.width * CFG.mapScale;
-    const mapHeight = canvas.height * CFG.mapScale;
-    const borderFreq = CFG.wallFreqs[CFG.wallFreqs.length - 1]; // 使用最高频率作为边界阻挡
-    const borderColor = CFG.wallColors[borderFreq];
-    // 上边界
-    state.entities.walls.push({
-        x: -borderThickness, y: -borderThickness,
-        w: mapWidth + borderThickness*2, h: borderThickness,
-        blockFreq: borderFreq, color: borderColor
-    });
-    // 下边界
-    state.entities.walls.push({
-        x: -borderThickness, y: mapHeight,
-        w: mapWidth + borderThickness*2, h: borderThickness,
-        blockFreq: borderFreq, color: borderColor
-    });
-    // 左边界
-    state.entities.walls.push({
-        x: -borderThickness, y: 0,
-        w: borderThickness, h: mapHeight,
-        blockFreq: borderFreq, color: borderColor
-    });
-    // 右边界
-    state.entities.walls.push({
-        x: mapWidth, y: 0,
-        w: borderThickness, h: mapHeight,
-        blockFreq: borderFreq, color: borderColor
-    });
-    
-    // 生成墙壁（增加数量并扩大生成范围）
-    let attempts = 0;
-    const numWalls = CFG.numWalls;
-    while(state.entities.walls.length < numWalls && attempts < 500) {
-        attempts++;
-        const w = rand(80, 200);
-        const h = rand(80, 200);
-        const x = rand(100, mapWidth-200);
-        const y = rand(100, mapHeight-200);
-        
-        let overlap = false;
-        
-        // 检查与其他墙壁重叠
-        for (const other of state.entities.walls) {
-            if (x < other.x + other.w + 20 && x + w + 20 > other.x && 
-                y < other.y + other.h + 20 && y + h + 20 > other.y) {
-                overlap = true; break;
-            }
-        }
-        
-        // 检查与出生点重叠
-        if (!overlap) {
-            const px = mapWidth/2; const py = mapHeight/2;
-            if (x < px + 150 && x + w > px - 150 && y < py + 150 && y + h > py - 150) overlap = true;
-        }
-        
-        if (!overlap) {
-            const blockFreq = CFG.wallFreqs[Math.floor(Math.random() * CFG.wallFreqs.length)];
-            state.entities.walls.push({
-                x, y, w, h, 
-                blockFreq: blockFreq,
-                color: CFG.wallColors[blockFreq]
-            });
-        }
+    // 初始化墙壁系统
+    if (typeof initWalls === 'function') {
+        initWalls();
     }
 
     // 生成敌人
@@ -199,6 +138,11 @@ function init() {
     // 初始化相机位置为玩家位置
     state.camera.x = state.p.x;
     state.camera.y = state.p.y;
+    
+    // 初始化基地（在玩家初始位置）
+    if (typeof spawnBase === 'function') {
+        spawnBase(state.p.x, state.p.y);
+    }
 }
 
 // 更新相机位置（跟随玩家）
@@ -243,10 +187,16 @@ function updateParticlesAndEchoes() {
     
     state.entities.wallEchoes.forEach(we => we.life -= 0.02);
     state.entities.wallEchoes = state.entities.wallEchoes.filter(we => we.life>0);
+    
+    // 更新基地轮廓
+    if (state.entities.baseEchoes) {
+        state.entities.baseEchoes.forEach(be => be.life -= 0.02);
+        state.entities.baseEchoes = state.entities.baseEchoes.filter(be => be.life>0);
+    }
 }
 
 // 主更新函数
-function update() {
+function update(deltaTime = 0.016) {
     updatePlayer();
     updateCamera();
     updateItemsVisibility();
@@ -266,6 +216,11 @@ function update() {
     // 更新敌人和物品UI
     updateEnemies();
     updateItemsUI();
+    
+    // 更新基地
+    if (typeof updateBase === 'function') {
+        updateBase(deltaTime);
+    }
     
     updateParticlesAndEchoes();
     
@@ -356,7 +311,8 @@ function mainLoop() {
 
 // 机器人游戏更新和渲染(由RobotScene调用)
 function updateAndDrawRobot() { 
-    update(); 
+    // 使用全局deltaTime（在mainLoop中计算）
+    update(deltaTime); 
     draw(); 
 }
 

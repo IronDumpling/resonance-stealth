@@ -96,3 +96,42 @@ function useEnergyFlask() {
     return false;
 }
 
+// 将背包物品转移到仓库
+function transferInventoryToWarehouse() {
+    if (typeof warehouse === 'undefined' || typeof state === 'undefined') {
+        console.error('Warehouse or state not defined');
+        return;
+    }
+    
+    let transferredCount = 0;
+    
+    // 遍历玩家背包
+    for (let i = 0; i < state.p.inventory.length; i++) {
+        const item = state.p.inventory[i];
+        
+        // 跳过空槽位
+        if (!item) continue;
+        
+        // 在仓库中寻找空位
+        const emptySlotIndex = warehouse.items.findIndex(slot => slot === null);
+        
+        if (emptySlotIndex !== -1) {
+            // 找到空位，转移物品
+            warehouse.items[emptySlotIndex] = item;
+            state.p.inventory[i] = null;
+            transferredCount++;
+        } else {
+            // 仓库已满，保留在背包中
+            console.warn('Warehouse is full, item remains in inventory');
+        }
+    }
+    
+    // 更新UI
+    if (typeof updateInventoryUI === 'function') {
+        updateInventoryUI();
+    }
+    
+    logMsg(`TRANSFERRED ${transferredCount} ITEMS TO WAREHOUSE`);
+    return transferredCount;
+}
+
