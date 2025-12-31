@@ -557,10 +557,10 @@ class RadioUI {
             }
         }
         
-        // 绘制敌人分析频率条纹历史（橙色，宽度为共振范围±10Hz）
+        // 绘制敌人分析频率条纹历史（橙色，宽度为共振范围）
         // 遍历历史记录，让橙色条纹像瀑布一样向下滚动
         const enemyHistory = this.radio.enemyFreqHistory || [];
-        const resonanceRange = 10; // ±10Hz 共振范围
+        const resonanceRange = CFG.normalResTol; // 使用配置的普通共振容差
         
         if (enemyHistory.length > 0) {
             // 使用混合模式让橙色条纹叠加在瀑布图上

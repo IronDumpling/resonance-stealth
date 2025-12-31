@@ -48,8 +48,8 @@ const CFG = {
     // 频率
     freqMin: 100,
     freqMax: 300,
-    perfectResTol: 5,  // 完美共振容差（±5Hz）
-    normalResTol: 10,  // 普通共振容差（±10Hz） 
+    perfectResTol: 1,  // 完美共振容差（±1Hz）
+    normalResTol: 5,  // 普通共振容差（±5Hz） 
     
     // 敌人
     eSpeedPatrol: 0.6,
