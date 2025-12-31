@@ -129,6 +129,26 @@ const CFG = {
     numEnemy: 15,                 // 敌人数量
     numEnergyBottle: 25,          // 能量瓶数量
     
+    // 信号源配置
+    // 每个信号源定义：{ type, frequency, direction(度), distance(km), message, callsign, strength, persistent }
+    // direction: 0°=东, 45°=东北, 90°=南, 135°=东南, 180°=西, 225°=西南, 270°=北, 315°=西北
+    // 注意：确保distance不会让信号超出地图边界（地图半径约为canvas.width*mapScale/2）
+    // 建议：direction选择90°-180°（南到西）或0°-90°（东到南），避免Y坐标变成负数
+    // 建议：distance不超过地图半径的70%（地图半径≈canvas.width*mapScale/2）
+    storySignals: [
+        {
+            type: 'astronaut',
+            frequency: 155.0,
+            direction: 135,       // 东南方向（确保Y坐标为正，在地图内）
+            distance: 2.5,         // 2.5km（减小距离确保在地图内）
+            message: 'QUANTUM LINK ESTABLISHED',
+            callsign: 'ASTRONAUT-01',
+            strength: 70,
+            persistent: true
+        }
+        // 可以在这里添加更多信号源
+    ],
+    
     // 相机
     cameraFOV: 1.4,             // 视野缩放（1.0 = 正常，>1.0 = 放大，<1.0 = 缩小）
     cameraFollowSpeed: 0.1,     // 相机跟随速度（0-1，越大跟随越快）

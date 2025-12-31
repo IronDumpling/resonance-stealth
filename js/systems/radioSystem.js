@@ -734,21 +734,72 @@ class RadioSystem {
     
     /**
      * 初始化剧情信号
+     * 从CFG.storySignals读取配置，并验证信号位置是否在地图边界内
      */
     initStorySignals() {
-        // 宇航员信号（主线剧情）
-        this.addSignal({
-            type: SIGNAL_TYPES.ASTRONAUT,
-            frequency: 155.0,  // 修改为可调范围内的频率
-            direction: 45,
-            distance: 5.2,
-            message: 'QUANTUM LINK ESTABLISHED',
-            callsign: 'ASTRONAUT-01',
-            strength: 70,
-            persistent: true
-        });
+        if (!CFG || !CFG.storySignals || CFG.storySignals.length === 0) {
+            console.warn('No story signals configured in CFG.storySignals');
+            return;
+        }
         
-        console.log('Story signals initialized');
+        // 计算地图边界（基于canvas尺寸和mapScale）
+        // 注意：此时canvas可能还未初始化，使用默认值或延迟计算
+        let mapWidth = 1920 * CFG.mapScale;  // 默认canvas宽度
+        let mapHeight = 1080 * CFG.mapScale; // 默认canvas高度
+        
+        if (typeof canvas !== 'undefined' && canvas) {
+            mapWidth = canvas.width * CFG.mapScale;
+            mapHeight = canvas.height * CFG.mapScale;
+        }
+        
+        // 机器人初始位置（地图中心）
+        const robotStartX = mapWidth / 2;
+        const robotStartY = mapHeight / 2;
+        
+        // 边界容差（确保信号不紧贴边界）
+        const borderMargin = 500; // 500米容差
+        const minX = borderMargin;
+        const maxX = mapWidth - borderMargin;
+        const minY = borderMargin;
+        const maxY = mapHeight - borderMargin;
+        
+        for (const signalConfig of CFG.storySignals) {
+            // 计算信号的世界坐标（基于机器人初始位置）
+            const angleRad = signalConfig.direction * Math.PI / 180;
+            const distanceMeters = signalConfig.distance * 1000;
+            const signalX = robotStartX + Math.cos(angleRad) * distanceMeters;
+            const signalY = robotStartY - Math.sin(angleRad) * distanceMeters; // Y轴向下，取反sin
+            
+            // 检查是否在地图边界内
+            if (signalX < minX || signalX > maxX || signalY < minY || signalY > maxY) {
+                console.warn(`Signal ${signalConfig.callsign} would be outside map bounds:`);
+                console.warn(`  Calculated position: (${signalX.toFixed(0)}, ${signalY.toFixed(0)})`);
+                console.warn(`  Map bounds: X[${minX.toFixed(0)}, ${maxX.toFixed(0)}], Y[${minY.toFixed(0)}, ${maxY.toFixed(0)}]`);
+                console.warn(`  Direction: ${signalConfig.direction}°, Distance: ${signalConfig.distance}km`);
+                console.warn(`  Skipping signal to prevent out-of-bounds placement`);
+                continue;
+            }
+            
+            // 转换type字符串为SIGNAL_TYPES常量
+            let signalType = SIGNAL_TYPES.SURVIVOR;
+            if (signalConfig.type === 'astronaut') signalType = SIGNAL_TYPES.ASTRONAUT;
+            else if (signalConfig.type === 'beacon') signalType = SIGNAL_TYPES.BEACON;
+            else if (signalConfig.type === 'interference') signalType = SIGNAL_TYPES.INTERFERENCE;
+            
+            // 添加信号
+            this.addSignal({
+                type: signalType,
+                frequency: signalConfig.frequency,
+                direction: signalConfig.direction,
+                distance: signalConfig.distance,
+                message: signalConfig.message || '',
+                callsign: signalConfig.callsign,
+                strength: signalConfig.strength || 50,
+                persistent: signalConfig.persistent !== undefined ? signalConfig.persistent : false
+            });
+        }
+        
+        console.log(`Story signals initialized: ${this.signals.length} signal(s) added`);
     }
 }
 

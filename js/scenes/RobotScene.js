@@ -37,12 +37,29 @@ class RobotScene extends Scene {
             if (isFirstInit) {
                 radioSystem._shelterInitialized = true;
                 
+                // 计算地图边界用于验证
+                const mapWidth = canvas.width * CFG.mapScale;
+                const mapHeight = canvas.height * CFG.mapScale;
+                const borderMargin = 500; // 500米容差
+                const minX = borderMargin;
+                const maxX = mapWidth - borderMargin;
+                const minY = borderMargin;
+                const maxY = mapHeight - borderMargin;
+                
                 for (const signal of radioSystem.signals) {
                     if (signal.direction !== undefined && signal.distance !== undefined) {
                         const angleRad = signal.direction * Math.PI / 180;
                         const distanceMeters = signal.distance * 1000;
                         signal.x = radioSystem.shelterX + Math.cos(angleRad) * distanceMeters;
                         signal.y = radioSystem.shelterY - Math.sin(angleRad) * distanceMeters;
+                        
+                        // 验证信号是否在地图边界内
+                        if (signal.x < minX || signal.x > maxX || signal.y < minY || signal.y > maxY) {
+                            console.warn(`Signal ${signal.callsign} is outside map bounds after recalculation:`);
+                            console.warn(`  Position: (${signal.x.toFixed(0)}, ${signal.y.toFixed(0)})`);
+                            console.warn(`  Map bounds: X[${minX.toFixed(0)}, ${maxX.toFixed(0)}], Y[${minY.toFixed(0)}, ${maxY.toFixed(0)}]`);
+                            console.warn(`  Consider adjusting direction/distance in CFG.storySignals`);
+                        }
                     }
                 }
             }
