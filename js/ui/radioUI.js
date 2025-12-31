@@ -180,7 +180,7 @@ class RadioUI {
                 <div class="button-row">
                     <button class="action-btn" id="btn-wave">
                         <span class="btn-led"></span>
-                        EMIT WAVE [W]
+                        EMIT WAVE [SPACE]
                     </button>
                 </div>
                 

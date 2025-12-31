@@ -160,9 +160,20 @@ class RadarMap {
         ctx.strokeStyle = 'rgba(0, 255, 0, 0.2)';
         ctx.lineWidth = 1;
         
-        // Draw circles at 2km, 4km, 6km, 8km, 10km
-        for (let range = 2; range <= 10; range += 2) {
+        // 计算雷达地图能显示的最大范围（基于世界地图）
+        let maxRangeKm = 10; // 默认10km
+        if (typeof canvas !== 'undefined' && canvas && typeof CFG !== 'undefined' && CFG.mapScale) {
+            const worldMapRadius = (canvas.width * CFG.mapScale) / 2; // 世界地图半径（米）
+            maxRangeKm = worldMapRadius / 1000; // 转换为km
+        }
+        
+        // 绘制范围圆圈，步进为最大范围的1/5
+        const step = Math.max(1, Math.floor(maxRangeKm / 5)); // 至少1km步进
+        for (let range = step; range <= maxRangeKm; range += step) {
             const radius = range * this.scale;
+            
+            // 只绘制在canvas范围内的圆圈
+            if (radius > Math.max(this.canvas.width, this.canvas.height) / 2) break;
             
             ctx.beginPath();
             ctx.arc(this.centerX, this.centerY, radius, 0, Math.PI * 2);
@@ -172,7 +183,7 @@ class RadarMap {
             ctx.fillStyle = 'rgba(0, 255, 0, 0.5)';
             ctx.font = '10px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText(`${range}km`, this.centerX, this.centerY - radius - 5);
+            ctx.fillText(`${range.toFixed(1)}km`, this.centerX, this.centerY - radius - 5);
         }
     }
     

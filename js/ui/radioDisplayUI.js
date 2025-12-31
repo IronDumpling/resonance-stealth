@@ -236,6 +236,23 @@ class RadioDisplayUI {
         this.radarMap.centerX = radarCanvas.width / 2;
         this.radarMap.centerY = radarCanvas.height / 2;
         
+        // 计算雷达地图的scale，使其与世界地图匹配
+        // 世界地图：mapWidth = canvas.width * CFG.mapScale (单位：米)
+        // 雷达地图需要显示10km范围，但实际显示范围应该匹配世界地图
+        // 雷达地图最大显示范围 = min(canvas.width, canvas.height) / 2 (半径)
+        // 世界地图范围 = canvas.width * CFG.mapScale / 2 (半径，单位米)
+        // 雷达地图scale = (世界地图半径米) / (雷达地图半径像素) = (canvas.width * CFG.mapScale / 2) / (min(radarCanvas.width, radarCanvas.height) / 2)
+        // 简化：scale = (canvas.width * CFG.mapScale) / min(radarCanvas.width, radarCanvas.height) * 1000 (米转km)
+        if (typeof canvas !== 'undefined' && canvas && typeof CFG !== 'undefined' && CFG.mapScale) {
+            const worldMapRadius = (canvas.width * CFG.mapScale) / 2; // 世界地图半径（米）
+            const radarMapRadius = Math.min(radarCanvas.width, radarCanvas.height) / 2; // 雷达地图半径（像素）
+            // 计算scale：世界地图半径(米) / 雷达地图半径(像素) * 1000 (转换为 km)
+            // 但radarMap.scale是 pixels per km，所以需要：radarMapRadius / (worldMapRadius / 1000)
+            const worldMapRadiusKm = worldMapRadius / 1000; // 转换为km
+            this.radarMap.scale = radarMapRadius / worldMapRadiusKm; // pixels per km
+            console.log(`Radar map scale calculated: ${this.radarMap.scale.toFixed(2)} pixels/km (world map radius: ${worldMapRadiusKm.toFixed(2)}km, radar radius: ${radarMapRadius}px)`);
+        }
+        
         console.log('Radar map initialized:', radarCanvas.width, 'x', radarCanvas.height);
     }
     
@@ -382,10 +399,18 @@ class RadioDisplayUI {
                     radarCanvas.width = radarContainer.clientWidth;
                     radarCanvas.height = radarContainer.clientHeight - headerHeight;
                     
-                    // 更新radar map的中心点
+                    // 更新radar map的中心点和scale
                     if (this.radarMap) {
                         this.radarMap.centerX = radarCanvas.width / 2;
                         this.radarMap.centerY = radarCanvas.height / 2;
+                        
+                        // 重新计算scale以匹配世界地图
+                        if (typeof canvas !== 'undefined' && canvas && typeof CFG !== 'undefined' && CFG.mapScale) {
+                            const worldMapRadius = (canvas.width * CFG.mapScale) / 2; // 世界地图半径（米）
+                            const radarMapRadius = Math.min(radarCanvas.width, radarCanvas.height) / 2; // 雷达地图半径（像素）
+                            const worldMapRadiusKm = worldMapRadius / 1000; // 转换为km
+                            this.radarMap.scale = radarMapRadius / worldMapRadiusKm; // pixels per km
+                        }
                     }
                     
                     console.log('Radar canvas resized:', radarCanvas.width, 'x', radarCanvas.height);

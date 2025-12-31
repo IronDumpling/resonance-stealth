@@ -160,8 +160,8 @@ class RadioScene extends Scene {
             return true;
         }
         
-        // W key - 发射波纹
-        if (action === 'emit_wave' || key === 'w') {
+        // Space key - 发射波纹
+        if (action === 'emit_wave' || key === ' ') {
             const wave = this.radio.emitPlayerWave();
             if (radioDisplayUI && radioDisplayUI.radarMap) {
                 radioDisplayUI.radarMap.showEmittedWave(wave);

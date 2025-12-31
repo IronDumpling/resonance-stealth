@@ -81,7 +81,7 @@ class InputManager {
             'arrowdown': 'freq_down',
             'arrowleft': 'antenna_left',
             'arrowright': 'antenna_right',
-            'w': 'emit_wave',
+            ' ': 'emit_wave',  // space key
             'escape': 'menu'
         });
         
@@ -354,7 +354,7 @@ class InputManager {
     // 判断是否应该阻止默认行为
     shouldPreventDefault(key) {
         // 在游戏上下文中阻止空格键的默认行为(页面滚动)
-        if (key === ' ' && this.currentContext === INPUT_CONTEXTS.ROBOT) {
+        if (key === ' ' && (this.currentContext === INPUT_CONTEXTS.ROBOT || this.currentContext === INPUT_CONTEXTS.RADIO)) {
             return true;
         }
         

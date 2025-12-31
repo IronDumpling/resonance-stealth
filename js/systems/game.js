@@ -156,7 +156,7 @@ function init() {
     
     // 生成墙壁（增加数量并扩大生成范围）
     let attempts = 0;
-    const numWalls = 18; // 增加墙壁数量以适应更大地图
+    const numWalls = CFG.numWalls;
     while(state.entities.walls.length < numWalls && attempts < 500) {
         attempts++;
         const w = rand(80, 200);
@@ -190,11 +190,11 @@ function init() {
         }
     }
 
-    // 增加敌人数量以适应更大地图
-    for(let i=0; i<7; i++) spawnEnemy();
+    // 生成敌人
+    for(let i=0; i<CFG.numEnemy; i++) spawnEnemy();
     
     // 生成能量瓶
-    for(let i=0; i<12; i++) spawnItem('energy');
+    for(let i=0; i<CFG.numEnergyBottle; i++) spawnItem('energy');
     
     // 初始化相机位置为玩家位置
     state.camera.x = state.p.x;
