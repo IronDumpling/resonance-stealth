@@ -228,7 +228,10 @@ function releaseScan() {
         false,          // isChain
         isParry,        // isParry
         isPerfectParry, // isPerfectParry
-        energyMult      // energyMult
+        energyMult,     // energyMult
+        false,          // isReflectedWave
+        state.p.x,      // originalSourceX
+        state.p.y       // originalSourceY
     );
     
     state.p.isCharging = false; 

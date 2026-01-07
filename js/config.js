@@ -112,6 +112,10 @@ const CFG = {
     resonanceCD: 120,
     minEnergyPerPoint: 0.00001, // 波纹最小能量密度阈值，低于此值波纹消失
     
+    // 反弹波系统
+    reflectionCoefficientWall: 0.8,   // 墙壁反射系数（80%能量）
+    reflectionCoefficientEnemy: 0.6,  // 敌人反射系数（60%能量）
+    
     // 波纹信息显示等级阈值
     infoLevelClear: 500,      // 高于此值：清晰轮廓（低于则为模糊轮廓）
     infoLevelAnalyze: 2000,   // 高于此值：显示分析UI
@@ -150,7 +154,7 @@ const CFG = {
     ],
     
     // 相机
-    cameraFOV: 1.4,             // 视野缩放（1.0 = 正常，>1.0 = 放大，<1.0 = 缩小）
+    cameraFOV: 2.0,             // 视野缩放（1.0 = 正常，>1.0 = 放大，<1.0 = 缩小）
     cameraFollowSpeed: 0.1,     // 相机跟随速度（0-1，越大跟随越快）
     cameraSmoothing: true       // 是否启用平滑跟随
 };

@@ -1,6 +1,6 @@
 // 波纹相关逻辑
 
-function emitWave(x, y, angle, spread, freq, source, ownerId, isChain, isParry, isPerfectParry, energyMult) {
+function emitWave(x, y, angle, spread, freq, source, ownerId, isChain, isParry, isPerfectParry, energyMult, isReflectedWave, originalSourceX, originalSourceY) {
     // 频率影响基础能量：低频(100Hz)=0.5x，中频(200Hz)=1x，高频(300Hz)=1.5x
     const freqFactor = 0.5 + (freq - CFG.freqMin) / (CFG.freqMax - CFG.freqMin);
     let baseEnergy = CFG.baseWaveEnergy * freqFactor;
@@ -15,7 +15,7 @@ function emitWave(x, y, angle, spread, freq, source, ownerId, isChain, isParry, 
         baseEnergy *= 3;
     }
     
-    state.entities.waves.push({
+    const wave = {
         id: `wave_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // 添加唯一ID
         x: x, y: y, r: CFG.initialRadius, maxR: CFG.waveMaxDist,
         angle: angle, spread: spread, freq: freq, 
@@ -26,8 +26,24 @@ function emitWave(x, y, angle, spread, freq, source, ownerId, isChain, isParry, 
         // 弹反相关属性
         isParryWave: isParry || false,       // 标记：我是吞噬者
         isPerfectParry: isPerfectParry || false, // 标记：我的胃口很好 (100%吸收) 还是 一般 (50%)
-        _contactedPlayer: false // 追踪是否已接触玩家
-    });
+        _contactedPlayer: false, // 追踪是否已接触玩家
+        
+        // 反弹波相关属性
+        isReflectedWave: isReflectedWave || false,  // 是否是反弹波
+        originalSourceX: originalSourceX,           // 原始波纹发射源X坐标
+        originalSourceY: originalSourceY,           // 原始波纹发射源Y坐标
+        
+        // 摩斯码
+        morseCode: ''  // 将在下面生成
+    };
+    
+    // 生成摩斯码（如果摩斯码系统已初始化）
+    if (typeof morseCodeSystem !== 'undefined' && morseCodeSystem) {
+        wave.morseCode = morseCodeSystem.generateCodeForWave(wave);
+    }
+    
+    state.entities.waves.push(wave);
+    return wave;  // 返回波纹对象以便后续使用
 }
 
 // 检测波纹与墙壁的碰撞
@@ -207,7 +223,7 @@ function getWaveBlockedAnglesByCircle(wave, enemy) {
     return ranges;
 }
 
-// 处理波纹反弹（分割波纹）
+// 处理波纹反弹（分割波纹 + 生成反弹波）
 function handleWaveBounce(w, wall, energyOnBounce, waveIndex) {
     // 检查是否是base（base有radius属性，wall有w和h属性）
     const isBase = wall.radius !== undefined;
@@ -241,6 +257,59 @@ function handleWaveBounce(w, wall, energyOnBounce, waveIndex) {
             } else {
                 existingEcho.life = Math.min(1.0, existingEcho.life + 0.3);
             }
+        }
+    }
+    
+    // === 新增：生成反弹波 ===
+    // 只有非反弹波才生成反弹波（避免无限反弹）
+    if (!w.isReflectedWave && w.originalSourceX !== undefined && w.originalSourceY !== undefined) {
+        // 计算反弹波的起点（碰撞点的平均位置）
+        const blockedRanges = isBase ? 
+            getWaveBlockedAnglesByCircle(w, { x: wall.x, y: wall.y, r: wall.radius }) :
+            getWaveBlockedAngles(w, wall);
+        
+        if (blockedRanges && blockedRanges.length > 0) {
+            // 计算所有阻挡角度的中心作为反弹波起点
+            const waveStartAngle = w.angle - w.spread / 2;
+            let avgAngle = 0;
+            let avgDist = 0;
+            
+            blockedRanges.forEach(range => {
+                const midAngle = waveStartAngle + (range.start + range.end) / 2;
+                avgAngle += midAngle;
+                avgDist += w.r;
+            });
+            avgAngle /= blockedRanges.length;
+            avgDist /= blockedRanges.length;
+            
+            const reflectionX = w.x + Math.cos(avgAngle) * avgDist;
+            const reflectionY = w.y + Math.sin(avgAngle) * avgDist;
+            
+            // 计算反弹波的方向（指向原始发射源）
+            const dx = w.originalSourceX - reflectionX;
+            const dy = w.originalSourceY - reflectionY;
+            const reflectionAngle = Math.atan2(dy, dx);
+            
+            // 反射系数
+            const reflectionCoefficient = isBase ? 0.9 : (CFG.reflectionCoefficientWall || 0.8);
+            
+            // 生成反弹波
+            emitWave(
+                reflectionX,
+                reflectionY,
+                reflectionAngle,
+                w.spread,  // 保持相同的扩散角度
+                w.freq,    // 保持相同的频率
+                'reflection',  // 标记为反弹波来源
+                w.ownerId,
+                false,  // isChain
+                false,  // isParry
+                false,  // isPerfectParry
+                reflectionCoefficient,  // 能量衰减
+                true,   // isReflectedWave
+                w.originalSourceX,  // 保持原始发射源坐标
+                w.originalSourceY
+            );
         }
     }
     
@@ -452,7 +521,7 @@ function handleWavePenetration(w, wall, waveIndex) {
     return false; // 没有检测到被阻挡的角度
 }
 
-// 处理波纹与敌人的反弹（分割波纹）
+// 处理波纹与敌人的反弹（分割波纹 + 生成反弹波）
 function handleWaveEnemyBounce(w, enemy, energyOnBounce, waveIndex) {
     // 记录敌人轮廓（仅玩家波纹）
     if (w.source === 'player') {
@@ -462,6 +531,50 @@ function handleWaveEnemyBounce(w, enemy, energyOnBounce, waveIndex) {
             life: 1.0,
             energy: energyOnBounce
         });
+    }
+    
+    // === 新增：生成反弹波 ===
+    // 只有非反弹波才生成反弹波（避免无限反弹）
+    if (!w.isReflectedWave && w.originalSourceX !== undefined && w.originalSourceY !== undefined) {
+        const blockedRanges = getWaveBlockedAnglesByCircle(w, enemy);
+        
+        if (blockedRanges && blockedRanges.length > 0) {
+            // 计算反弹波起点（敌人中心方向的波纹边缘）
+            const waveStartAngle = w.angle - w.spread / 2;
+            let avgAngle = 0;
+            
+            blockedRanges.forEach(range => {
+                avgAngle += waveStartAngle + (range.start + range.end) / 2;
+            });
+            avgAngle /= blockedRanges.length;
+            
+            const reflectionX = w.x + Math.cos(avgAngle) * w.r;
+            const reflectionY = w.y + Math.sin(avgAngle) * w.r;
+            
+            // 计算反弹波的方向（指向原始发射源）
+            const dx = w.originalSourceX - reflectionX;
+            const dy = w.originalSourceY - reflectionY;
+            const reflectionAngle = Math.atan2(dy, dx);
+            
+            // 反射系数（敌人的反射系数较低）
+            const reflectionCoefficient = CFG.reflectionCoefficientEnemy || 0.6;
+            
+            // 生成反弹波
+            emitWave(
+                reflectionX,
+                reflectionY,
+                reflectionAngle,
+                w.spread,
+                w.freq,
+                'reflection',
+                enemy.id,
+                false, false, false,
+                reflectionCoefficient,
+                true,
+                w.originalSourceX,
+                w.originalSourceY
+            );
+        }
     }
     
     // 计算被阻挡的角度范围
@@ -657,7 +770,7 @@ function handleWaveEnemyPenetration(w, enemy, waveIndex) {
     return false;
 }
 
-// 处理波纹与玩家的反弹（分割波纹）
+// 处理波纹与玩家的反弹（分割波纹 + 生成反弹波）
 function handleWavePlayerBounce(w, energyOnBounce, waveIndex) {
     const player = { x: state.p.x, y: state.p.y, r: CFG.playerRadius };
     const blockedRanges = getWaveBlockedAnglesByCircle(w, player);
@@ -670,6 +783,48 @@ function handleWavePlayerBounce(w, energyOnBounce, waveIndex) {
             life: 1.0,
             energy: energyOnBounce
         });
+    }
+    
+    // === 新增：生成反弹波 ===
+    // 只有非反弹波才生成反弹波（避免无限反弹）
+    if (!w.isReflectedWave && w.originalSourceX !== undefined && w.originalSourceY !== undefined) {
+        if (blockedRanges && blockedRanges.length > 0) {
+            // 计算反弹波起点
+            const waveStartAngle = w.angle - w.spread / 2;
+            let avgAngle = 0;
+            
+            blockedRanges.forEach(range => {
+                avgAngle += waveStartAngle + (range.start + range.end) / 2;
+            });
+            avgAngle /= blockedRanges.length;
+            
+            const reflectionX = w.x + Math.cos(avgAngle) * w.r;
+            const reflectionY = w.y + Math.sin(avgAngle) * w.r;
+            
+            // 计算反弹波的方向（指向原始发射源）
+            const dx = w.originalSourceX - reflectionX;
+            const dy = w.originalSourceY - reflectionY;
+            const reflectionAngle = Math.atan2(dy, dx);
+            
+            // 玩家反射系数（与墙壁相同）
+            const reflectionCoefficient = CFG.reflectionCoefficientWall || 0.8;
+            
+            // 生成反弹波
+            emitWave(
+                reflectionX,
+                reflectionY,
+                reflectionAngle,
+                w.spread,
+                w.freq,
+                'reflection',
+                'player',
+                false, false, false,
+                reflectionCoefficient,
+                true,
+                w.originalSourceX,
+                w.originalSourceY
+            );
+        }
     }
     
     if (blockedRanges && blockedRanges.length > 0) {
@@ -947,7 +1102,7 @@ function handleWavePlayerInteraction(w, oldR, waveIndex) {
         }
         
         // 玩家被迫发出自发波（与敌人受迫共振对称）
-        emitWave(state.p.x, state.p.y, 0, Math.PI * 2, state.freq, 'player');
+        emitWave(state.p.x, state.p.y, 0, Math.PI * 2, state.freq, 'player', null, false, false, false, 1, false, state.p.x, state.p.y);
         state.p.resonanceCD = CFG.resonanceCD;
     }
     
@@ -1246,7 +1401,7 @@ function handleWaveEnemyInteraction(w, oldR, waveIndex) {
                         
                         if (enemy.en >= energyCost) {
                             enemy.en = Math.max(0, enemy.en - energyCost);
-                            emitWave(enemy.x, enemy.y, 0, Math.PI*2, enemy.freq, 'enemy', enemy.id);
+                            emitWave(enemy.x, enemy.y, 0, Math.PI*2, enemy.freq, 'enemy', enemy.id, false, false, false, 1, false, enemy.x, enemy.y);
                             enemy.resonanceCD = CFG.resonanceCD;
                             
                             // 敌人会警觉并追踪波纹来源位置（硬直状态下不会移动，但仍会记录玩家位置）

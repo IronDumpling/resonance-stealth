@@ -346,6 +346,11 @@ function startApplication() {
         initPlayerInventory();
     }
     
+    // 4. 初始化摩斯码系统
+    if (typeof initMorseCodeSystem === 'function') {
+        initMorseCodeSystem();
+    }
+    
     console.log('All systems initialized');
     
     // 4. 设置输入路由
