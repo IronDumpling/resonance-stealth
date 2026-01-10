@@ -644,10 +644,23 @@ class RadioUI {
                 for (const wave of waveFreqs) {
                     const freq = wave.freq;
                     const source = wave.source;
+                    const isReflected = wave.isReflected || false;
                     
-                    // 根据来源选择颜色
-                    const isEnemy = (source === 'enemy');
-                    const baseColor = isEnemy ? [255, 153, 0] : [0, 255, 255]; // 橙色 vs 青色
+                    // 根据来源选择颜色（阶段五：无线电系统升级）
+                    let baseColor;
+                    if (isReflected || source === 'reflection') {
+                        baseColor = [0, 255, 0];  // 反弹波：绿色
+                    } else if (source === 'player') {
+                        baseColor = [0, 255, 255];  // 玩家波：青色
+                    } else if (source === 'enemy') {
+                        baseColor = [255, 100, 100];  // 敌人波：红色
+                    } else if (source === 'pulse') {
+                        baseColor = [255, 255, 0];  // 脉冲波：黄色
+                    } else if (source === 'signal') {
+                        baseColor = [255, 255, 0];  // 信号源波：黄色（5.2）
+                    } else {
+                        baseColor = [255, 153, 0];  // 其他：橙色（兼容旧系统）
+                    }
                     
                     const freqMin = freq - waveResonanceRange;
                     const freqMax = freq + waveResonanceRange;

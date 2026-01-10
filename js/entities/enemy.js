@@ -445,7 +445,7 @@ function updateEnemyMovement(e) {
             
             if (e.en >= energyCost) {
                 e.en = Math.max(0, e.en - energyCost);
-                emitWave(e.x, e.y, 0, Math.PI * 2, e.freq, 'enemy', e.id);
+                emitWave(e.x, e.y, 0, Math.PI * 2, e.freq, 'enemy', e.id, false, false, false, 1, false, e.x, e.y);
                 // 视觉 Ping：强调"正在搜索"
                 state.entities.echoes.push({
                     x: e.x, y: e.y, r: e.r * 2,
@@ -873,7 +873,7 @@ function updateEnemies() {
             
             if (!e.isPerfectStun) {
                 // 普通共振：立即释放一次波，然后死亡
-                emitWave(e.x, e.y, 0, Math.PI*2, e.freq, 'pulse', e.id);
+                emitWave(e.x, e.y, 0, Math.PI*2, e.freq, 'pulse', e.id, false, false, false, 1, false, e.x, e.y);
                 enemiesToRemove.push(e);
                 spawnParticles(e.x, e.y, '#ff0000', 50);
             } else {
@@ -886,7 +886,7 @@ function updateEnemies() {
                 
                 // 每隔60帧释放一次波
                 if (e.detonatePulseTimer <= 0) {
-                    emitWave(e.x, e.y, 0, Math.PI*2, e.detonateCurrentFreq, 'pulse', e.id);
+                    emitWave(e.x, e.y, 0, Math.PI*2, e.detonateCurrentFreq, 'pulse', e.id, false, false, false, 1, false, e.x, e.y);
                     spawnParticles(e.x, e.y, '#ff0000', 30);
                     
                     // 频率递减50Hz，最低100Hz

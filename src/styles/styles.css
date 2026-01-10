@@ -1,0 +1,174 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: #000;
+    font-family: 'Courier New', monospace;
+    user-select: none;
+}
+canvas { display: block; }
+
+/* UI 层 */
+#ui-layer {
+    position: absolute; top: 20px; left: 20px;
+    color: #33ccff; pointer-events: none; z-index: 20;
+    display: none; /* 默认隐藏，在ROBOT场景中显示 */
+}
+.hud-row {
+    margin-bottom: 8px; font-size: 16px;
+    text-shadow: 0 0 5px rgba(51, 204, 255, 0.5);
+}
+.val-warn { color: #ff3333; text-shadow: 0 0 5px #ff3333; }
+
+#freq-box {
+    border: 2px solid #33ccff; padding: 5px 10px;
+    display: inline-block; background: rgba(0,20,40,0.8);
+    font-weight: bold; font-size: 20px; transition: color 0.2s;
+}
+
+/* 频率分析仪浮动UI */
+.analyzer-tag {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.85);
+    border: 1px solid #33ccff;
+    padding: 8px 10px;
+    color: #fff;
+    font-size: 12px;
+    pointer-events: none;
+    transform: translate(-50%, -100%);
+    white-space: nowrap;
+    display: none;
+    box-shadow: 0 0 10px #33ccff;
+    z-index: 100;
+    min-width: 120px;
+}
+
+.analyzer-overload {
+    padding: 4px 0;
+    text-align: center;
+    font-size: 11px;
+    font-weight: bold;
+    border-bottom: 1px solid #33ccff;
+    margin-bottom: 4px;
+}
+
+.overload-value {
+    font-size: 14px;
+    color: #fff;
+}
+
+.overload-bar-container {
+    width: 100%;
+    height: 8px;
+    background: #222;
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+    border: 1px solid #444;
+}
+
+.overload-bar-fill {
+    height: 100%;
+    background: #aaa;
+    transition: width 0.2s, background-color 0.2s;
+}
+
+.analyzer-energy {
+    padding: 4px 0;
+    text-align: center;
+    font-size: 11px;
+    font-weight: bold;
+    border-bottom: 1px solid #33ccff;
+    margin-bottom: 4px;
+}
+
+.energy-value {
+    font-size: 14px;
+    color: #fff;
+}
+
+.energy-bar-container {
+    width: 100%;
+    height: 8px;
+    background: #222;
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+    border: 1px solid #444;
+}
+
+.energy-bar-fill {
+    height: 100%;
+    background: #00ff00;
+    transition: width 0.2s, background-color 0.2s;
+}
+
+.analyzer-resonance {
+    padding: 8px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* 交互提示 (通用) */
+.interact-hint {
+    position: absolute; display: none;
+    color: #fff; font-weight: bold; font-size: 14px;
+    text-shadow: 0 0 5px #fff; border: 1px solid #fff;
+    padding: 2px 6px; background: rgba(0,0,0,0.8);
+    transform: translate(-50%, -150%);
+    z-index: 101;
+    pointer-events: none;
+    transition: opacity 0.2s ease-in-out;
+}
+
+/* 处决特定样式 */
+.execute-hint { 
+    color: #ff0000; 
+    border-color: #ff0000; 
+    text-shadow: 0 0 5px #ff0000; 
+}
+
+/* 物品提示样式 (动态颜色由JS设置) */
+.item-hint {
+    font-size: 12px;
+    padding: 3px 8px;
+    white-space: nowrap;
+}
+
+/* 挣扎提示样式 */
+.struggle-hint {
+    color: #ffaa00;
+    border-color: #ffaa00;
+    text-shadow: 0 0 5px #ffaa00;
+}
+
+/* 抓取提示样式 */
+.grab-hint {
+    color: #00ffff;
+    border-color: #00ffff;
+    text-shadow: 0 0 5px #00ffff;
+}
+
+/* 边缘红光效果 能量低或被grab时显示，也用于闪烁效果 */
+#edge-glow {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 6;
+    opacity: 0;
+    transition: opacity 0.2s;
+    box-shadow: inset 0 0 20px 8px rgba(255, 0, 0, 0.8);
+}
+
+/* 操作指南优化 */
+.controls {
+    position: absolute; bottom: 20px; left: 20px;
+    color: #aaa; font-size: 13px; z-index: 10;
+    background: rgba(0, 10, 20, 0.8);
+    padding: 10px;
+    border-left: 3px solid #33ccff;
+    line-height: 1.6;
+}
+.key-btn {
+    color: #fff; font-weight: bold; background: #333; padding: 1px 4px; border-radius: 3px; font-size: 12px;
+}
+.highlight { color: #33ccff; font-weight: bold; }
+

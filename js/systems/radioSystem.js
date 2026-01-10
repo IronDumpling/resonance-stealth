@@ -92,6 +92,11 @@ class RadioSignal {
         // 存储用于后续计算
         this._angleRad = angleRad;
         this._distanceMeters = distanceMeters;
+        
+        // 信号源波纹发射系统
+        this.waveEmitInterval = config.waveEmitInterval || 5.0;  // 默认每5秒发射一次
+        this.lastWaveEmitTime = 0;
+        this.waveEmitCount = 0;  // 发射次数计数
     }
     
     textToMorse(text) {
@@ -167,6 +172,45 @@ class RadioSignal {
             }
             return char;
         }).join('');
+    }
+    
+    /**
+     * 发射信号源波纹（5.2：信号源定期释放波纹）
+     * @returns {object|null} 波纹对象，如果应该发射则返回，否则返回null
+     */
+    emitSignalWave() {
+        if (!this.x || !this.y) return null;  // 坐标未设置，不发射
+        
+        // 检查是否到了发射时间
+        const now = Date.now() / 1000;  // 转换为秒
+        if (now - this.lastWaveEmitTime < this.waveEmitInterval) {
+            return null;  // 还没到发射时间
+        }
+        
+        // 更新发射时间
+        this.lastWaveEmitTime = now;
+        this.waveEmitCount++;
+        
+        // 生成信号源波纹（全向发射）
+        if (typeof emitWave === 'function' && typeof state !== 'undefined') {
+            const wave = emitWave(
+                this.x,
+                this.y,
+                0,  // 角度（全向）
+                Math.PI * 2,  // 全向扩散
+                this.frequency,
+                'signal',  // 标记为信号源波纹
+                this.id,  // ownerId为信号ID
+                false, false, false, 1,  // 标准参数
+                false,  // 不是反弹波
+                this.x,  // originalSourceX
+                this.y   // originalSourceY
+            );
+            
+            return wave;
+        }
+        
+        return null;
     }
     
     update(deltaTime) {
@@ -445,12 +489,35 @@ class RadioSystem {
     }
     
     /**
-     * 旋转天线
+     * 旋转天线（5.3：同步到场景中的天线方向）
      */
     rotateAntenna(delta) {
         this.antennaAngle += delta;
         this.antennaAngle = (this.antennaAngle + 360) % 360;
+        
+        // 同步到场景中的天线系统（5.3）
+        if (typeof state !== 'undefined' && state.antennaSystem) {
+            // 将角度转换为弧度并更新
+            const angleRad = this.antennaAngle * Math.PI / 180;
+            state.antennaSystem.updateDirection(angleRad);
+        }
+        
         this.updateSignalStrengths();
+    }
+    
+    /**
+     * 同步天线方向（从场景到Radio UI，5.3）
+     */
+    syncAntennaDirection() {
+        if (typeof state !== 'undefined' && state.antennaSystem) {
+            // 从场景中的天线系统获取方向（弧度），转换为角度
+            const angleRad = state.antennaSystem.direction;
+            this.antennaAngle = (angleRad * 180 / Math.PI + 360) % 360;
+        } else if (typeof state !== 'undefined' && state.p) {
+            // 回退：从玩家朝向获取
+            const angleRad = state.p.a;
+            this.antennaAngle = (angleRad * 180 / Math.PI + 360) % 360;
+        }
     }
     
     /**
@@ -651,12 +718,39 @@ class RadioSystem {
             this.enemyFreqHistory.pop();
         }
         
-        // 记录波纹接触频率到历史记录
-        // 将当前活跃的波纹接触转换为历史记录格式
-        const currentWaveFreqs = this.activeWaveContacts.map(w => ({
-            freq: w.freq,
-            source: w.source
-        }));
+        // 记录天线范围内的波纹频率到历史记录（阶段五：无线电系统升级）
+        const currentWaveFreqs = [];
+        
+        // 如果天线系统已初始化，优先复用其本帧缓存的“天线范围内波纹”
+        if (typeof state !== 'undefined' && state.antennaSystem) {
+            const antenna = state.antennaSystem;
+            const wavesInRange = Array.isArray(antenna.lastWavesInRange)
+                ? antenna.lastWavesInRange
+                : (state.entities.waves || []);
+
+            for (const wave of wavesInRange) {
+                // 波纹在天线范围内，记录其频率
+                let sourceType = wave.source;
+                if (wave.isReflectedWave) {
+                    sourceType = 'reflection';  // 反弹波标记
+                }
+                
+                currentWaveFreqs.push({
+                    freq: wave.freq,
+                    source: sourceType,
+                    isReflected: wave.isReflectedWave || false
+                });
+            }
+        } else {
+            // 回退到旧的activeWaveContacts系统
+            const fallbackWaves = this.activeWaveContacts.map(w => ({
+                freq: w.freq,
+                source: w.source,
+                isReflected: false
+            }));
+            currentWaveFreqs.push(...fallbackWaves);
+        }
+        
         this.waveContactHistory.unshift(currentWaveFreqs);
         
         if (this.waveContactHistory.length > RADIO_CONFIG.WATERFALL_HEIGHT) {
@@ -727,14 +821,23 @@ class RadioSystem {
         if (typeof state !== 'undefined' && state.p) {
             this.shelterX = state.p.x;
             this.shelterY = state.p.y;
-            
         }
         
-        // 更新信号生命周期
+        // 同步天线方向（5.3：从场景到Radio UI）
+        this.syncAntennaDirection();
+        
+        // 更新信号生命周期（5.2：信号源波纹发射由物品系统处理）
         for (let i = this.signals.length - 1; i >= 0; i--) {
-            if (!this.signals[i].update(deltaTime)) {
-                this.removeSignal(this.signals[i].id);
+            const signal = this.signals[i];
+            
+            // 更新信号生命周期
+            if (!signal.update(deltaTime)) {
+                this.removeSignal(signal.id);
+                continue;
             }
+            
+            // 5.2：信号源波纹发射已移至物品系统（updateSignalSources）
+            // 无线电系统只管理已发现的信号信息
         }
         
         // 更新波纹系统
@@ -784,76 +887,6 @@ class RadioSystem {
         
         this.addSignal(config);
     }
-    
-    /**
-     * 初始化剧情信号
-     * 从CFG.storySignals读取配置，并验证信号位置是否在地图边界内
-     */
-    initStorySignals() {
-        if (!CFG || !CFG.storySignals || CFG.storySignals.length === 0) {
-            console.warn('No story signals configured in CFG.storySignals');
-            return;
-        }
-        
-        // 计算地图边界（基于canvas尺寸和mapScale）
-        // 注意：此时canvas可能还未初始化，使用默认值或延迟计算
-        let mapWidth = 1920 * CFG.mapScale;  // 默认canvas宽度
-        let mapHeight = 1080 * CFG.mapScale; // 默认canvas高度
-        
-        if (typeof canvas !== 'undefined' && canvas) {
-            mapWidth = canvas.width * CFG.mapScale;
-            mapHeight = canvas.height * CFG.mapScale;
-        }
-        
-        // 机器人初始位置（地图中心）
-        const robotStartX = mapWidth / 2;
-        const robotStartY = mapHeight / 2;
-        
-        // 边界容差（确保信号不紧贴边界）
-        const borderMargin = 500; // 500米容差
-        const minX = borderMargin;
-        const maxX = mapWidth - borderMargin;
-        const minY = borderMargin;
-        const maxY = mapHeight - borderMargin;
-        
-        for (const signalConfig of CFG.storySignals) {
-            // 计算信号的世界坐标（基于机器人初始位置）
-            const angleRad = signalConfig.direction * Math.PI / 180;
-            const distanceMeters = signalConfig.distance * 1000;
-            const signalX = robotStartX + Math.cos(angleRad) * distanceMeters;
-            const signalY = robotStartY - Math.sin(angleRad) * distanceMeters; // Y轴向下，取反sin
-            
-            // 检查是否在地图边界内
-            if (signalX < minX || signalX > maxX || signalY < minY || signalY > maxY) {
-                console.warn(`Signal ${signalConfig.callsign} would be outside map bounds:`);
-                console.warn(`  Calculated position: (${signalX.toFixed(0)}, ${signalY.toFixed(0)})`);
-                console.warn(`  Map bounds: X[${minX.toFixed(0)}, ${maxX.toFixed(0)}], Y[${minY.toFixed(0)}, ${maxY.toFixed(0)}]`);
-                console.warn(`  Direction: ${signalConfig.direction}°, Distance: ${signalConfig.distance}km`);
-                console.warn(`  Skipping signal to prevent out-of-bounds placement`);
-                continue;
-            }
-            
-            // 转换type字符串为SIGNAL_TYPES常量
-            let signalType = SIGNAL_TYPES.SURVIVOR;
-            if (signalConfig.type === 'astronaut') signalType = SIGNAL_TYPES.ASTRONAUT;
-            else if (signalConfig.type === 'beacon') signalType = SIGNAL_TYPES.BEACON;
-            else if (signalConfig.type === 'interference') signalType = SIGNAL_TYPES.INTERFERENCE;
-            
-            // 添加信号
-            this.addSignal({
-                type: signalType,
-                frequency: signalConfig.frequency,
-                direction: signalConfig.direction,
-                distance: signalConfig.distance,
-                message: signalConfig.message || '',
-                callsign: signalConfig.callsign,
-                strength: signalConfig.strength || 50,
-                persistent: signalConfig.persistent !== undefined ? signalConfig.persistent : false
-            });
-        }
-        
-        console.log(`Story signals initialized: ${this.signals.length} signal(s) added`);
-    }
 }
 
 // 全局无线电系统实例
@@ -864,7 +897,6 @@ let radioSystem = null;
  */
 function initRadioSystem() {
     radioSystem = new RadioSystem();
-    radioSystem.initStorySignals();
     radioSystem.updateSignalStrengths(); // 初始化信号强度
     console.log('Radio System ready');
     return radioSystem;

@@ -1,5 +1,5 @@
 /**
- * 处理玩家休眠状态
+ * 处理玩家休眠状态（6.1：删除重启设计，保留休眠状态用于其他用途）
  */
 function handlePlayerDormancy() {
     // 休眠时辐射场逐渐消失
@@ -14,22 +14,8 @@ function handlePlayerDormancy() {
         }
     }
     
-    // 按R键重启（使用能量瓶）
-    if (state.keys.r) {
-        // 检查是否有能量瓶
-        if (getInventoryCount('energy_flask') > 0) {
-            // 消耗能量瓶并使用addEnergy增加能量
-            if (removeFromInventory('energy_flask')) {
-                addEnergy(CFG.energyFlaskVal);
-                state.p.isDormant = false;
-                logMsg("SYSTEM REBOOTED");
-                state.keys.r = false; // 防止连续触发
-            }
-        } else {
-            logMsg("NO ENERGY FLASK - CANNOT RESTART");
-            state.keys.r = false; // 防止连续触发
-        }
-    }
+    // 6.1：删除按R键重启的设计
+    // 休眠状态现在仅用于其他特殊机制（如果有）
 }
 
 /**
@@ -161,10 +147,18 @@ function releaseScan() {
     // 硬直状态无法发波
     if(state.p.overloadedStunTimer && state.p.overloadedStunTimer > 0) return;
     
+    // 6.1：能量归零时无法释放波纹
+    if(state.p.en <= 0) {
+        logMsg("NO ENERGY - CANNOT EMIT");
+        state.p.isCharging = false;
+        state.focusLevel = 0;
+        return;
+    }
+    
     // 计算当前角度（弧度）
     const currentSpread = lerp(CFG.maxSpread, CFG.minSpread, state.focusLevel);
     
-    // 能量消耗公式：只和频率相关，短按和长按能耗相同
+    // 6.2：释放波纹消耗能量（能量消耗公式：只和频率相关，短按和长按能耗相同）
     const freqNorm = (state.freq - CFG.freqMin) / (CFG.freqMax - CFG.freqMin); // 0~1
     const rawCost = 5 * freqNorm;  // 只基于频率，范围约0~5
     const energyCost = clamp(Math.round(rawCost), 0, 10);
@@ -228,7 +222,10 @@ function releaseScan() {
         false,          // isChain
         isParry,        // isParry
         isPerfectParry, // isPerfectParry
-        energyMult      // energyMult
+        energyMult,     // energyMult
+        false,          // isReflectedWave
+        state.p.x,      // originalSourceX
+        state.p.y       // originalSourceY
     );
     
     state.p.isCharging = false; 
@@ -603,15 +600,8 @@ function updatePlayer() {
         return; // 报废后不再更新
     }
     
-    // 检查休眠状态
-    if (state.p.isDormant) {
-        handlePlayerDormancy();
-        return; // 休眠时不更新其他逻辑
-    }
-    
-    // 能量自然衰减（受核心影响，根据移动状态变化）
-    const baseDecay = CFG.energyDecayRate * state.p.currentCore.energyMultiplier;
-    let energyDecay = baseDecay; // 默认不移动：1倍
+    // 能量消耗逻辑（6.2：静止不消耗，移动消耗，奔跑更多）
+    let energyDecay = 0;  // 默认静止不消耗
     
     // 检测移动状态
     if (!state.p.isGrabbed && !state.p.isGrabbingEnemy) {
@@ -619,6 +609,7 @@ function updatePlayer() {
         if(state.keys.w) dy-=1; if(state.keys.s) dy+=1;
         if(state.keys.a) dx-=1; if(state.keys.d) dx+=1;
         if(dx||dy) {
+            const baseDecay = CFG.energyDecayRate * state.p.currentCore.energyMultiplier;
             const isSprinting = state.keys.shift || false;
             if (isSprinting) {
                 energyDecay = baseDecay * 2.5; // 奔跑时2.5倍
@@ -629,29 +620,6 @@ function updatePlayer() {
     }
     
     state.p.en = Math.max(0, state.p.en - energyDecay);
-    
-    // 能量耗尽进入休眠（在处理之前先清除抓取状态）
-    if (state.p.en <= 0 && !state.p.isDormant) {
-        // 如果正在被抓取，先释放抓取状态
-        if (state.p.isGrabbed) {
-            state.p.isGrabbed = false;
-            const grabber = state.p.grabberEnemy;
-            state.p.grabberEnemy = null;
-            state.p.struggleProgress = 0;
-            
-            // 释放抓取者状态
-            if (grabber) {
-                grabber.state = 'alert';
-                grabber.grabCooldown = CFG.grabCD;
-            }
-        }
-        
-        // 进入休眠
-        state.p.isDormant = true;
-        state.p.en = 0;
-        logMsg("SYSTEM DORMANT - PRESS [R] TO RESTART");
-        return;
-    }
     
     // 处理硬直状态
     if (state.p.overloadedStunTimer && state.p.overloadedStunTimer > 0) {
@@ -692,6 +660,11 @@ function updatePlayer() {
             // 速度降低：过载值 >= 2/3 时，速度降低50%
             if (state.p.overload >= CFG.maxOverload * 2 / 3) {
                 spd *= 0.5;
+            }
+            
+            // 6.1：能量归零时显著降低移动速度
+            if (state.p.en <= 0) {
+                spd *= 0.2;  // 降低到20%速度
             }
             const nx = state.p.x + (dx/len)*spd; 
             const ny = state.p.y + (dy/len)*spd;

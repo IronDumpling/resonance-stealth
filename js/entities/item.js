@@ -31,6 +31,12 @@ function createItemHintUI(itemType) {
             div.style.borderColor = '#ff00ff';
             div.style.textShadow = '0 0 5px #ff00ff';
             break;
+        case 'signal_source':
+            div.innerHTML = 'SIGNAL SOURCE';
+            div.style.color = '#ffff00';
+            div.style.borderColor = '#ffff00';
+            div.style.textShadow = '0 0 5px #ffff00';
+            break;
         default:
             div.innerHTML = '[E] PICKUP';
             div.style.color = '#ffffff';
@@ -43,7 +49,7 @@ function createItemHintUI(itemType) {
 }
 
 // 生成物品
-function spawnItemEnhanced(type, x, y) {
+function spawnItemEnhanced(type, x, y, config) {
     const mapWidth = canvas.width * CFG.mapScale;
     const mapHeight = canvas.height * CFG.mapScale;
     
@@ -55,6 +61,26 @@ function spawnItemEnhanced(type, x, y) {
         visibleTimer: type === 'quest_item' ? Infinity : 0, // 任务道具始终可见
         hintElement: null  // UI元素引用
     };
+    
+    // 信号源特殊属性（5.2：信号源作为地图实体）
+    if (type === 'signal_source') {
+        item.frequency = config?.frequency || 150.0;
+        item.message = config?.message || '';
+        item.callsign = config?.callsign || `SIGNAL-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+        item.strength = config?.strength || 50;
+        item.waveEmitInterval = config?.waveEmitInterval || 5.0;  // 默认每5秒发射一次
+        item.lastWaveEmitTime = 0;
+        item.waveEmitCount = 0;
+        item.discovered = false;  // 是否被天线发现
+        item.visibleTimer = 0;  // 信号源默认不可见（只有被天线发现后才可见）
+        
+        // 生成摩斯码
+        if (typeof morseCodeSystem !== 'undefined' && morseCodeSystem && item.message) {
+            item.morseCode = morseCodeSystem.encode(item.message);
+        } else {
+            item.morseCode = '';
+        }
+    }
     
     // 检查是否在墙里
     if (x === undefined && y === undefined) {
@@ -240,5 +266,100 @@ function hasPickupableItems() {
     return state.entities.items.some(
         i => dist(i.x, i.y, state.p.x, state.p.y) < 40 && i.visibleTimer > 0
     );
+}
+
+// 更新信号源
+function updateSignalSources(deltaTime) {
+    state.entities.items.forEach(item => {
+        if (item.type !== 'signal_source') return;
+        
+        // 检查是否到了发射时间
+        const now = Date.now() / 1000;  // 转换为秒
+        if (now - item.lastWaveEmitTime < item.waveEmitInterval) {
+            return;  // 还没到发射时间
+        }
+        
+        // 更新发射时间
+        item.lastWaveEmitTime = now;
+        item.waveEmitCount++;
+        
+        // 发射信号源波纹（全向发射）
+        if (typeof emitWave === 'function') {
+            emitWave(
+                item.x,
+                item.y,
+                0,  // 角度（全向）
+                Math.PI * 2,  // 全向扩散
+                item.frequency,
+                'signal',  // 标记为信号源波纹
+                item.callsign,  // ownerId为信号呼号
+                false, false, false, 1,  // 标准参数
+                false,  // 不是反弹波
+                item.x,  // originalSourceX
+                item.y   // originalSourceY
+            );
+        }
+    });
+}
+
+// 检查信号源是否被天线发现
+function checkSignalSourceDiscovery() {
+    if (!state.antennaSystem) return;
+    
+    // 优先使用天线系统本帧缓存的“天线范围内波纹”，避免重复几何计算
+    const antenna = state.antennaSystem;
+    const cachedWaves = Array.isArray(antenna.lastWavesInRange)
+        ? antenna.lastWavesInRange
+        : (state.entities.waves || []);
+    
+    state.entities.items.forEach(item => {
+        if (item.type !== 'signal_source') return;
+        if (item.discovered) return;  // 已经发现过了
+        
+        // 检查是否有该信号源的波纹在天线范围内
+        const signalWave = cachedWaves.find(w => {
+            if (w.source !== 'signal' || w.ownerId !== item.callsign) return false;
+            if (w._receivedByAntenna) return false;  // 已经处理过了
+            
+            // 这里的 cachedWaves 已经保证在天线扇形范围内，无需再次做昂贵的几何检测
+            return true;
+        });
+        
+        if (signalWave) {
+            // 信号源被天线发现
+            item.discovered = true;
+            item.visibleTimer = 120;  // 显示2秒
+            signalWave._receivedByAntenna = true;  // 标记已处理
+            
+            // 计算信号源到玩家的距离和方向
+            const dx = item.x - state.p.x;
+            const dy = item.y - state.p.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const direction = Math.atan2(dy, dx) * 180 / Math.PI;
+            
+            logMsg(`SIGNAL SOURCE DETECTED: ${item.callsign}`);
+            
+            // 同步到无线电系统（如果存在）
+            if (typeof radioSystem !== 'undefined' && radioSystem) {
+                // 检查是否已经在信号列表中
+                const existingSignal = radioSystem.signals.find(s => s.callsign === item.callsign);
+                if (!existingSignal) {
+                    // 添加到无线电系统
+                    radioSystem.addSignal({
+                        type: 'survivor',  // 默认类型
+                        frequency: item.frequency,
+                        direction: direction,
+                        distance: distance / 1000,  // 转换为km
+                        message: item.message,
+                        callsign: item.callsign,
+                        strength: item.strength,
+                        persistent: true,
+                        x: item.x,
+                        y: item.y
+                    });
+                }
+            }
+        }
+    });
 }
 

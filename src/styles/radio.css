@@ -1,0 +1,580 @@
+/**
+ * 无线电UI样式 - 真实仪表风格
+ * Radio User Interface Styles - Realistic Instrument Style
+ */
+
+/* 主容器 - 嵌入式版本 */
+#radio-interface {
+    width: 100%;
+    height: 100%;
+    font-family: 'Courier New', monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+/* 禁用状态 */
+#radio-interface.disabled {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+#radio-interface.disabled .action-btn {
+    opacity: 0.3;
+}
+
+#radio-interface.disabled .knob-btn {
+    opacity: 0.3;
+}
+
+/* 无线电面板 - 适应容器 */
+.radio-panel {
+    background: linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%);
+    border: 3px solid #444;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 
+        0 10px 30px rgba(0, 0, 0, 0.8),
+        inset 0 0 20px rgba(0, 0, 0, 0.5);
+    width: 95%;
+    max-width: 600px;
+    max-height: 95%;
+    overflow-y: auto;
+}
+
+/* 顶部标题 */
+.radio-header {
+    text-align: center;
+    color: #7f8c8d;
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #1a1a1a;
+    border: 2px solid #333;
+    border-radius: 4px;
+    position: relative;
+}
+
+.screw {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: radial-gradient(circle, #555 0%, #222 100%);
+    border-radius: 50%;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.screw:nth-child(1) { top: 5px; left: 5px; }
+.screw:nth-child(2) { top: 5px; right: 5px; }
+.screw:nth-child(3) { top: 5px; left: 50%; transform: translateX(-50%); }
+.screw:nth-child(4) { top: 5px; right: 50%; transform: translateX(50%); }
+
+.screw::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 6px;
+    height: 1px;
+    background: #000;
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+/* 瀑布图容器 */
+.spectrum-container {
+    position: relative;
+    background: #000;
+    border: 3px solid #333;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    padding: 5px;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+#waterfall-canvas {
+    display: block;
+    width: 100%;
+    height: 150px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+.tuner-line {
+    position: absolute;
+    top: 5px;
+    bottom: 25px;
+    left: 50%;
+    width: 2px;
+    background: #ff0000;
+    box-shadow: 0 0 5px #ff0000;
+    pointer-events: none;
+    transition: left 0.1s ease;
+}
+
+.freq-scale {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 10px 0;
+    color: #777;
+    font-size: 10px;
+}
+
+/* 控制行 */
+.control-row {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #222;
+    border: 2px solid #333;
+    border-radius: 4px;
+}
+
+/* 数字显示 */
+.digital-display {
+    background: #000;
+    border: 2px solid #333;
+    border-radius: 4px;
+    padding: 10px;
+    text-align: center;
+    box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.2);
+}
+
+.display-label {
+    color: #666;
+    font-size: 10px;
+    margin-bottom: 5px;
+}
+
+.display-value {
+    color: #00ff00;
+    font-size: 24px;
+    font-weight: bold;
+    text-shadow: 0 0 10px #00ff00;
+    letter-spacing: 2px;
+}
+
+.display-unit {
+    color: #00aa00;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+/* 旋钮组 */
+.knob-group {
+    text-align: center;
+}
+
+.knob-label {
+    color: #999;
+    font-size: 10px;
+    margin-bottom: 5px;
+}
+
+.knob {
+    width: 60px;
+    height: 60px;
+    background: radial-gradient(circle at 30% 30%, #555, #222);
+    border: 3px solid #333;
+    border-radius: 50%;
+    position: relative;
+    margin: 10px auto;
+    box-shadow: 
+        0 5px 10px rgba(0, 0, 0, 0.5),
+        inset 0 -5px 10px rgba(0, 0, 0, 0.5),
+        inset 0 5px 10px rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+
+.knob-small {
+    width: 50px;
+    height: 50px;
+}
+
+.knob-indicator {
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    width: 3px;
+    height: 15px;
+    background: #ff0000;
+    transform: translateX(-50%);
+    box-shadow: 0 0 5px #ff0000;
+}
+
+.knob:active {
+    transform: scale(0.95);
+}
+
+.knob-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.knob-btn {
+    background: linear-gradient(135deg, #444 0%, #222 100%);
+    border: 2px solid #333;
+    color: #999;
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: 'Courier New', monospace;
+    transition: all 0.1s;
+}
+
+.knob-btn:hover {
+    background: linear-gradient(135deg, #555 0%, #333 100%);
+    color: #fff;
+}
+
+.knob-btn:active, .knob-btn.active {
+    background: #111;
+    transform: translateY(1px);
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.8);
+}
+
+/* 仪表组 */
+.instrument-group {
+    text-align: center;
+}
+
+.instrument-label {
+    color: #999;
+    font-size: 10px;
+    margin-bottom: 5px;
+}
+
+/* 罗盘表 */
+.compass-meter {
+    background: #000;
+    border: 3px solid #333;
+    border-radius: 50%;
+    padding: 5px;
+    display: inline-block;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+#compass-canvas {
+    display: block;
+}
+
+/* 信号强度表 */
+.meter {
+    background: #000;
+    border: 3px solid #333;
+    border-radius: 8px;
+    padding: 5px;
+    display: inline-block;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+#meter-canvas {
+    display: block;
+}
+
+.signal-info {
+    margin-top: 5px;
+    font-size: 11px;
+}
+
+#signal-callsign {
+    color: #ffff00;
+    font-weight: bold;
+}
+
+#signal-freq {
+    color: #00ff00;
+}
+
+#antenna-display {
+    color: #00ff00;
+    font-weight: bold;
+    min-width: 40px;
+    display: inline-block;
+}
+
+/* 操作按钮行 */
+.button-row {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 15px;
+    gap: 10px;
+}
+
+.action-btn {
+    flex: 1;
+    background: linear-gradient(135deg, #2c5f2d 0%, #1a3a1b 100%);
+    border: 2px solid #3a7a3c;
+    color: #00ff00;
+    padding: 12px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    font-weight: bold;
+    position: relative;
+    transition: all 0.2s;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.action-btn:hover {
+    background: linear-gradient(135deg, #3a7a3c 0%, #2c5f2d 100%);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.7);
+}
+
+.action-btn:active {
+    transform: translateY(1px);
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.8);
+}
+
+.btn-led {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 8px;
+    height: 8px;
+    background: #003300;
+    border: 1px solid #00aa00;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.btn-led.active {
+    background: #00ff00;
+    box-shadow: 0 0 10px #00ff00;
+}
+
+/* 纸带容器 */
+.paper-tape-container {
+    background: #1a1a1a;
+    border: 2px solid #333;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+.tape-label {
+    color: #777;
+    font-size: 10px;
+    margin-bottom: 5px;
+}
+
+.paper-tape {
+    background: #f5f5dc;
+    border: 2px solid #8b7355;
+    border-radius: 2px;
+    min-height: 0;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 5px;
+    cursor: pointer;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: min-height 0.5s ease-out;
+    display: flex;
+    flex-direction: column;
+}
+
+.paper-tape:hover {
+    background: #fff8dc;
+}
+
+.tape-content {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: #000;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.tape-message {
+    margin-bottom: 10px;
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.3);
+    border-left: 3px solid #8b7355;
+    transition: all 0.5s ease-out;
+    animation: tapeGrow 0.5s ease-out;
+}
+
+@keyframes tapeGrow {
+    from {
+        max-height: 0;
+        opacity: 0;
+        transform: scaleY(0);
+        transform-origin: top;
+    }
+    to {
+        max-height: 200px;
+        opacity: 1;
+        transform: scaleY(1);
+    }
+}
+
+.tape-morse {
+    font-weight: bold;
+    letter-spacing: 3px;
+    color: #8b4513;
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.tape-text {
+    margin-top: 4px;
+    color: #000;
+    font-size: 13px;
+}
+
+.tape-hint {
+    color: #666;
+    font-size: 9px;
+    margin-top: 5px;
+    text-align: center;
+}
+
+/* 摩斯码对照表（纸张样式） */
+.morse-reference-paper {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    width: 500px;
+    max-height: 80vh;
+    background: linear-gradient(135deg, #fffaf0 0%, #f5f5dc 100%);
+    border: 3px solid #8b7355;
+    border-radius: 8px;
+    box-shadow: 
+        0 10px 40px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    z-index: 2000;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+.morse-reference-paper.paper-show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.paper-header {
+    padding: 15px 20px;
+    border-bottom: 2px solid #8b7355;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(180deg, #fffaf0 0%, #f5f5dc 100%);
+}
+
+.paper-header h3 {
+    margin: 0;
+    color: #8b4513;
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+}
+
+.paper-close {
+    background: #8b7355;
+    border: none;
+    color: #fff;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    transition: all 0.2s;
+}
+
+.paper-close:hover {
+    background: #a0826d;
+    transform: rotate(90deg);
+}
+
+.paper-content {
+    padding: 20px;
+    overflow-y: auto;
+    max-height: calc(80vh - 80px);
+}
+
+.morse-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.morse-section h4 {
+    margin: 0 0 10px 0;
+    color: #8b4513;
+    font-size: 14px;
+    border-bottom: 1px solid #d2b48c;
+    padding-bottom: 5px;
+}
+
+.morse-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 8px;
+    margin: 2px 0;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+}
+
+.morse-char {
+    font-weight: bold;
+    color: #8b4513;
+}
+
+.morse-code {
+    font-family: 'Courier New', monospace;
+    color: #000;
+    letter-spacing: 2px;
+}
+
+/* 滚动条样式 */
+.paper-tape::-webkit-scrollbar,
+.paper-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.paper-tape::-webkit-scrollbar-track {
+    background: #d2b48c;
+}
+
+.paper-tape::-webkit-scrollbar-thumb {
+    background: #8b7355;
+    border-radius: 4px;
+}
+
+.paper-tape::-webkit-scrollbar-thumb:hover {
+    background: #a0826d;
+}
+
+.paper-content::-webkit-scrollbar-track {
+    background: #f5f5dc;
+}
+
+.paper-content::-webkit-scrollbar-thumb {
+    background: #d2b48c;
+    border-radius: 4px;
+}
+
+/* 响应式调整 */
+@media (max-width: 800px) {
+    .radio-panel {
+        width: 90vw;
+        padding: 15px;
+    }
+    
+    .morse-reference-paper {
+        width: 90vw;
+    }
+    
+    .morse-grid {
+        grid-template-columns: 1fr;
+    }
+}
