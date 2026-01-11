@@ -19,13 +19,23 @@ export interface IPlayer extends IBaseEntity {
   en: number; // 能量
   invuln: number; // 无敌时间
   isGrabbed: boolean;
+  grabberEnemy: IEnemy | null; // 抓取玩家的敌人引用
+  struggleProgress: number; // 挣脱进度 (0-100)
+  grabImmunity: number; // 抓取无敌时间（挣脱后的保护期）
+  grabHintElement: HTMLElement | null; // 玩家抓取敌人的UI提示
   isCharging: boolean;
-  overload: number;
+  chargeStartTime: number; // 开始蓄力的时间戳（秒）
+  resonanceCD: number; // 共振冷却时间
+  grabParticleTimer: number; // 抓取粒子计时器
+  shouldShowAimLine: boolean; // 是否显示辅助瞄准线
+  overload: number; // 玩家过载值（与敌人一致）
+  isGrabbingEnemy: IEnemy | null; // 当前抓取的敌人引用
+  aimLineHit: unknown | null; // 瞄准线raycast碰撞结果
   isDormant: boolean;
   isDestroyed: boolean;
   currentCore: ICore;
   durability: number;
-  inventory: IItem[];
+  inventory: (IItem | null)[]; // 背包数组，可能包含null
 }
 
 // 敌人实体接口

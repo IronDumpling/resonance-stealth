@@ -1,12 +1,11 @@
 /**
  * 热核心实体
  * Hot Core Entity
- * 
- * 保留结构，移除业务逻辑
  */
 
 import { BaseEntity } from '../Base';
 import { IHotCore } from '@/types/entities';
+import { CFG } from '@/config/gameConfig';
 
 export class HotCore extends BaseEntity implements IHotCore {
   type: 'hot_core' = 'hot_core';
@@ -14,20 +13,80 @@ export class HotCore extends BaseEntity implements IHotCore {
   value: number = 0;
   hintElement: HTMLElement | null = null;
 
-  constructor(x: number = 0, y: number = 0, value: number = 0) {
+  constructor(x: number = 0, y: number = 0, value?: number) {
     super(x, y);
-    this.value = value;
+    this.value = value ?? (typeof CFG.coreHotItemValue === 'number' ? CFG.coreHotItemValue : 10);
+    // 热核心默认可见时间（从敌人掉落时设置）
+    this.visibleTimer = 120; // 2秒可见
   }
 
   override init(): void {
-    // 空实现，保留方法签名
+    // 热核心初始化逻辑
+    this.createHintUI();
   }
 
   override update(deltaTime: number): void {
-    // 空实现，保留方法签名
+    // 热核心更新逻辑
+    if (this.visibleTimer > 0) {
+      this.visibleTimer -= deltaTime * 60; // 转换为帧数（假设60fps）
+      if (this.visibleTimer < 0) {
+        this.visibleTimer = 0;
+      }
+    }
   }
 
-  override render(ctx: CanvasRenderingContext2D): void {
-    // 空实现，保留方法签名
+  override render(_ctx: CanvasRenderingContext2D): void {
+    // 热核心渲染逻辑
+    // 注意：实际渲染通常由渲染器统一处理，这里保留接口
   }
+
+  /**
+   * 创建交互提示UI
+   */
+  createHintUI(container?: HTMLElement): HTMLElement | null {
+    if (this.hintElement) {
+      return this.hintElement;
+    }
+
+    const div = document.createElement('div');
+    div.className = 'interact-hint item-hint';
+    div.innerHTML = '[E] HOT CORE';
+    div.style.color = '#ff6600';
+    div.style.borderColor = '#ff6600';
+    div.style.textShadow = '0 0 5px #ff6600';
+    div.style.display = 'none';
+
+    if (container) {
+      container.appendChild(div);
+    } else {
+      const uiContainer = document.getElementById('world-ui-container');
+      if (uiContainer) {
+        uiContainer.appendChild(div);
+      }
+    }
+
+    this.hintElement = div;
+    return div;
+  }
+
+  /**
+   * 移除UI元素
+   */
+  removeHintUI(): void {
+    if (this.hintElement) {
+      this.hintElement.remove();
+      this.hintElement = null;
+    }
+  }
+}
+
+/**
+ * 创建热核心
+ */
+export function createHotCore(
+  x: number,
+  y: number,
+  value?: number
+): HotCore {
+  return new HotCore(x, y, value);
 }

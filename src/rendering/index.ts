@@ -6,3 +6,4 @@ export * from './TacticalRadarRenderer';
 export * from './WideRadarRenderer';
 export * from './CrtRenderer';
 export * from './WaveRenderer';
+export * from './RadioControlRenderer';

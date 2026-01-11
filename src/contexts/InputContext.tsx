@@ -2,10 +2,10 @@
  * 输入状态Context
  * Input State Context
  * 
- * 保留结构，移除业务逻辑
+ * 提供输入管理器并确保输入系统正常工作
  */
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { InputManager } from '@/systems/InputManager';
 import { InputContext as InputContextType, InputEvent } from '@/types/systems';
 
@@ -14,6 +14,7 @@ interface InputContextValue {
   currentContext: InputContextType;
   setCurrentContext: (context: InputContextType) => void;
   handleInput: (event: InputEvent) => void;
+  isInitialized: boolean;
 }
 
 const InputContext = createContext<InputContextValue | undefined>(undefined);
@@ -31,23 +32,59 @@ interface InputProviderProps {
 }
 
 export const InputProvider: React.FC<InputProviderProps> = ({ children }) => {
-  const [inputManager] = useState<InputManager | null>(new InputManager());
-  const [currentContext, setCurrentContext] = useState<InputContextType>(
-    inputManager?.getContext() || 'none'
-  );
+  const inputManagerRef = useRef<InputManager | null>(null);
+  const [currentContext, setCurrentContextState] = useState<InputContextType>('none');
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  const handleInput = (_event: InputEvent) => {
-    // 空实现，保留方法签名
+  // 初始化输入管理器
+  useEffect(() => {
+    if (!inputManagerRef.current) {
+      const im = new InputManager();
+      inputManagerRef.current = im;
+      
+      // 注册默认按键绑定
+      im.registerDefaultBindings();
+      
+      // 绑定事件监听器
+      im.bindEventListeners();
+      
+      // 设置初始上下文
+      const initialContext = im.getContext();
+      setCurrentContextState(initialContext);
+      setIsInitialized(true);
+      
+      console.log('InputManager initialized with context:', initialContext);
+    }
+
+    // 清理
+    return () => {
+      // 输入管理器的事件监听器会在组件卸载时自动清理
+      // 如果需要手动清理，可以在这里添加
+    };
+  }, []);
+
+  const setCurrentContext = (context: InputContextType) => {
+    if (inputManagerRef.current) {
+      inputManagerRef.current.setContext(context);
+      setCurrentContextState(context);
+    }
+  };
+
+  const handleInput = (event: InputEvent) => {
+    // 输入处理逻辑可以由场景自己处理
+    // 这里提供一个统一的入口点
+    if (inputManagerRef.current) {
+      // 可以在这里添加全局输入处理逻辑
+      console.log('Input event:', event);
+    }
   };
 
   const value: InputContextValue = {
-    inputManager,
+    inputManager: inputManagerRef.current,
     currentContext,
-    setCurrentContext: (context: InputContextType) => {
-      setCurrentContext(context);
-      inputManager?.setContext(context);
-    },
+    setCurrentContext,
     handleInput,
+    isInitialized,
   };
 
   return <InputContext.Provider value={value}>{children}</InputContext.Provider>;

@@ -2,12 +2,12 @@
  * 主应用组件
  * Main Application Component
  * 
- * 设置Context提供者，集成场景管理器，设置游戏循环
+ * 集成所有系统，确保场景切换和输入系统正常工作
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { GameProvider } from '@/contexts/GameContext';
-import { InputProvider } from '@/contexts/InputContext';
+import { GameProvider, useGameContext } from '@/contexts/GameContext';
+import { InputProvider, useInputContext } from '@/contexts/InputContext';
 import { SceneManager } from '@/systems/SceneManager';
 import { UIManager } from '@/ui/UIManager';
 import { CrtRenderer } from '@/rendering/CrtRenderer';
@@ -25,46 +25,115 @@ import {
   SignalProcessingScene,
 } from '@/scenes';
 
-const App: React.FC = () => {
+// 内部App组件，可以使用Context
+const AppInternal: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { 
+    gameState, 
+    gameSystem, 
+    radioSystem, 
+    inventorySystem, 
+    initGame,
+    isInitialized: gameInitialized 
+  } = useGameContext();
+  const { inputManager, isInitialized: inputInitialized } = useInputContext();
+
   const [sceneManager] = useState<SceneManager | null>(() => {
     const sm = new SceneManager();
-    
-    // 注册所有场景
-    sm.registerScene(SCENES.BOOT, new BootScene());
-    sm.registerScene(SCENES.CRT_OFF, new CrtOffScene());
-    sm.registerScene(SCENES.CRT_ON, new CrtOnScene());
-    sm.registerScene(SCENES.MONITOR_MENU, new MonitorMenuScene());
-    sm.registerScene(SCENES.ROBOT_ASSEMBLY, new RobotAssemblyScene());
-    sm.registerScene(SCENES.TACTICAL_RADAR, new TacticalRadarScene());
-    sm.registerScene(SCENES.WIDE_RADAR, new WideRadarScene());
-    sm.registerScene(SCENES.SIGNAL_PROCESSING, new SignalProcessingScene());
-    
     return sm;
   });
 
   const [uiManager] = useState<UIManager | null>(() => new UIManager());
   const [crtRenderer, setCrtRenderer] = useState<CrtRenderer | null>(null);
 
-  const { currentScene } = useScene({
+  // 初始化CRT渲染器
+  useEffect(() => {
+    if (canvasRef.current && !crtRenderer) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const crt = new CrtRenderer(canvas, ctx);
+        setCrtRenderer(crt);
+      }
+    }
+  }, [crtRenderer]);
+
+  // 初始化游戏系统（当canvas和输入系统都准备好时）
+  useEffect(() => {
+    if (canvasRef.current && inputInitialized && !gameInitialized) {
+      initGame(canvasRef.current);
+    }
+  }, [canvasRef.current, inputInitialized, gameInitialized, initGame]);
+
+  // 注册场景（当所有依赖都准备好时）
+  useEffect(() => {
+    if (sceneManager && inputManager && crtRenderer && gameState) {
+      // 注册所有场景，注入依赖
+      sceneManager.registerScene(
+        SCENES.BOOT,
+        new BootScene(inputManager, sceneManager, crtRenderer)
+      );
+      sceneManager.registerScene(
+        SCENES.CRT_OFF,
+        new CrtOffScene(inputManager, sceneManager, gameState)
+      );
+      sceneManager.registerScene(
+        SCENES.CRT_ON,
+        new CrtOnScene(inputManager, sceneManager, crtRenderer)
+      );
+      sceneManager.registerScene(
+        SCENES.MONITOR_MENU,
+        new MonitorMenuScene(inputManager, sceneManager, crtRenderer, gameState)
+      );
+      sceneManager.registerScene(
+        SCENES.ROBOT_ASSEMBLY,
+        new RobotAssemblyScene(
+          inputManager,
+          sceneManager,
+          inventorySystem?.getWarehouse() || undefined,
+          gameState.p.inventory,
+          gameState.p.currentCore,
+          gameState
+        )
+      );
+      sceneManager.registerScene(
+        SCENES.TACTICAL_RADAR,
+        new TacticalRadarScene()
+      );
+      sceneManager.registerScene(
+        SCENES.WIDE_RADAR,
+        new WideRadarScene()
+      );
+      sceneManager.registerScene(
+        SCENES.SIGNAL_PROCESSING,
+        new SignalProcessingScene()
+      );
+
+      // 设置初始场景
+      sceneManager.switchScene(SCENES.BOOT);
+      
+      console.log('All scenes registered and initialized');
+    }
+  }, [sceneManager, inputManager, crtRenderer, gameState, inventorySystem]);
+
+  useScene({
     initialScene: SCENES.BOOT,
     sceneManager,
   });
 
-  // 初始化CRT渲染器
-  useEffect(() => {
-    if (canvasRef.current) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        setCrtRenderer(new CrtRenderer(canvas, ctx));
-      }
-    }
-  }, []);
-
   // 游戏循环
   useGameLoop({
     onUpdate: (deltaTime: number) => {
+      // 更新游戏系统
+      if (gameSystem && gameState) {
+        gameSystem.update(deltaTime);
+      }
+
+      // 更新无线电系统
+      if (radioSystem) {
+        radioSystem.update(deltaTime);
+      }
+
       // 更新场景管理器
       if (sceneManager) {
         sceneManager.update(deltaTime);
@@ -94,7 +163,7 @@ const App: React.FC = () => {
         }
       }
     },
-    enabled: true,
+    enabled: inputInitialized && gameInitialized,
   });
 
   return (
@@ -170,11 +239,12 @@ const App: React.FC = () => {
   );
 };
 
+// 带Provider的App组件
 const AppWithProviders: React.FC = () => {
   return (
     <GameProvider>
       <InputProvider>
-        <App />
+        <AppInternal />
       </InputProvider>
     </GameProvider>
   );
