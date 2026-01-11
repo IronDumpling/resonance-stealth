@@ -92,9 +92,15 @@ export interface IGameConfig {
   [key: string]: unknown;
 }
 
-// 核心类型定义（空结构）
+// 核心类型定义
 export interface ICoreTypes {
   SCAVENGER: ICore;
   MIMIC: ICore;
   HEAVY: ICore;
+}
+
+// 指令接口
+export interface IInstruction {
+  id: number;
+  text: string;
 }
