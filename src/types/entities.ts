@@ -84,11 +84,11 @@ export interface IItem extends IBaseEntity {
 }
 
 // 物品类型
-export type ItemType = 'energy' | 'cold_core' | 'hot_core' | 'signal_source';
+export type ItemType = 'energy_bottle' | 'cold_core' | 'hot_core' | 'signal_source';
 
 // 能量瓶接口
 export interface IEnergyBottle extends IItem {
-  type: 'energy';
+  type: 'energy_bottle';
   value: number;
   hintElement?: HTMLElement | null;
 }

@@ -47,7 +47,7 @@ export class SignalProcessingUI {
    * 初始化信号处理UI
    */
   init(): void {
-    this.container = document.getElementById('radio-mode-display');
+    this.container = document.getElementById('signal-processing-display');
     
     if (!this.container) {
       console.error('Radio mode display container not found!');
@@ -387,7 +387,7 @@ export class SignalProcessingUI {
   /**
    * 更新UI
    */
-  update(deltaTime: number): void {
+  update(_deltaTime: number): void {
     if (!this.isVisible) return;
     
     // Update received morse display

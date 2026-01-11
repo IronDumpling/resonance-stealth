@@ -6,3 +6,5 @@ export * from './UIManager';
 export * from './RadioControlPanel';
 export * from './InventoryUI';
 export * from './SignalProcessingUI';
+export * from './WideRadarUI';
+export * from './TacticalRadarUI';

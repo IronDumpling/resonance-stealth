@@ -39,7 +39,7 @@ export class InventoryUI {
     container.innerHTML = '';
     
     // 创建6个物品槽
-    const inventorySize = CFG.inventorySize || 6;
+    const inventorySize = (typeof CFG.inventorySize === 'number' ? CFG.inventorySize : 6);
     for (let i = 0; i < inventorySize; i++) {
       const slot = document.createElement('div');
       slot.className = 'inventory-slot';
@@ -73,7 +73,7 @@ export class InventoryUI {
     // 更新位置（以防窗口大小改变）
     this.updatePosition();
     
-    const inventorySize = CFG.inventorySize || 6;
+    const inventorySize = (typeof CFG.inventorySize === 'number' ? CFG.inventorySize : 6);
     for (let i = 0; i < inventorySize; i++) {
       const slot = document.getElementById(`inv-slot-${i}`);
       if (!slot) continue;
@@ -83,7 +83,7 @@ export class InventoryUI {
       if (item) {
         // 根据物品类型设置图标
         switch (item.type) {
-          case 'energy_flask':
+          case 'energy_bottle':
             slot.textContent = '⚡';
             slot.style.color = '#00ff00';
             break;
@@ -95,7 +95,7 @@ export class InventoryUI {
             slot.textContent = '◇';
             slot.style.color = '#8888ff';
             break;
-          case 'core':
+          case 'signal_source':
             slot.textContent = '◉';
             slot.style.color = '#ffaa00';
             break;

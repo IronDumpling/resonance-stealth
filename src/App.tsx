@@ -107,11 +107,11 @@ const AppInternal: React.FC = () => {
       );
       sceneManager.registerScene(
         SCENES.WIDE_RADAR,
-        new WideRadarScene(inputManager, sceneManager)
+        new WideRadarScene(inputManager, sceneManager, radioSystem || undefined)
       );
       sceneManager.registerScene(
         SCENES.SIGNAL_PROCESSING,
-        new SignalProcessingScene(inputManager, sceneManager)
+        new SignalProcessingScene(inputManager, sceneManager, radioSystem || undefined)
       );
       sceneManager.registerScene(
         SCENES.ESCAPE_RESULT,
@@ -123,7 +123,7 @@ const AppInternal: React.FC = () => {
       
       console.log('All scenes registered and initialized');
     }
-  }, [sceneManager, inputManager, crtRenderer, gameState, inventorySystem]);
+  }, [sceneManager, inputManager, crtRenderer, gameState, inventorySystem, radioSystem]);
 
   // 设置输入路由 - 将InputManager的事件连接到场景的handleInput
   useEffect(() => {
@@ -265,14 +265,18 @@ const AppInternal: React.FC = () => {
               {/* Game Canvas */}
               <canvas ref={canvasRef} id="gameCanvas" />
 
-              {/* Radio Mode Display (for WideRadarScene and SignalProcessingScene) */}
-              <div id="radio-mode-display" style={{ display: 'none' }}>
-                <div id="morse-reference" />
-                <div id="decode-input" />
+              {/* Wide Radar Display (for WideRadarScene) */}
+              <div id="wide-radar-display" style={{ display: 'none' }}>
                 <div id="radar-map-container">
                   <div className="radar-header">RADAR MAP</div>
                   <canvas id="radar-canvas" />
                 </div>
+              </div>
+
+              {/* Signal Processing Display (for SignalProcessingScene) */}
+              <div id="signal-processing-display" style={{ display: 'none' }}>
+                <div id="morse-reference" />
+                <div id="decode-input" />
               </div>
 
               {/* Assembly Scene UI */}

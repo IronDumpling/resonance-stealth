@@ -113,7 +113,7 @@ export class GameSystem implements IGameSystem {
     const numEnergyBottle = typeof CFG.numEnergyBottle === 'number' ? CFG.numEnergyBottle : 25;
     if (this.callbacks.spawnItem) {
       for (let i = 0; i < numEnergyBottle; i++) {
-        this.callbacks.spawnItem('energy');
+        this.callbacks.spawnItem('energy_bottle');
       }
     }
     

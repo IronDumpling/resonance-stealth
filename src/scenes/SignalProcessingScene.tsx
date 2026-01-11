@@ -7,20 +7,27 @@ import { Scene } from './Scene';
 import { SCENES, SceneData, DISPLAY_MODES } from '@/types/scenes';
 import { InputManager } from '@/systems/InputManager';
 import { SceneManager } from '@/systems/SceneManager';
-import { INPUT_CONTEXTS } from '@/types/systems';
+import { INPUT_CONTEXTS, IRadioSystem } from '@/types/systems';
+import { SignalProcessingUI } from '@/ui/SignalProcessingUI';
 
 export class SignalProcessingScene extends Scene {
   // 依赖注入
   inputManager: InputManager | null = null;
   sceneManager: SceneManager | null = null;
+  radioSystem: IRadioSystem | null = null;
+  
+  // 信号处理UI
+  signalProcessingUI: SignalProcessingUI | null = null;
 
   constructor(
     inputManager?: InputManager,
-    sceneManager?: SceneManager
+    sceneManager?: SceneManager,
+    radioSystem?: IRadioSystem
   ) {
     super(SCENES.SIGNAL_PROCESSING);
     this.inputManager = inputManager || null;
     this.sceneManager = sceneManager || null;
+    this.radioSystem = radioSystem || null;
   }
 
   override enter(data?: SceneData): void {
@@ -37,12 +44,21 @@ export class SignalProcessingScene extends Scene {
       gameCanvas.style.display = 'none';
     }
     
-    // 显示radio-mode-display
-    const radioModeDisplay = document.getElementById('radio-mode-display');
-    if (radioModeDisplay) {
-      radioModeDisplay.style.display = 'grid';
-      radioModeDisplay.classList.add('active');
+    // 隐藏wide-radar-display
+    const wideRadarDisplay = document.getElementById('wide-radar-display');
+    if (wideRadarDisplay) {
+      wideRadarDisplay.style.display = 'none';
     }
+    
+    // 显示signal-processing-display
+    const signalProcessingDisplay = document.getElementById('signal-processing-display');
+    if (signalProcessingDisplay) {
+      signalProcessingDisplay.style.display = 'grid';
+      signalProcessingDisplay.classList.add('active');
+    }
+    
+    // 初始化信号处理UI
+    this.initSignalProcessingUI();
     
     // 设置显示模式为RADIO_DISPLAY
     if (this.sceneManager) {
@@ -50,8 +66,31 @@ export class SignalProcessingScene extends Scene {
     }
   }
 
-  override update(_deltaTime: number): void {
-    // 空实现（使用DOM渲染）
+  /**
+   * 初始化信号处理UI
+   */
+  private initSignalProcessingUI(): void {
+    if (!this.signalProcessingUI && this.radioSystem) {
+      this.signalProcessingUI = new SignalProcessingUI(this.radioSystem);
+      this.signalProcessingUI.init();
+      this.signalProcessingUI.show();
+    }
+  }
+
+  override exit(): void {
+    super.exit();
+    
+    // 隐藏信号处理UI
+    if (this.signalProcessingUI) {
+      this.signalProcessingUI.hide();
+    }
+  }
+
+  override update(deltaTime: number): void {
+    // 更新信号处理UI
+    if (this.signalProcessingUI) {
+      this.signalProcessingUI.update(deltaTime);
+    }
   }
 
   override render(_ctx: CanvasRenderingContext2D, _canvas: HTMLCanvasElement): void {

@@ -8,7 +8,7 @@ import { IEnergyBottle } from '@/types/entities';
 import { CFG } from '@/config/gameConfig';
 
 export class EnergyBottle extends BaseEntity implements IEnergyBottle {
-  type: 'energy' = 'energy';
+  type: 'energy_bottle' = 'energy_bottle';
   visibleTimer: number = 0;
   value: number = 0;
   hintElement: HTMLElement | null = null;

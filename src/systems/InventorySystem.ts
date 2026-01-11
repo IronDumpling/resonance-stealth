@@ -203,7 +203,7 @@ export class InventorySystem implements IInventorySystem {
       return false;
     }
     
-    if (this.getInventoryCount('energy_flask') === 0) {
+    if (this.getInventoryCount('energy_bottle') === 0) {
       if (this.onLogMessage) {
         this.onLogMessage("NO ENERGY FLASK");
       }
@@ -218,7 +218,7 @@ export class InventorySystem implements IInventorySystem {
       return false;
     }
     
-    if (this.removeItemByType('energy_flask')) {
+    if (this.removeItemByType('energy_bottle')) {
       const energyValue = CFG.energyFlaskVal || 30;
       if (this.onAddEnergy) {
         this.onAddEnergy(energyValue);

@@ -183,7 +183,7 @@ export class RobotAssemblyScene extends Scene {
       if (item.type === 'core') {
         label.textContent = item.coreType ? item.coreType.toUpperCase() : 'CORE';
         slot.style.background = 'rgba(255, 100, 0, 0.3)';
-      } else if (item.type === 'energy_flask') {
+      } else if (item.type === 'energy_bottle') {
         label.textContent = 'ENERGY';
         slot.style.background = 'rgba(0, 255, 0, 0.3)';
       } else {
