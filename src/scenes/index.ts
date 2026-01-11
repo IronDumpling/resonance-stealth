@@ -11,3 +11,4 @@ export * from './RobotAssemblyScene';
 export * from './TacticalRadarScene';
 export * from './WideRadarScene';
 export * from './SignalProcessingScene';
+export * from './EscapeResultScene';

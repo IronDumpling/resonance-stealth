@@ -63,8 +63,6 @@ export class InputManager implements IInputManager {
       'arrowup': 'navigate_up',
       'arrowdown': 'navigate_down',
       'enter': 'confirm',
-      'escape': 'back',
-      'tab': 'toggle_mode'
     });
 
     // 组装上下文
@@ -74,7 +72,6 @@ export class InputManager implements IInputManager {
       '3': 'select_core_heavy',
       'enter': 'deploy',
       'escape': 'menu',
-      'tab': 'toggle_mode'
     });
 
     // 通用无线电控制上下文（频率调整、天线旋转、发射波）
@@ -99,20 +96,24 @@ export class InputManager implements IInputManager {
       'e': 'interact',
       'r': 'refill_energy',
       'f': 'struggle',
-      'caps': 'signal_processing_mode',
-      'tab': 'wide_radar_mode',
+      'p': 'signal_processing',
+      'm': 'wide_radar',
     });
     
     // 广域雷达场景上下文
     // 包含雷达地图控制和无线电控制
     this.registerContext(INPUT_CONTEXTS.WIDE_RADAR, {
-      'tab': 'tactical_radar_mode',
+      'm': 'tactical_radar',
     });
     
     // 信号处理场景上下文
     // 包含信号处理控制和无线电控制
     this.registerContext(INPUT_CONTEXTS.SIGNAL_PROCESSING, {
-      'caps': 'tactical_radar_mode',
+      'p': 'tactical_radar',
+    });
+
+    this.registerContext(INPUT_CONTEXTS.ESCAPE_RESULT, {
+      'enter': 'robot_assembly',
     });
   }
 
@@ -196,17 +197,34 @@ export class InputManager implements IInputManager {
   }
 
   /**
+   * 检查当前上下文是否支持无线电控制
+   */
+  private supportsRadioControls(): boolean {
+    return this.currentContext === INPUT_CONTEXTS.TACTICAL_RADAR ||
+           this.currentContext === INPUT_CONTEXTS.WIDE_RADAR ||
+           this.currentContext === INPUT_CONTEXTS.SIGNAL_PROCESSING;
+  }
+
+  /**
    * 检查动作是否激活
+   * 对于支持无线电控制的场景，也会检查 RADIO_CONTROLS 上下文
    */
   isActionActive(action: string): boolean {
+    // 首先检查当前上下文
     const bindings = this.keyBindings.get(this.currentContext);
-    if (!bindings) return false;
-    
-    for (const [key, boundAction] of Object.entries(bindings)) {
-      if (boundAction === action && this.activeKeys.has(key)) {
-        return true;
+    if (bindings) {
+      for (const [key, boundAction] of Object.entries(bindings)) {
+        if (boundAction === action && this.activeKeys.has(key)) {
+          return true;
+        }
       }
     }
+    
+    // 如果当前上下文支持无线电控制，也检查 RADIO_CONTROLS
+    if (this.supportsRadioControls()) {
+      return this.isActionActiveInContext(action, INPUT_CONTEXTS.RADIO_CONTROLS);
+    }
+    
     return false;
   }
 
@@ -300,15 +318,9 @@ export class InputManager implements IInputManager {
     
     // 获取对应的动作
     // 对于支持无线电控制的场景，同时检查 RADIO_CONTROLS 上下文
-    let action: string | null = null;
-    if (this.currentContext === INPUT_CONTEXTS.TACTICAL_RADAR ||
-        this.currentContext === INPUT_CONTEXTS.WIDE_RADAR ||
-        this.currentContext === INPUT_CONTEXTS.SIGNAL_PROCESSING) {
-      // 这些场景支持无线电控制，先检查场景特定绑定，再检查无线电控制
-      action = this.getAction(key, [INPUT_CONTEXTS.RADIO_CONTROLS]);
-    } else {
-      action = this.getAction(key);
-    }
+    const action = this.supportsRadioControls()
+      ? this.getAction(key, [INPUT_CONTEXTS.RADIO_CONTROLS])
+      : this.getAction(key);
     
     // 创建增强的事件对象
     const enhancedEvent: InputEvent = {
@@ -318,13 +330,11 @@ export class InputManager implements IInputManager {
       context: this.currentContext
     };
     
-    // 触发回调
+    // 触发当前上下文的回调
     this.trigger('onKeyDown', this.currentContext, enhancedEvent);
     
     // 如果动作来自 RADIO_CONTROLS 上下文，也触发该上下文的回调
-    if (action && (this.currentContext === INPUT_CONTEXTS.TACTICAL_RADAR ||
-                   this.currentContext === INPUT_CONTEXTS.WIDE_RADAR ||
-                   this.currentContext === INPUT_CONTEXTS.SIGNAL_PROCESSING)) {
+    if (action && this.supportsRadioControls()) {
       const radioAction = this.getAction(key, [INPUT_CONTEXTS.RADIO_CONTROLS]);
       if (radioAction && radioAction === action) {
         this.trigger('onKeyDown', INPUT_CONTEXTS.RADIO_CONTROLS, enhancedEvent);
@@ -345,7 +355,10 @@ export class InputManager implements IInputManager {
     
     this.activeKeys.delete(key);
     
-    const action = this.getAction(key);
+    // 对于支持无线电控制的场景，同时检查 RADIO_CONTROLS 上下文
+    const action = this.supportsRadioControls()
+      ? this.getAction(key, [INPUT_CONTEXTS.RADIO_CONTROLS])
+      : this.getAction(key);
     
     const enhancedEvent: InputEvent = {
       originalEvent: event,
@@ -354,7 +367,16 @@ export class InputManager implements IInputManager {
       context: this.currentContext
     };
     
+    // 触发当前上下文的回调
     this.trigger('onKeyUp', this.currentContext, enhancedEvent);
+    
+    // 如果动作来自 RADIO_CONTROLS 上下文，也触发该上下文的回调
+    if (action && this.supportsRadioControls()) {
+      const radioAction = this.getAction(key, [INPUT_CONTEXTS.RADIO_CONTROLS]);
+      if (radioAction && radioAction === action) {
+        this.trigger('onKeyUp', INPUT_CONTEXTS.RADIO_CONTROLS, enhancedEvent);
+      }
+    }
     
     if (action && this.shouldPreventDefault(key)) {
       event.preventDefault();
@@ -427,20 +449,16 @@ export class InputManager implements IInputManager {
       context: this.currentContext
     };
     
+    // 触发当前上下文的回调
     this.trigger('onWheel', this.currentContext, enhancedEvent);
     
     // 如果当前场景支持无线电控制，也触发无线电控制的滚轮事件（用于频率调整）
-    if (this.currentContext === INPUT_CONTEXTS.TACTICAL_RADAR ||
-        this.currentContext === INPUT_CONTEXTS.WIDE_RADAR ||
-        this.currentContext === INPUT_CONTEXTS.SIGNAL_PROCESSING) {
+    if (this.supportsRadioControls()) {
       this.trigger('onWheel', INPUT_CONTEXTS.RADIO_CONTROLS, enhancedEvent);
     }
     
     // 在特定上下文中阻止默认滚动
-    if (this.currentContext === INPUT_CONTEXTS.TACTICAL_RADAR ||
-        this.currentContext === INPUT_CONTEXTS.WIDE_RADAR ||
-        this.currentContext === INPUT_CONTEXTS.SIGNAL_PROCESSING ||
-        this.currentContext === INPUT_CONTEXTS.RADIO_CONTROLS) {
+    if (this.supportsRadioControls() || this.currentContext === INPUT_CONTEXTS.RADIO_CONTROLS) {
       event.preventDefault();
     }
   }

@@ -24,6 +24,7 @@ import {
   TacticalRadarScene,
   WideRadarScene,
   SignalProcessingScene,
+  EscapeResultScene,
 } from '@/scenes';
 import { RadioControlPanel } from '@/ui/RadioControlPanel';
 
@@ -102,15 +103,19 @@ const AppInternal: React.FC = () => {
       );
       sceneManager.registerScene(
         SCENES.TACTICAL_RADAR,
-        new TacticalRadarScene()
+        new TacticalRadarScene(inputManager, sceneManager)
       );
       sceneManager.registerScene(
         SCENES.WIDE_RADAR,
-        new WideRadarScene()
+        new WideRadarScene(inputManager, sceneManager)
       );
       sceneManager.registerScene(
         SCENES.SIGNAL_PROCESSING,
-        new SignalProcessingScene()
+        new SignalProcessingScene(inputManager, sceneManager)
+      );
+      sceneManager.registerScene(
+        SCENES.ESCAPE_RESULT,
+        new EscapeResultScene(inputManager, sceneManager, gameState)
       );
 
       // 设置初始场景

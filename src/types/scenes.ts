@@ -15,6 +15,7 @@ export const SCENES = {
   SIGNAL_PROCESSING: 'signal_processing', // 原 RADIO 的 morse code + signal record + signal editing
   ROBOT_ASSEMBLY: 'robot_assembly',
   MONITOR_MENU: 'monitor_menu',
+  ESCAPE_RESULT: 'escape_result',
 } as const;
 
 export type SceneType = typeof SCENES[keyof typeof SCENES];

@@ -10,11 +10,12 @@ export const INPUT_CONTEXTS = {
   NONE: 'none',
   CRT_CONTROL: 'crt_control',
   MENU: 'menu',
+  ROBOT_ASSEMBLY: 'robot_assembly',
   TACTICAL_RADAR: 'tactical_radar',       // 战术雷达场景
   WIDE_RADAR: 'wide_radar',               // 广域雷达场景
   SIGNAL_PROCESSING: 'signal_processing', // 信号处理场景
   RADIO_CONTROLS: 'radio_controls',       // 通用无线电控制（频率、天线、发射波）
-  ROBOT_ASSEMBLY: 'robot_assembly',
+  ESCAPE_RESULT: 'escape_result',
 } as const;
 
 export type InputContext = typeof INPUT_CONTEXTS[keyof typeof INPUT_CONTEXTS];
