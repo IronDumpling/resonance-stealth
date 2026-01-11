@@ -14,6 +14,7 @@ import { CrtRenderer } from '@/rendering/CrtRenderer';
 import { useGameLoop } from '@/hooks/useGameLoop';
 import { useScene } from '@/hooks/useScene';
 import { SCENES } from '@/types/scenes';
+import { INPUT_CONTEXTS, InputEvent as GameInputEvent } from '@/types/systems';
 import {
   BootScene,
   CrtOffScene,
@@ -24,6 +25,7 @@ import {
   WideRadarScene,
   SignalProcessingScene,
 } from '@/scenes';
+import { RadioControlPanel } from '@/ui/RadioControlPanel';
 
 // 内部App组件，可以使用Context
 const AppInternal: React.FC = () => {
@@ -37,6 +39,8 @@ const AppInternal: React.FC = () => {
     isInitialized: gameInitialized 
   } = useGameContext();
   const { inputManager, isInitialized: inputInitialized } = useInputContext();
+  const radioPanelRef = useRef<RadioControlPanel | null>(null);
+  const radioContainerRef = useRef<HTMLDivElement | null>(null);
 
   const [sceneManager] = useState<SceneManager | null>(() => {
     const sm = new SceneManager();
@@ -116,6 +120,72 @@ const AppInternal: React.FC = () => {
     }
   }, [sceneManager, inputManager, crtRenderer, gameState, inventorySystem]);
 
+  // 设置输入路由 - 将InputManager的事件连接到场景的handleInput
+  useEffect(() => {
+    if (inputManager && sceneManager) {
+      // 全局输入处理(所有场景)
+      const handleKeyDown = (event: GameInputEvent) => {
+        const currentScene = sceneManager?.getScene(sceneManager.getCurrentScene());
+        if (currentScene && currentScene.handleInput) {
+          // 传递增强的事件对象，包含 action 信息
+          currentScene.handleInput(event);
+        }
+      };
+
+      const handleKeyUp = (_event: GameInputEvent) => {
+        // 处理keyup事件（如果需要）
+      };
+
+      const handleMouseMove = (event: GameInputEvent) => {
+        // 更新鼠标状态(用于游戏场景)
+        if (gameState && canvasRef.current && event.x !== undefined && event.y !== undefined) {
+          const rect = canvasRef.current.getBoundingClientRect();
+          const canvasX = event.x - rect.left;
+          const canvasY = event.y - rect.top;
+          
+          // 使用GameSystem的updateMousePosition方法
+          if (gameSystem) {
+            gameSystem.updateMousePosition(canvasX, canvasY);
+          }
+        }
+      };
+
+      // 注册回调
+      inputManager.on('onKeyDown', null, handleKeyDown);
+      inputManager.on('onKeyUp', null, handleKeyUp);
+      inputManager.on('onMouseMove', null, handleMouseMove);
+
+      // 设置初始输入上下文（BOOT场景使用CRT_CONTROL上下文）
+      inputManager.setContext(INPUT_CONTEXTS.CRT_CONTROL);
+
+      // 清理函数
+      return () => {
+        inputManager.off('onKeyDown', null, handleKeyDown);
+        inputManager.off('onKeyUp', null, handleKeyUp);
+        inputManager.off('onMouseMove', null, handleMouseMove);
+      };
+    }
+  }, [inputManager, sceneManager, gameState, gameSystem]);
+
+  // 初始化RadioControlPanel
+  useEffect(() => {
+    if (radioContainerRef.current && radioSystem && !radioPanelRef.current) {
+      radioPanelRef.current = new RadioControlPanel(radioSystem);
+      radioPanelRef.current.init(radioContainerRef.current);
+    }
+
+    return () => {
+      // 清理
+      if (radioPanelRef.current && radioPanelRef.current.container) {
+        const container = radioPanelRef.current.container;
+        if (container && container.parentNode) {
+          container.parentNode.removeChild(container);
+        }
+        radioPanelRef.current = null;
+      }
+    };
+  }, [radioSystem]);
+
   useScene({
     initialScene: SCENES.BOOT,
     sceneManager,
@@ -170,8 +240,11 @@ const AppInternal: React.FC = () => {
     <>
       <div id="workstation-container">
         {/* Left Side: Radio Transceiver */}
-        <div id="radio-transceiver">
-          {/* Radio Control Panel will be rendered here */}
+        <div 
+          id="radio-transceiver" 
+          ref={radioContainerRef}
+        >
+          {/* RadioControlPanel will be initialized via useEffect */}
         </div>
 
         {/* Right Side: CRT Monitor */}

@@ -3,6 +3,8 @@
  * Scene Type Definitions
  */
 
+import { InputEvent } from './systems';
+
 // 场景类型枚举
 export const SCENES = {
   BOOT: 'boot',

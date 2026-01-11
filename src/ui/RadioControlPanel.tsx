@@ -636,17 +636,26 @@ export const RadioControlPanelComponent: React.FC<{ radioSystem?: IRadioSystem |
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!panelRef.current) {
+    if (!panelRef.current && containerRef.current) {
       panelRef.current = new RadioControlPanel(radioSystem);
-      if (containerRef.current) {
-        panelRef.current.init(containerRef.current);
-      }
+      // 使用传入的容器（App.tsx中的radio-transceiver div）
+      panelRef.current.init(containerRef.current);
     }
 
     return () => {
       // 清理
+      if (panelRef.current && panelRef.current.container) {
+        // 移除创建的DOM元素
+        const container = panelRef.current.container;
+        if (container && container.parentNode) {
+          container.parentNode.removeChild(container);
+        }
+        panelRef.current = null;
+      }
     };
   }, [radioSystem]);
 
-  return <div id="radio-transceiver" ref={containerRef} />;
+  // 不创建新的div，直接返回null，因为App.tsx已经提供了容器
+  // 但我们需要一个ref来获取容器元素
+  return null;
 };
