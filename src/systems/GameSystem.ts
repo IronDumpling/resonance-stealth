@@ -80,6 +80,7 @@ export class GameSystem implements IGameSystem {
     const maxEnergy = (this.gameState.p as any).getMaxEnergy 
       ? (this.gameState.p as any).getMaxEnergy() 
       : 100;
+
     this.gameState.p.en = maxEnergy;
     this.gameState.p.isGrabbed = false;
     this.gameState.p.grabberEnemy = null;
