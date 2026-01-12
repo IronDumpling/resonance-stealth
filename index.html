@@ -2,130 +2,15 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resonance</title>
-    <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/workstation.css">
-    <link rel="stylesheet" href="css/crt.css">
-    <link rel="stylesheet" href="css/radio.css">
-    <link rel="stylesheet" href="css/assembly.css">
+    <!-- CSS文件将在React应用中通过import引入 -->
 </head>
 <body>
-
-<!-- Workstation Container: First-Person View -->
-<div id="workstation-container">
+    <!-- React应用挂载点 -->
+    <div id="root"></div>
     
-    <!-- Left Side: Radio Transceiver (40%) -->
-    <div id="radio-transceiver">
-        <!-- Radio UI will be injected here by radioUI.js -->
-    </div>
-    
-    <!-- Right Side: CRT Monitor (60%) -->
-    <div id="crt-monitor-container">
-        <div id="monitor-frame">
-            <div id="monitor-screen">
-                <!-- Game Canvas (for robot mode) -->
-                <canvas id="gameCanvas"></canvas>
-                
-                <!-- Radio Mode Display (for radio mode) -->
-                <div id="radio-mode-display" style="display: none;">
-                    <div id="morse-reference"></div>
-                    <div id="decode-input"></div>
-                    <div id="radar-map-container">
-                        <div class="radar-header">RADAR MAP</div>
-                        <canvas id="radar-canvas"></canvas>
-                    </div>
-                </div>
-                
-                <!-- Assembly Scene UI -->
-                <div id="assembly-container" style="display: none;">
-                    <div class="assembly-layout">
-                        <!-- 左侧：仓库 -->
-                        <div class="warehouse-panel">
-                            <h3>WAREHOUSE</h3>
-                            <div id="warehouse-grid" class="item-grid warehouse-grid"></div>
-                        </div>
-                        
-                        <!-- 中间：机器人 + 背包 -->
-                        <div class="robot-panel">
-                            <div class="robot-diagram">
-                                <canvas id="robot-canvas" width="300" height="400"></canvas>
-                            </div>
-                            <div class="robot-inventory-section">
-                                <h4>ROBOT INVENTORY</h4>
-                                <div id="robot-inventory-grid" class="item-grid robot-inv-grid"></div>
-                            </div>
-                        </div>
-                        
-                        <!-- 右侧：Instructions -->
-                        <div class="instructions-panel">
-                            <h3>MISSION BRIEFING</h3>
-                            <div id="instructions-list" class="instructions-scroll"></div>
-                            <button id="btn-departure" class="departure-btn">DEPARTURE</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- CRT Effects Layer -->
-                <div class="crt-glare"></div>
-                <div class="crt-phosphor"></div>
-            </div>
-            
-            <!-- Power Indicator -->
-            <div class="power-indicator off"></div>
-        </div>
-    </div>
-    
-</div>
-
-<!-- Edge Glow Effect (for low energy/grabbed state) -->
-<div id="edge-glow"></div>
-
-<!-- World UI Container (for in-game overlays) -->
-<div id="world-ui-container"></div>
-
-<!-- Inventory UI -->
-<div id="inventory-container" style="display: none;"></div>
-
-<!-- 加载脚本 -->
-<!-- 核心配置 -->
-<script src="js/config.js"></script>
-
-<!-- 工具函数 -->
-<script src="js/utils.js"></script>
-
-<!-- 系统模块 -->
-<script src="js/systems/sceneManager.js"></script>
-<script src="js/systems/inputManager.js"></script>
-<script src="js/systems/radioSystem.js"></script>
-<script src="js/systems/inventory.js"></script>
-<script src="js/ui/uiManager.js"></script>
-<script src="js/ui/radioUI.js"></script>
-<script src="js/ui/radioDisplayUI.js"></script>
-<script src="js/ui/inventoryUI.js"></script>
-
-<!-- 实体模块 -->
-<script src="js/entities/wave.js"></script>
-<script src="js/entities/player.js"></script>
-<script src="js/entities/enemy.js"></script>
-<script src="js/entities/item.js"></script>
-<script src="js/entities/wall.js"></script>
-<script src="js/entities/base.js"></script>
-
-<!-- 渲染系统 -->
-<script src="js/rendering/worldRenderer.js"></script>
-<script src="js/rendering/crtDisplay.js"></script>
-<script src="js/rendering/radarMap.js"></script>
-
-<!-- 场景模块 (必须在sceneManager.js之后加载) -->
-<script src="js/scenes/BootScene.js"></script>
-<script src="js/scenes/CrtOffScene.js"></script>
-<script src="js/scenes/CrtOnScene.js"></script>
-<script src="js/scenes/RobotScene.js"></script>
-<script src="js/scenes/RadioScene.js"></script>
-<script src="js/scenes/RobotAssemblyScene.js"></script>
-<script src="js/scenes/MonitorMenuScene.js"></script>
-
-<!-- 游戏主逻辑(最后加载) -->
-<script src="js/systems/game.js"></script>
+    <!-- Vite会自动处理main.tsx的加载 -->
+    <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>
