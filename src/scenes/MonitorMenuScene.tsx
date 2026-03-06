@@ -48,9 +48,11 @@ export class MonitorMenuScene extends Scene {
     super.enter(data);
     this.selectedOption = 0;
 
-    // Start/Menu 时隐藏底部中控台，仅显示 SONAR 屏幕
+    // Start/Menu 时隐藏底部中控台与方向盘，仅显示 SONAR 屏幕
     const cockpitBottom = document.getElementById('cockpit-bottom');
+    const cockpitSteering = document.getElementById('cockpit-steering');
     if (cockpitBottom) cockpitBottom.style.display = 'none';
+    if (cockpitSteering) cockpitSteering.style.display = 'none';
 
     // 设置输入上下文为MENU
     if (this.inputManager) {

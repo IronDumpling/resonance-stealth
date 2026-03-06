@@ -126,28 +126,31 @@ export class CameraSystem {
   }
 
   /**
-   * 获取页面级 3D transform 字符串（用于 #page-root，需配合 #perspective-root 的 perspective）
-   * Boot/Menu: 拉近、上移对准 SONAR；Drive: 拉远、下移对准驾驶舱中心；Inventory: rotateY π。
-   * Drive 模式下叠加光标跟随旋转。rotateX/rotateY 内部为 deg。
+   * 获取页面级 3D transform 字符串（用于 #page-root）
+   * 仅包含镜头推拉/俯仰：translateZ、translateY、rotateX（Boot/Menu 对准 SONAR；Drive 居中）
+   * 不包含光标跟随旋转（由 getGimbalTransform 提供）
    */
   getPageTransform(): string {
     const cam = this.cameras[this.activeCamera];
     const z = cam.translateZ ?? 0;
-    let rx = cam.rotateX ?? 0;
-    let ry = cam.rotateY ?? 0;
-
-    // Drive 模式下叠加光标跟随旋转
-    if (
-      (this.activeCamera === 'cockpit' || this.activeCamera === 'inventory') &&
-      cam.mode === 'drive'
-    ) {
-      rx = rx - this.mouseLookY;
-      ry = ry + this.mouseLookX;
-    }
-
+    const rx = cam.rotateX ?? 0;
+    const ry = cam.rotateY ?? 0;
     const ty = cam.translateY ?? 0;
     const translatePart = ty !== 0 ? `translateY(${ty}px) ` : '';
     return `${translatePart}translateZ(${z}px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+  }
+
+  /**
+   * 获取云台 3D transform 字符串（用于 #cockpit-gimbal）
+   * 仅包含光标跟随旋转 rotateX、rotateY，仅在 Drive 模式生效
+   */
+  getGimbalTransform(): string {
+    const cam = this.cameras[this.activeCamera];
+    const isDrive =
+      (this.activeCamera === 'cockpit' || this.activeCamera === 'inventory') &&
+      cam.mode === 'drive';
+    if (!isDrive) return 'rotateX(0deg) rotateY(0deg)';
+    return `rotateX(${-this.mouseLookY}deg) rotateY(${this.mouseLookX}deg)`;
   }
 
   /**

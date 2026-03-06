@@ -175,9 +175,9 @@ export const CFG: IGameConfig = {
 export const COCKPIT_CONFIG = {
   /** Boot/Menu 镜头：拉近、上移对准 SONAR 屏幕 */
   bootMenuCamera: {
-    translateZ: 500,
+    translateZ: 510,
     rotateX: -20,
-    translateY: 200,
+    translateY: 180,
   },
   /** 光标跟随旋转（Drive 模式下） */
   mouseLook: {

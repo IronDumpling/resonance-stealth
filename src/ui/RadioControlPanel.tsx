@@ -140,17 +140,10 @@ export class RadioControlPanel {
     console.log('Radio UI deactivated');
   }
 
-  /** 瀑布图区域 HTML（标题 + 瀑布图 + 纸带） */
+  /** 瀑布图区域 HTML（瀑布图 + 扬声器，无 RF-9000 标题） */
   generateWaterfallHTML(): string {
     return `
       <div class="radio-panel radio-panel-waterfall">
-        <div class="radio-header">
-          <div class="screw"></div>
-          <div class="screw"></div>
-          <span>RF-9000 SPECTRUM ANALYZER</span>
-          <div class="screw"></div>
-          <div class="screw"></div>
-        </div>
         <div class="spectrum-container">
           <canvas id="waterfall-canvas" width="600" height="200"></canvas>
           <div class="tuner-line"></div>
@@ -163,12 +156,7 @@ export class RadioControlPanel {
             <span>200</span>
           </div>
         </div>
-        <div class="paper-tape-container">
-          <div class="tape-label">MORSE DECODER OUTPUT</div>
-          <div class="paper-tape" id="paper-tape">
-            <div class="tape-content" id="tape-content"></div>
-          </div>
-        </div>
+        <div class="radio-speaker"></div>
       </div>
     `;
   }
@@ -246,13 +234,6 @@ export class RadioControlPanel {
   generateHTML(): string {
     return `
       <div class="radio-panel">
-        <div class="radio-header">
-          <div class="screw"></div>
-          <div class="screw"></div>
-          <span>RF-9000 SPECTRUM ANALYZER</span>
-          <div class="screw"></div>
-          <div class="screw"></div>
-        </div>
         <div class="spectrum-container">
           <canvas id="waterfall-canvas" width="600" height="200"></canvas>
           <div class="tuner-line"></div>
@@ -323,12 +304,6 @@ export class RadioControlPanel {
             EMIT WAVE [SPACE]
           </button>
         </div>
-        <div class="paper-tape-container">
-          <div class="tape-label">MORSE DECODER OUTPUT</div>
-          <div class="paper-tape" id="paper-tape">
-            <div class="tape-content" id="tape-content"></div>
-          </div>
-        </div>
       </div>
     `;
   }
@@ -396,10 +371,6 @@ export class RadioControlPanel {
       this.flashButton('btn-wave');
     });
     
-    // 纸带点击显示摩斯码表
-    document.getElementById('paper-tape')?.addEventListener('click', () => {
-      this.showMorseReference();
-    });
     
     // 关闭摩斯码表
     document.getElementById('close-morse')?.addEventListener('click', () => {

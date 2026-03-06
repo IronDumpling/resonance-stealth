@@ -50,6 +50,7 @@ const AppInternal: React.FC = () => {
   const radioContainerRef = useRef<HTMLDivElement | null>(null);
   const radioControlsRef = useRef<HTMLDivElement | null>(null);
   const pageRootRef = useRef<HTMLDivElement | null>(null);
+  const cockpitGimbalRef = useRef<HTMLDivElement | null>(null);
 
   const [sceneManager] = useState<SceneManager | null>(() => {
     const sm = new SceneManager();
@@ -232,6 +233,10 @@ const AppInternal: React.FC = () => {
       if (pageRootRef.current && cameraSystem) {
         pageRootRef.current.style.transform = cameraSystem.getPageTransform();
       }
+      // 云台 transform（光标跟随）也需每帧更新，否则 React 不重渲染时 gimbal 不随鼠标动
+      if (cockpitGimbalRef.current && cameraSystem) {
+        cockpitGimbalRef.current.style.transform = cameraSystem.getGimbalTransform();
+      }
 
       // 渲染场景
       if (canvasRef.current && sceneManager && crtRenderer) {
@@ -257,6 +262,8 @@ const AppInternal: React.FC = () => {
 
   const pageTransform =
     cameraSystem ? cameraSystem.getPageTransform() : 'none';
+  const gimbalTransform =
+    cameraSystem ? cameraSystem.getGimbalTransform() : 'rotateX(0deg) rotateY(0deg)';
 
   const ui = COCKPIT_CONFIG.uiLayers;
   const cockpitVars = {
@@ -302,10 +309,21 @@ const AppInternal: React.FC = () => {
         }}
       >
       <div id="workstation-container">
-        {/* 驾驶舱布局：参考 drive_scene_reference - 顶部声纳，底部三栏 */}
-        <div id="cockpit-view">
-          {/* 顶部：挡风玻璃声纳显示屏（仅屏幕内） */}
-          <div id="cockpit-sonar-wrap">
+        {/* 云台：仅 rotateX/rotateY 光标跟随，无 overflow，3D 视差由兄弟元素实现 */}
+        <div
+          ref={cockpitGimbalRef}
+          id="cockpit-gimbal"
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+            transform: gimbalTransform,
+            transformStyle: 'preserve-3d',
+            transformOrigin: 'center center',
+          }}
+        >
+          {/* 1. 挡风玻璃声纳（最远，absolute） */}
+          <div id="cockpit-sonar-wrap" className="cockpit-layer cockpit-sonar">
             <div id="crt-monitor-container">
               <div id="monitor-frame">
                 <div id="monitor-screen">
@@ -374,10 +392,10 @@ const AppInternal: React.FC = () => {
               <div className="power-indicator off" />
             </div>
           </div>
-        </div>
+          </div>
 
-          {/* 底部：三栏中控台（参考 reference） */}
-          <div id="cockpit-bottom" style={{ display: 'none' }}>
+          {/* 2. 中控台基座（absolute，含仪表盘、收音机、驾驶台） */}
+          <div id="cockpit-bottom" className="cockpit-layer cockpit-base" style={{ display: 'none' }}>
             {/* 左侧：车辆状态仪表盘 */}
             <div id="cockpit-dashboard" className="ref-dashboard">
               <div className="ref-gauge-grid">
@@ -446,9 +464,10 @@ const AppInternal: React.FC = () => {
               </button>
             </div>
 
-            {/* 居中方向盘（悬浮层） */}
-            <div id="cockpit-steering" className="ref-steering" />
           </div>
+
+          {/* 3. 方向盘（最近，absolute，Boot/Menu 时隐藏） */}
+          <div id="cockpit-steering" className="ref-steering cockpit-layer cockpit-steering" style={{ display: 'none' }} />
         </div>
       </div>
 

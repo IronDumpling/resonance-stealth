@@ -37,9 +37,11 @@ export class InventoryScene extends Scene {
   override enter(data?: SceneData): void {
     super.enter(data);
 
-    // 回头看后备箱时隐藏底部中控台
+    // 回头看后备箱时隐藏底部中控台与方向盘
     const cockpitBottom = document.getElementById('cockpit-bottom');
+    const cockpitSteering = document.getElementById('cockpit-steering');
     if (cockpitBottom) cockpitBottom.style.display = 'none';
+    if (cockpitSteering) cockpitSteering.style.display = 'none';
 
     // 设置输入上下文为 INVENTORY（后备箱操作）
     if (this.inputManager) {

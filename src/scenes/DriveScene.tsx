@@ -77,15 +77,19 @@ export class DriveScene extends Scene {
       this.cameraSystem.setActiveCamera('cockpit');
     }
 
-    // 显示底部中控台（仪表盘、收音机、驾驶台）
+    // 显示底部中控台与方向盘（Drive 模式）
     const cockpitBottom = document.getElementById('cockpit-bottom');
-    if (cockpitBottom) cockpitBottom.style.display = 'flex';
+    const cockpitSteering = document.getElementById('cockpit-steering');
+    if (cockpitBottom) cockpitBottom.style.display = 'block';
+    if (cockpitSteering) cockpitSteering.style.display = 'block';
   }
 
   override exit(): void {
     super.exit();
     const cockpitBottom = document.getElementById('cockpit-bottom');
+    const cockpitSteering = document.getElementById('cockpit-steering');
     if (cockpitBottom) cockpitBottom.style.display = 'none';
+    if (cockpitSteering) cockpitSteering.style.display = 'none';
   }
 
   override update(_deltaTime: number): void {
