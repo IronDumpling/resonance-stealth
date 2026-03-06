@@ -63,6 +63,7 @@ export interface IRadioSystemCallbacks {
 export class RadioSystem implements IRadioSystem {
   currentFrequency: number = 150.0;
   antennaAngle: number = 270; // 天线指向角度（270度=朝上/北）
+  antennaLength: number = 50; // 天线长度 0-100（旋钮控制，暂无 gameplay 效果）
   signals: IRadioSignal[] = [];
   waterfallHistory: number[][] = [];
   enemyFreqHistory: (number | null)[] = []; // 敌人频率历史记录

@@ -20,3 +20,6 @@ export * from './particles';
 
 // UI 辅助
 export * from './ui';
+
+// 车辆物理
+export * from './vehiclePhysics';

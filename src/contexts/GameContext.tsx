@@ -221,8 +221,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           if (vehicleSystem && initialState && initialState.currentScene === 'drive') {
             vehicleSystem.update(initialState, deltaTime);
             if (survivalSystem) {
-              const isMoving = Math.abs(initialState.vehicle?.speed ?? 0) > 0.5;
-              survivalSystem.consumeFuelForDriving(initialState, deltaTime, isMoving);
+              // 燃油仅在有油门时消耗，刹车/滑行不消耗
+              const isThrottling = (initialState.vehicle?.throttle ?? 0) > 0;
+              survivalSystem.consumeFuelForDriving(initialState, deltaTime, isThrottling);
             }
           }
         },

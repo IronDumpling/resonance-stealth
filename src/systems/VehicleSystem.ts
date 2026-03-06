@@ -5,15 +5,19 @@
  * 管理发动机、档位、转向、油门刹车。
  * engine on/off：后续会做持续释放的声波。
  * 碰撞时调用 SurvivalSystem 扣完整度。
+ * 速度计算见 src/utils/vehiclePhysics.ts
  */
 
 import type { IGameState, VehicleGear } from '@/types/game';
 import type { IObstacle } from '@/types/entities';
 import type { SurvivalSystem } from './SurvivalSystem';
+import {
+  computeNextSpeed,
+  DEFAULT_VEHICLE_PARAMS,
+  type VehicleGear as PhysicsGear,
+} from '@/utils/vehiclePhysics';
 
-const MAX_SPEED = 120;
-const ACCEL = 80;
-const FRICTION = 2;
+const MAX_SPEED = DEFAULT_VEHICLE_PARAMS.maxSpeed;
 const STEER_RATE = 2.5;
 const PLAYER_RADIUS = 14;
 
@@ -54,31 +58,27 @@ export class VehicleSystem {
       v.brake = 1;
     }
 
-    // 油门刹车输入
+    // 油门刹车输入（档位由 UI 档位杆控制，此处仅更新油门刹车值）
     v.throttle = keys.w ? 1 : 0;
     v.brake = keys.s ? 1 : 0;
 
-    // 档位切换（简化：仅用数字键）
-    if (keys.e) v.gear = 'D';
-    if (keys.r) v.gear = 'R';
-    if (keys.f) v.gear = 'P';
+    // N 档：忽略油门刹车，仅惯性滑行
+    const effectiveThrottle = v.gear === 'N' ? 0 : v.throttle;
+    const effectiveBrake = v.gear === 'N' ? 0 : v.brake;
 
     // 转向
     const steerInput = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
     v.steeringAngle += steerInput * STEER_RATE * deltaTime;
     v.steeringAngle = Math.max(-0.5, Math.min(0.5, v.steeringAngle));
 
-    // P/N 档：减速至停
-    if (v.gear === 'P' || v.gear === 'N') {
-      v.speed *= Math.pow(0.95, deltaTime * 60);
-      if (Math.abs(v.speed) < 1) v.speed = 0;
-    } else {
-      // D/R 档：加速/减速
-      const driveDir = v.gear === 'D' ? 1 : -1;
-      const targetSpeed = (v.throttle - v.brake) * MAX_SPEED * driveDir;
-      v.speed += (targetSpeed - v.speed) * Math.min(1, ACCEL * deltaTime / MAX_SPEED);
-      v.speed *= Math.pow(1 - FRICTION * 0.01, deltaTime * 60);
-    }
+    // 速度更新（S 刹车始终向 0 减速；松油门缓慢滑行；踩刹车快速减速）
+    v.speed = computeNextSpeed(
+      v.speed,
+      effectiveThrottle,
+      effectiveBrake,
+      v.gear as PhysicsGear,
+      deltaTime
+    );
 
     // 更新玩家位置与朝向
     const moveDist = v.speed * deltaTime;
@@ -144,5 +144,12 @@ export class VehicleSystem {
 
   getGear(state: IGameState): VehicleGear {
     return state.vehicle?.gear ?? 'P';
+  }
+
+  /** 设置档位（由 UI 档位杆调用） */
+  setGear(state: IGameState, gear: VehicleGear): void {
+    if (state.vehicle) {
+      state.vehicle.gear = gear;
+    }
   }
 }

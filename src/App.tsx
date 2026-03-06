@@ -5,7 +5,7 @@
  * 集成所有系统，确保场景切换和输入系统正常工作
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { GameProvider, useGameContext } from '@/contexts/GameContext';
 import { InputProvider, useInputContext } from '@/contexts/InputContext';
 import { SceneManager } from '@/systems/SceneManager';
@@ -26,28 +26,69 @@ import {
 import { RadioControlPanel } from '@/ui/RadioControlPanel';
 import { COCKPIT_CONFIG } from '@/config/gameConfig';
 import type { ISurvivalState } from '@/types/game';
+import type { VehicleGear } from '@/types/game';
 
-/** 将生存状态同步到仪表盘 DOM（HULL/HP/BATT/FUEL） */
-function syncSurvivalDashboard(survival: ISurvivalState | null | undefined): void {
+/** 旋钮组件：RADIO FREQ / ANT DIR / ANT LEN，value 为 0–1 */
+const ControlKnob: React.FC<{
+  label: string;
+  value: number;
+  onChange: (delta: number) => void;
+}> = ({ label, value, onChange }) => {
+  const rot = -135 + value * 270;
+  return (
+    <div className="ref-control-knob">
+      <div
+        className="ref-knob-disk"
+        style={{ transform: `rotate(${rot}deg)` }}
+        onClick={() => onChange(1)}
+        onContextMenu={(e) => { e.preventDefault(); onChange(-1); }}
+      >
+        <div className="ref-knob-indicator" />
+      </div>
+      <span className="ref-knob-label">{label}</span>
+    </div>
+  );
+};
+
+/** 将生存状态同步到仪表盘 DOM（HULL/HP 条状，BATT/FUEL 表盘，油门刹车条） */
+function syncSurvivalDashboard(
+  survival: ISurvivalState | null | undefined,
+  throttle: number,
+  brake: number
+): void {
   if (!survival) return;
-  const grid = document.querySelector('#cockpit-dashboard .ref-gauge-grid');
-  if (!grid) return;
-  const gauges = grid.querySelectorAll('.ref-gauge');
   const max = 100;
-  const data: Array<{ value: number; label: string }> = [
-    { value: survival.integrity, label: 'HULL' },
-    { value: survival.life, label: 'HP' },
-    { value: survival.battery, label: 'BATT' },
-    { value: survival.fuel, label: 'FUEL' },
-  ];
-  gauges.forEach((g, i) => {
-    const d = data[i];
-    if (!d) return;
+  // HULL / HP 条状
+  const hullGauge = document.querySelector('#cockpit-dashboard .ref-gauge[data-gauge="hull"]');
+  const hpGauge = document.querySelector('#cockpit-dashboard .ref-gauge[data-gauge="hp"]');
+  for (const g of [hullGauge, hpGauge]) {
+    if (!g) continue;
+    const key = (g as HTMLElement).dataset?.gauge;
+    const v = key === 'hull' ? survival.integrity : survival.life;
     const fill = g.querySelector('.ref-gauge-fill') as HTMLElement;
-    const val = g.querySelector('.ref-gauge-value');
-    if (fill) fill.style.width = `${Math.max(0, Math.min(max, d.value))}%`;
-    if (val) val.textContent = `${Math.round(d.value)}/${max}`;
-  });
+    const valEl = g.querySelector('.ref-gauge-value');
+    if (fill) fill.style.width = `${Math.max(0, Math.min(max, v))}%`;
+    if (valEl) valEl.textContent = `${Math.round(v)}/${max}`;
+  }
+  // BATT / FUEL 表盘
+  const battNeedle = document.querySelector('.ref-dial-needle[data-dial="batt"]') as HTMLElement;
+  const fuelNeedle = document.querySelector('.ref-dial-needle[data-dial="fuel"]') as HTMLElement;
+  const battVal = document.querySelector('.ref-dial-gauge[data-dial="batt"] .ref-dial-value');
+  const fuelVal = document.querySelector('.ref-dial-gauge[data-dial="fuel"] .ref-dial-value');
+  const angle = (v: number) => -135 + (v / max) * 270;
+  if (battNeedle) battNeedle.style.transform = `rotate(${angle(survival.battery)}deg)`;
+  if (fuelNeedle) fuelNeedle.style.transform = `rotate(${angle(survival.fuel)}deg)`;
+  if (battVal) battVal.textContent = String(Math.round(survival.battery));
+  if (fuelVal) fuelVal.textContent = String(Math.round(survival.fuel));
+  // 油门刹车条
+  const thrBar = document.querySelector('.ref-throttle-fill') as HTMLElement;
+  const brkBar = document.querySelector('.ref-brake-fill') as HTMLElement;
+  const thrVal = document.querySelector('.ref-throttle-value');
+  const brkVal = document.querySelector('.ref-brake-value');
+  if (thrBar) thrBar.style.width = `${throttle * 100}%`;
+  if (brkBar) brkBar.style.width = `${brake * 100}%`;
+  if (thrVal) thrVal.textContent = `${Math.round(throttle * 100)}%`;
+  if (brkVal) brkVal.textContent = `${Math.round(brake * 100)}%`;
 }
 
 // 内部App组件，可以使用Context
@@ -79,6 +120,10 @@ const AppInternal: React.FC = () => {
   const [uiManager] = useState<UIManager | null>(() => new UIManager());
   const [crtRenderer, setCrtRenderer] = useState<CrtRenderer | null>(null);
   const [rxTxMode, setRxTxMode] = useState<'RX' | 'TX'>('RX');
+  const [isMicPressed, setIsMicPressed] = useState(false);
+  const [, setKnobRefresh] = useState(0);
+  const gearLeverTrackRef = useRef<HTMLDivElement | null>(null);
+  const gearDragRef = useRef<{ active: boolean; startX: number }>({ active: false, startX: 0 });
 
   // 初始化CRT渲染器
   useEffect(() => {
@@ -187,6 +232,12 @@ const AppInternal: React.FC = () => {
     }
   }, [inputManager, sceneManager, gameState, gameSystem, cameraSystem]);
 
+  // 旋钮显示刷新（radioSystem 状态变化时）
+  useEffect(() => {
+    const id = setInterval(() => setKnobRefresh((c) => c + 1), 100);
+    return () => clearInterval(id);
+  }, []);
+
   // 初始化RadioControlPanel
   useEffect(() => {
     if (radioContainerRef.current && radioControlsRef.current && radioSystem && !radioPanelRef.current) {
@@ -213,6 +264,45 @@ const AppInternal: React.FC = () => {
     initialScene: SCENES.BOOT,
     sceneManager,
   });
+
+  const GEARS: VehicleGear[] = ['P', 'R', 'N', 'D'];
+  const handleGearLeverPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      gearDragRef.current = { active: true, startX: e.clientX };
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    },
+    []
+  );
+  const handleGearLeverPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!gearDragRef.current.active || !gearLeverTrackRef.current || !gameState || !vehicleSystem) return;
+      const track = gearLeverTrackRef.current;
+      const rect = track.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const idx = Math.max(0, Math.min(3, Math.round(x * 3)));
+      vehicleSystem.setGear(gameState, GEARS[idx]);
+    },
+    [gameState, vehicleSystem]
+  );
+  const handleGearLeverPointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      gearDragRef.current.active = false;
+      (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+    },
+    []
+  );
+  const handleGearLeverClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!gearLeverTrackRef.current || !gameState || !vehicleSystem) return;
+      const track = gearLeverTrackRef.current;
+      const rect = track.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const idx = Math.max(0, Math.min(3, Math.round(x * 3)));
+      vehicleSystem.setGear(gameState, GEARS[idx]);
+    },
+    [gameState, vehicleSystem]
+  );
 
   // 游戏循环
   useGameLoop({
@@ -273,25 +363,31 @@ const AppInternal: React.FC = () => {
       if (cockpitGimbalRef.current && cameraSystem) {
         cockpitGimbalRef.current.style.transform = cameraSystem.getGimbalTransform();
       }
-      // 同步生存状态到仪表盘
-      if (gameState?.survival) {
-        syncSurvivalDashboard(gameState.survival);
+      // 同步生存状态到仪表盘（含油门刹车条）
+      if (gameState?.survival && gameState?.vehicle) {
+        syncSurvivalDashboard(
+          gameState.survival,
+          gameState.vehicle.throttle,
+          gameState.vehicle.brake
+        );
       }
-      // 同步车辆状态到驾驶 UI（档位、速度、踏板）
+      // 同步车辆状态：档位杆、速度表盘
       if (gameState?.vehicle && vehicleSystem) {
         const gear = vehicleSystem.getGear(gameState);
-        const speed = Math.round(Math.abs(vehicleSystem.getSpeed(gameState)));
-        const v = gameState.vehicle;
-        const speedEl = document.querySelector('.ref-speed-value');
-        if (speedEl) speedEl.textContent = String(speed);
-        document.querySelectorAll('.ref-gear').forEach((el, i) => {
-          const gs = ['P', 'R', 'N', 'D'];
-          el.classList.toggle('ref-gear-active', gs[i] === gear);
-        });
-        const brakeFill = document.querySelector('.ref-pedal-brake') as HTMLElement;
-        const thrFill = document.querySelector('.ref-pedal-throttle') as HTMLElement;
-        if (brakeFill) brakeFill.style.height = `${v.brake * 100}%`;
-        if (thrFill) thrFill.style.height = `${v.throttle * 100}%`;
+        const speed = Math.abs(vehicleSystem.getSpeed(gameState));
+        const gearKnob = document.querySelector('.ref-gear-knob') as HTMLElement;
+        if (gearKnob) {
+          const idx = ['P', 'R', 'N', 'D'].indexOf(gear);
+          const pct = idx >= 0 ? idx / 3 : 0;
+          gearKnob.style.left = `calc(${pct * 100}% - 20px)`;
+        }
+        const speedNeedle = document.querySelector('.ref-dial-needle[data-dial="speed"]') as HTMLElement;
+        if (speedNeedle) {
+          const angle = -135 + (Math.min(120, speed) / 120) * 270;
+          speedNeedle.style.transform = `rotate(${angle}deg)`;
+        }
+        const speedVal = document.querySelector('.ref-speed-value');
+        if (speedVal) speedVal.textContent = String(Math.round(speed));
       }
 
       // 渲染场景
@@ -412,37 +508,62 @@ const AppInternal: React.FC = () => {
 
           {/* 2. 中控台基座（absolute，含仪表盘、收音机、驾驶台） */}
           <div id="cockpit-bottom" className="cockpit-layer cockpit-base" style={{ display: 'none' }}>
-            {/* 左侧：车辆状态仪表盘 */}
+            {/* 左侧：车辆状态仪表盘
+                第1行: HULL + HP | 第2行: THROTTLE + BRAKE | 第3行: BATT + FUEL + 速度表盘 */}
             <div id="cockpit-dashboard" className="ref-dashboard">
-              <div className="ref-gauge-grid">
-                <div className="ref-gauge" data-color="blue">
+              <div className="ref-dashboard-row ref-dashboard-row-1">
+                <div className="ref-gauge" data-gauge="hull" data-color="blue">
                   <span className="ref-gauge-icon">◆</span>
                   <div className="ref-gauge-bar"><div className="ref-gauge-fill" style={{ width: '75%' }} /></div>
                   <span className="ref-gauge-label">HULL</span>
                   <span className="ref-gauge-value">75/100</span>
                 </div>
-                <div className="ref-gauge" data-color="red">
+                <div className="ref-gauge" data-gauge="hp" data-color="red">
                   <span className="ref-gauge-icon">♥</span>
                   <div className="ref-gauge-bar"><div className="ref-gauge-fill" style={{ width: '90%' }} /></div>
                   <span className="ref-gauge-label">HP</span>
                   <span className="ref-gauge-value">90/100</span>
                 </div>
-                <div className="ref-gauge" data-color="yellow">
-                  <span className="ref-gauge-icon">▣</span>
-                  <div className="ref-gauge-bar"><div className="ref-gauge-fill" style={{ width: '40%' }} /></div>
-                  <span className="ref-gauge-label">BATT</span>
-                  <span className="ref-gauge-value">40/100</span>
+              </div>
+              <div className="ref-dashboard-row ref-dashboard-row-2">
+                <div className="ref-throttle-bar">
+                  <div className="ref-bar-header">
+                    <span className="ref-bar-label">THROTTLE</span>
+                    <span className="ref-throttle-value">0%</span>
+                  </div>
+                  <div className="ref-bar-track"><div className="ref-throttle-fill ref-bar-fill" /></div>
                 </div>
-                <div className="ref-gauge" data-color="orange">
-                  <span className="ref-gauge-icon">⛽</span>
-                  <div className="ref-gauge-bar"><div className="ref-gauge-fill" style={{ width: '25%' }} /></div>
-                  <span className="ref-gauge-label">FUEL</span>
-                  <span className="ref-gauge-value">25/100</span>
+                <div className="ref-brake-bar">
+                  <div className="ref-bar-header">
+                    <span className="ref-bar-label">BRAKE</span>
+                    <span className="ref-brake-value">0%</span>
+                  </div>
+                  <div className="ref-bar-track"><div className="ref-brake-fill ref-bar-fill" /></div>
                 </div>
               </div>
-              <div className="ref-speedometer">
-                <span className="ref-speed-label">KM/H</span>
-                <span className="ref-speed-value">0</span>
+              <div className="ref-dashboard-row ref-dashboard-row-3">
+                <div className="ref-dial-gauge" data-dial="batt">
+                  <div className="ref-dial-face">
+                    <div className="ref-dial-needle" data-dial="batt" />
+                  </div>
+                  <span className="ref-dial-label">BATT</span>
+                  <span className="ref-dial-value ref-gauge-value">40</span>
+                </div>
+                <div className="ref-dial-gauge" data-dial="fuel">
+                  <div className="ref-dial-face">
+                    <div className="ref-dial-needle" data-dial="fuel" />
+                  </div>
+                  <span className="ref-dial-label">FUEL</span>
+                  <span className="ref-dial-value ref-gauge-value">25</span>
+                </div>
+                <div className="ref-speedometer ref-dial-gauge" data-dial="speed">
+                  <div className="ref-dial-face ref-speed-dial">
+                    <div className="ref-dial-needle" data-dial="speed" />
+                  </div>
+                  <span className="ref-speed-label">KM/H</span>
+                  <span className="ref-speed-value">0</span>
+                  <span className="ref-speed-max">120</span>
+                </div>
               </div>
             </div>
 
@@ -451,33 +572,89 @@ const AppInternal: React.FC = () => {
               <div id="radio-transceiver" ref={radioContainerRef} />
             </div>
 
-            {/* 右侧：档位、踏板、SONAR PING */}
+            {/* 右侧：档位杆、旋钮、RX/TX 开关、麦克风 */}
             <div id="cockpit-driving-ui" className="ref-driving">
-              <div className="ref-drive-label">DRIVE_SYS</div>
-              <div className="ref-gear-row">
-                <span className="ref-gear">P</span>
-                <span className="ref-gear">R</span>
-                <span className="ref-gear">N</span>
-                <span className="ref-gear ref-gear-active">D</span>
+              <div className="ref-drive-label">COMMS & DRIVE</div>
+              {/* 档位杆 */}
+              <div className="ref-gear-lever-wrap">
+                <div className="ref-gear-labels">
+                  {GEARS.map((g) => (
+                    <span key={g} className="ref-gear-label">{g}</span>
+                  ))}
+                </div>
+                <div
+                  ref={gearLeverTrackRef}
+                  className="ref-gear-track"
+                  onClick={handleGearLeverClick}
+                  onPointerDown={handleGearLeverPointerDown}
+                  onPointerMove={handleGearLeverPointerMove}
+                  onPointerUp={handleGearLeverPointerUp}
+                  onPointerLeave={handleGearLeverPointerUp}
+                >
+                  <div className="ref-gear-track-slot" />
+                  <div className="ref-gear-knob" />
+                </div>
               </div>
-              <div className="ref-pedals">
-                <div className="ref-pedal">
-                  <div className="ref-pedal-bar"><div className="ref-pedal-fill ref-pedal-brake" /></div>
-                  <span className="ref-pedal-label">BRK</span>
-                </div>
-                <div className="ref-pedal">
-                  <div className="ref-pedal-bar"><div className="ref-pedal-fill ref-pedal-throttle" /></div>
-                  <span className="ref-pedal-label">THR</span>
-                </div>
+              {/* 三个旋钮 */}
+              <div className="ref-knobs-row">
+                <ControlKnob
+                  label="RADIO FREQ"
+                  value={
+                    radioSystem
+                      ? (radioSystem.currentFrequency - radioSystem.freqMin) /
+                        (radioSystem.freqMax - radioSystem.freqMin)
+                      : 0.5
+                  }
+                  onChange={(delta) => radioSystem?.tuneFine(delta)}
+                />
+                <ControlKnob
+                  label="ANT DIR"
+                  value={(radioSystem?.antennaAngle ?? 270) / 360}
+                  onChange={(delta) => radioSystem?.rotateAntenna(delta * 10)}
+                />
+                <ControlKnob
+                  label="ANT LEN"
+                  value={(radioSystem?.antennaLength ?? 50) / 100}
+                  onChange={(delta) => {
+                    if (radioSystem) {
+                      radioSystem.antennaLength = Math.max(
+                        0,
+                        Math.min(100, radioSystem.antennaLength + delta * 10)
+                      );
+                    }
+                  }}
+                />
               </div>
               <div id="radio-controls" ref={radioControlsRef} className="ref-radio-controls" />
-              <button
-                className={`ref-sonar-btn ref-rxtx-btn ${rxTxMode === 'TX' ? 'ref-rxtx-tx' : ''}`}
-                onClick={() => setRxTxMode((m) => (m === 'RX' ? 'TX' : 'RX'))}
-              >
-                <span className="ref-rxtx-led" />
-                {rxTxMode}
-              </button>
+              {/* RX/TX 拨动开关 + 麦克风 */}
+              <div className="ref-comms-row">
+                <div
+                  className="ref-rxtx-toggle"
+                  onClick={() => setRxTxMode((m) => (m === 'RX' ? 'TX' : 'RX'))}
+                  role="switch"
+                  aria-checked={rxTxMode === 'TX'}
+                >
+                  <span className={`ref-rxtx-label ${rxTxMode === 'RX' ? 'ref-rxtx-active' : ''}`}>RX</span>
+                  <div className="ref-rxtx-track">
+                    <div className={`ref-rxtx-knob ${rxTxMode === 'TX' ? 'ref-rxtx-tx-knob' : ''}`} />
+                  </div>
+                  <span className={`ref-rxtx-label ${rxTxMode === 'TX' ? 'ref-rxtx-active' : ''}`}>TX</span>
+                </div>
+                <div className="ref-mic-wrap">
+                  <button
+                    className={`ref-mic-btn ${isMicPressed ? 'ref-mic-pressed' : ''}`}
+                    onPointerDown={() => setIsMicPressed(true)}
+                    onPointerUp={() => setIsMicPressed(false)}
+                    onPointerLeave={() => setIsMicPressed(false)}
+                  >
+                    <span className="ref-mic-led" />
+                    <span className="ref-mic-text">{isMicPressed ? 'TRANSMITTING' : 'HOLD TO TALK'}</span>
+                  </button>
+                  <span className="ref-mic-icon" aria-hidden>
+                    <span className="ref-mic-circle" />
+                  </span>
+                </div>
+              </div>
             </div>
 
           </div>

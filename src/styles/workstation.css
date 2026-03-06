@@ -183,23 +183,33 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 300px;
-    height: 250px;
+    width: 320px;
+    height: 280px;
     background: #27272a;
     transform: translateX(-320px) translateZ(var(--cockpit-dashboard-translateZ, 40px)) rotateY(var(--cockpit-dashboard-rotateY, 18deg));
     transform-style: preserve-3d;
-    padding: 24px;
+    padding: 16px;
     border-right: 4px solid #0a0a0b;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    gap: 12px;
+    justify-content: flex-start;
     box-shadow: inset -10px 0 20px rgba(0, 0, 0, 0.5);
 }
 
-.ref-gauge-grid {
+/* 仪表盘三行布局：第1行 HULL+HP，第2行 THROTTLE+BRAKE，第3行 BATT+FUEL+速度 */
+.ref-dashboard-row {
     display: grid;
+    gap: 12px;
+}
+
+.ref-dashboard-row-1,
+.ref-dashboard-row-2 {
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
+}
+
+.ref-dashboard-row-3 {
+    grid-template-columns: 1fr 1fr 1fr;
 }
 
 .ref-gauge {
@@ -263,14 +273,61 @@
     font-family: monospace;
 }
 
+/* 表盘仪表（BATT, FUEL, 速度） */
+.ref-dial-gauge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #18181b;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #3f3f46;
+    min-width: 72px;
+}
+
+.ref-dial-face {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #0a0a0b;
+    border: 3px solid #3f3f46;
+    position: relative;
+    overflow: hidden;
+}
+
+.ref-dial-needle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 2px;
+    height: 50%;
+    margin-left: -1px;
+    margin-top: -50%;
+    background: #ef4444;
+    transform-origin: center bottom;
+    transform: rotate(-135deg);
+    transition: transform 0.1s;
+}
+
+.ref-dial-label {
+    font-size: 9px;
+    color: #a1a1aa;
+    margin-top: 4px;
+}
+
+.ref-dial-value {
+    font-size: 11px;
+    color: #fff;
+    font-family: monospace;
+}
+
 .ref-speedometer {
-    margin-top: 24px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 128px;
-    height: 128px;
+    width: 96px;
+    height: 96px;
     margin-left: auto;
     margin-right: auto;
     background: #18181b;
@@ -280,18 +337,80 @@
     position: relative;
 }
 
+.ref-speedometer .ref-dial-face {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+}
+
+.ref-speedometer .ref-dial-needle {
+    height: 45%;
+    background: #22c55e;
+}
+
 .ref-speed-label {
     position: absolute;
-    top: 8px;
-    font-size: 10px;
+    top: 4px;
+    font-size: 9px;
     color: #71717a;
 }
 
 .ref-speed-value {
-    font-size: 28px;
+    position: absolute;
+    bottom: 20px;
+    font-size: 18px;
     font-weight: bold;
     color: #fff;
     font-family: monospace;
+}
+
+.ref-speed-max {
+    position: absolute;
+    bottom: 4px;
+    right: 8px;
+    font-size: 9px;
+    color: #71717a;
+    font-family: monospace;
+}
+
+/* 油门刹车条（第2行，左侧仪表盘） */
+.ref-throttle-bar,
+.ref-brake-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ref-bar-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #a1a1aa;
+    font-family: monospace;
+}
+
+.ref-bar-track {
+    width: 100%;
+    height: 12px;
+    background: #18181b;
+    border-radius: 9999px;
+    border: 1px solid #3f3f46;
+    overflow: hidden;
+}
+
+.ref-bar-fill {
+    height: 100%;
+    border-radius: 9999px;
+    transition: width 0.1s;
+}
+
+.ref-throttle-fill {
+    background: #3b82f6;
+}
+
+.ref-brake-fill {
+    background: #ef4444;
 }
 
 /* 中部：车载收音机（absolute，参考 3d_css RadioPanel，最凸出） */
@@ -354,76 +473,261 @@
     margin-bottom: 16px;
 }
 
-.ref-gear-row {
+/* 档位杆 */
+.ref-gear-lever-wrap {
     flex-shrink: 0;
-    display: flex;
     background: #18181b;
+    padding: 8px;
     border-radius: 4px;
     border: 1px solid #3f3f46;
-    overflow: hidden;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
 }
 
-.ref-gear {
-    flex: 1;
-    text-align: center;
-    padding: 8px;
+.ref-gear-labels {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 12px 8px;
     font-family: monospace;
     font-weight: bold;
-    font-size: 14px;
+    font-size: 12px;
     color: #71717a;
 }
 
-.ref-gear-active {
-    background: #3f3f46;
-    color: #fff;
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+.ref-gear-label {
+    flex: 1;
+    text-align: center;
 }
 
-.ref-pedals {
+.ref-gear-track {
+    position: relative;
+    height: 24px;
+    background: #000;
+    border-radius: 9999px;
+    border: 2px solid #27272a;
+    margin: 0 8px;
+    cursor: pointer;
+}
+
+.ref-gear-track-slot {
+    position: absolute;
+    top: 50%;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    margin-top: -1px;
+    background: #18181b;
+    border-radius: 9999px;
+}
+
+.ref-gear-knob {
+    position: absolute;
+    top: 50%;
+    width: 40px;
+    height: 40px;
+    margin-top: -20px;
+    margin-left: -20px;
+    left: 0;
+    background: linear-gradient(to bottom, #d4d4d8, #71717a);
+    border-radius: 50%;
+    border: 3px solid #52525b;
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.9);
+    cursor: pointer;
+    transition: left 0.15s ease-out;
+    z-index: 20;
+}
+
+/* 旋钮行 */
+.ref-knobs-row {
     display: flex;
-    gap: 16px;
-    flex: 1;
-    align-items: flex-end;
+    justify-content: space-between;
+    background: #18181b;
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px solid #3f3f46;
+    margin-bottom: 12px;
 }
 
-.ref-pedal {
-    flex: 1;
+.ref-control-knob {
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
-.ref-pedal-bar {
-    width: 32px;
-    height: 128px;
+.ref-knob-disk {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(to bottom right, #71717a, #27272a);
+    border: 2px solid #0a0a0b;
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.8), inset 0 2px 2px rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.05s;
+}
+
+.ref-knob-disk:active {
+    transform: scale(0.95);
+}
+
+.ref-knob-indicator {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    width: 2px;
+    height: 12px;
+    margin-left: -1px;
+    background: #e4e4e7;
+    border-radius: 2px;
+    box-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
+}
+
+.ref-knob-label {
+    font-size: 9px;
+    color: #a1a1aa;
+    margin-top: 8px;
+    font-family: monospace;
+    text-align: center;
+    max-width: 56px;
+    line-height: 1.2;
+}
+
+/* RX/TX 拨动开关 + 麦克风 */
+.ref-comms-row {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+    align-items: stretch;
+    margin-top: 12px;
+}
+
+.ref-rxtx-toggle {
+    width: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     background: #18181b;
     border-radius: 4px;
     border: 1px solid #3f3f46;
-    overflow: hidden;
-    display: flex;
-    align-items: flex-end;
+    cursor: pointer;
 }
 
-.ref-pedal-fill {
-    width: 100%;
-    height: 0;
-    transition: height 0.1s;
+.ref-rxtx-label {
+    font-size: 10px;
+    font-family: monospace;
+    font-weight: bold;
+    color: #52525b;
 }
 
-.ref-pedal-brake {
+.ref-rxtx-label.ref-rxtx-active {
+    color: #22c55e;
+    text-shadow: 0 0 5px #22c55e;
+}
+
+.ref-rxtx-toggle .ref-rxtx-label:last-of-type.ref-rxtx-active {
+    color: #ef4444;
+    text-shadow: 0 0 5px #ef4444;
+}
+
+.ref-rxtx-track {
+    width: 32px;
+    height: 48px;
+    background: #000;
+    border-radius: 9999px;
+    border: 2px solid #27272a;
+    position: relative;
+    box-shadow: inset 0 5px 10px rgba(0, 0, 0, 0.8);
+}
+
+.ref-rxtx-knob {
+    position: absolute;
+    left: 2px;
+    top: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #d4d4d8;
+    box-shadow: 0 5px 5px rgba(0, 0, 0, 0.9), inset 0 2px 2px rgba(255, 255, 255, 0.4);
+    transition: top 0.2s, bottom 0.2s, background 0.2s;
+}
+
+.ref-rxtx-knob.ref-rxtx-tx-knob {
+    top: auto;
+    bottom: 2px;
     background: #ef4444;
 }
 
-.ref-pedal-throttle {
-    background: #3b82f6;
+.ref-mic-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.ref-pedal-label {
-    font-size: 10px;
-    color: #71717a;
+.ref-mic-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border: 2px solid #b91c1c;
+    border-radius: 8px;
     font-family: monospace;
-    margin-top: 8px;
+    font-weight: bold;
+    font-size: 12px;
+    color: #fff;
+    background: linear-gradient(to bottom, #dc2626, #b91c1c);
+    box-shadow: 0 8px 0 #7f1d1d, 0 15px 20px rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    position: relative;
+    padding: 12px;
+}
+
+.ref-mic-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 4px 0 #7f1d1d, 0 8px 12px rgba(0, 0, 0, 0.5);
+}
+
+.ref-mic-btn.ref-mic-pressed {
+    background: linear-gradient(to bottom, #991b1b, #7f1d1d);
+    color: #fecaca;
+    transform: translateY(2px);
+    box-shadow: inset 0 10px 20px rgba(0, 0, 0, 0.8);
+}
+
+.ref-mic-led {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #7f1d1d;
+}
+
+.ref-mic-btn.ref-mic-pressed .ref-mic-led {
+    background: #fca5a5;
+    box-shadow: 0 0 10px #fca5a5;
+}
+
+.ref-mic-text {
+    font-size: 11px;
+}
+
+.ref-mic-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ref-mic-icon .ref-mic-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #0a0a0b;
+    border: 3px solid #27272a;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), inset 0 1px 2px rgba(255, 255, 255, 0.05);
 }
 
 /* RX/TX 与实体按钮 3D 风格 */
