@@ -20,11 +20,15 @@ import {
   CrtOffScene,
   CrtOnScene,
   MonitorMenuScene,
+  // 旧场景（将逐步废弃）
   RobotAssemblyScene,
   TacticalRadarScene,
   WideRadarScene,
   SignalProcessingScene,
   EscapeResultScene,
+  // 新驾驶相关场景
+  DriveScene,
+  InventoryScene,
 } from '@/scenes';
 import { RadioControlPanel } from '@/ui/RadioControlPanel';
 
@@ -36,12 +40,14 @@ const AppInternal: React.FC = () => {
     gameSystem, 
     radioSystem, 
     inventorySystem, 
+    cameraSystem,
     initGame,
     isInitialized: gameInitialized 
   } = useGameContext();
   const { inputManager, isInitialized: inputInitialized } = useInputContext();
   const radioPanelRef = useRef<RadioControlPanel | null>(null);
   const radioContainerRef = useRef<HTMLDivElement | null>(null);
+  const pageRootRef = useRef<HTMLDivElement | null>(null);
 
   const [sceneManager] = useState<SceneManager | null>(() => {
     const sm = new SceneManager();
@@ -90,35 +96,18 @@ const AppInternal: React.FC = () => {
         SCENES.MONITOR_MENU,
         new MonitorMenuScene(inputManager, sceneManager, crtRenderer, gameState)
       );
+
+      // 新驾驶相关场景
       sceneManager.registerScene(
-        SCENES.ROBOT_ASSEMBLY,
-        new RobotAssemblyScene(
-          inputManager,
-          sceneManager,
-          inventorySystem?.getWarehouse() || undefined,
-          gameState.p.inventory,
-          gameState.p.currentCore,
-          gameState // 传入完整的 IGameState
-        )
+        SCENES.DRIVE,
+        new DriveScene(inputManager, sceneManager, gameState, cameraSystem || undefined)
       );
       sceneManager.registerScene(
-        SCENES.TACTICAL_RADAR,
-        new TacticalRadarScene(inputManager, sceneManager, gameState)
-      );
-      sceneManager.registerScene(
-        SCENES.WIDE_RADAR,
-        new WideRadarScene(inputManager, sceneManager, radioSystem || undefined)
-      );
-      sceneManager.registerScene(
-        SCENES.SIGNAL_PROCESSING,
-        new SignalProcessingScene(inputManager, sceneManager, radioSystem || undefined)
-      );
-      sceneManager.registerScene(
-        SCENES.ESCAPE_RESULT,
-        new EscapeResultScene(inputManager, sceneManager, gameState)
+        SCENES.INVENTORY,
+        new InventoryScene(inputManager, sceneManager, gameState, cameraSystem || undefined)
       );
 
-      // 设置初始场景
+      // 设置初始场景（启动界面）
       sceneManager.switchScene(SCENES.BOOT);
       
       console.log('All scenes registered and initialized');
@@ -204,6 +193,11 @@ const AppInternal: React.FC = () => {
         gameSystem.update(deltaTime);
       }
 
+      // 更新相机系统（管理不同模式下的相机状态与过渡）
+      if (cameraSystem && gameState) {
+        cameraSystem.update(deltaTime, gameState);
+      }
+
       // 更新无线电系统
       if (radioSystem) {
         radioSystem.update(deltaTime);
@@ -225,6 +219,11 @@ const AppInternal: React.FC = () => {
       }
     },
     onRender: () => {
+      // 每帧同步页面级相机 transform 到 DOM（不依赖 React 重渲染）
+      if (pageRootRef.current && cameraSystem) {
+        pageRootRef.current.style.transform = cameraSystem.getPageTransform();
+      }
+
       // 渲染场景
       if (canvasRef.current && sceneManager && crtRenderer) {
         // 使用 crtRenderer 的 canvas 和 ctx，确保一致性
@@ -247,70 +246,163 @@ const AppInternal: React.FC = () => {
     enabled: inputInitialized && gameInitialized,
   });
 
+  // 初始 transform 由 game loop 每帧更新，此处仅作 fallback
+  const pageTransform =
+    cameraSystem ? cameraSystem.getPageTransform() : 'none';
+
   return (
-    <>
+    <div
+      ref={pageRootRef}
+      id="page-root"
+      style={{
+        width: '100%',
+        height: '100%',
+        transform: pageTransform,
+        transformOrigin: 'center center',
+        // 由 CameraSystem 控制过渡，不额外加 CSS transition
+      }}
+    >
       <div id="workstation-container">
-        {/* Left Side: Radio Transceiver */}
-        <div 
-          id="radio-transceiver" 
-          ref={radioContainerRef}
-        >
-          {/* RadioControlPanel will be initialized via useEffect */}
+        {/* 驾驶舱布局：参考 drive_scene_reference - 顶部声纳，底部三栏 */}
+        <div id="cockpit-view">
+          {/* 顶部：挡风玻璃声纳显示屏（仅屏幕内） */}
+          <div id="cockpit-sonar-wrap">
+            <div id="crt-monitor-container">
+              <div id="monitor-frame">
+                <div id="monitor-screen">
+                  <canvas ref={canvasRef} id="gameCanvas" />
+                  {/* 声纳 HUD 提示（静态） */}
+                  <div id="sonar-hud">
+                    <div>SYS.ACTIVE // A.E.S RADAR</div>
+                    <div>LAT: UNKNOWN</div>
+                    <div>LON: UNKNOWN</div>
+                  </div>
+
+                  {/* 声纳同心网格（静态，无动画） */}
+                  <div id="sonar-grid">
+                    <div className="sonar-circle" />
+                    <div className="sonar-circle" />
+                    <div className="sonar-circle" />
+                    <div className="sonar-line sonar-line-h" />
+                    <div className="sonar-line sonar-line-v" />
+                  </div>
+
+                  {/* Wide Radar Display (for WideRadarScene) */}
+                <div id="wide-radar-display" style={{ display: 'none' }}>
+                  <div id="radar-map-container">
+                    <div className="radar-header">RADAR MAP</div>
+                    <canvas id="radar-canvas" />
+                  </div>
+                </div>
+
+                {/* Signal Processing Display (for SignalProcessingScene) */}
+                <div id="signal-processing-display" style={{ display: 'none' }}>
+                  <div id="morse-reference" />
+                  <div id="decode-input" />
+                </div>
+
+                {/* Assembly Scene UI */}
+                <div id="assembly-container" style={{ display: 'none' }}>
+                  <div className="assembly-layout">
+                    <div className="warehouse-panel">
+                      <h3>WAREHOUSE</h3>
+                      <div id="warehouse-grid" className="item-grid warehouse-grid" />
+                    </div>
+                    <div className="robot-panel">
+                      <div className="robot-diagram">
+                        <canvas id="robot-canvas" width="300" height="400" />
+                      </div>
+                      <div className="robot-inventory-section">
+                        <h4>ROBOT INVENTORY</h4>
+                        <div id="robot-inventory-grid" className="item-grid robot-inv-grid" />
+                      </div>
+                    </div>
+                    <div className="instructions-panel">
+                      <h3>MISSION BRIEFING</h3>
+                      <div id="instructions-list" className="instructions-scroll" />
+                      <button id="btn-departure" className="departure-btn">
+                        DEPARTURE
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CRT Effects Layer */}
+                <div className="crt-glare" />
+                <div className="crt-phosphor" />
+              </div>
+              {/* Power Indicator */}
+              <div className="power-indicator off" />
+            </div>
+          </div>
         </div>
 
-        {/* Right Side: CRT Monitor */}
-        <div id="crt-monitor-container">
-          <div id="monitor-frame">
-            <div id="monitor-screen">
-              {/* Game Canvas */}
-              <canvas ref={canvasRef} id="gameCanvas" />
-
-              {/* Wide Radar Display (for WideRadarScene) */}
-              <div id="wide-radar-display" style={{ display: 'none' }}>
-                <div id="radar-map-container">
-                  <div className="radar-header">RADAR MAP</div>
-                  <canvas id="radar-canvas" />
+          {/* 底部：三栏中控台（参考 reference） */}
+          <div id="cockpit-bottom" style={{ display: 'none' }}>
+            {/* 左侧：车辆状态仪表盘 */}
+            <div id="cockpit-dashboard" className="ref-dashboard">
+              <div className="ref-gauge-grid">
+                <div className="ref-gauge" data-color="blue">
+                  <span className="ref-gauge-icon">◆</span>
+                  <div className="ref-gauge-bar"><div className="ref-gauge-fill" style={{ width: '75%' }} /></div>
+                  <span className="ref-gauge-label">HULL</span>
+                  <span className="ref-gauge-value">75/100</span>
+                </div>
+                <div className="ref-gauge" data-color="red">
+                  <span className="ref-gauge-icon">♥</span>
+                  <div className="ref-gauge-bar"><div className="ref-gauge-fill" style={{ width: '90%' }} /></div>
+                  <span className="ref-gauge-label">HP</span>
+                  <span className="ref-gauge-value">90/100</span>
+                </div>
+                <div className="ref-gauge" data-color="yellow">
+                  <span className="ref-gauge-icon">▣</span>
+                  <div className="ref-gauge-bar"><div className="ref-gauge-fill" style={{ width: '40%' }} /></div>
+                  <span className="ref-gauge-label">BATT</span>
+                  <span className="ref-gauge-value">40/100</span>
+                </div>
+                <div className="ref-gauge" data-color="orange">
+                  <span className="ref-gauge-icon">⛽</span>
+                  <div className="ref-gauge-bar"><div className="ref-gauge-fill" style={{ width: '25%' }} /></div>
+                  <span className="ref-gauge-label">FUEL</span>
+                  <span className="ref-gauge-value">25/100</span>
                 </div>
               </div>
-
-              {/* Signal Processing Display (for SignalProcessingScene) */}
-              <div id="signal-processing-display" style={{ display: 'none' }}>
-                <div id="morse-reference" />
-                <div id="decode-input" />
+              <div className="ref-speedometer">
+                <span className="ref-speed-label">KM/H</span>
+                <span className="ref-speed-value">0</span>
               </div>
-
-              {/* Assembly Scene UI */}
-              <div id="assembly-container" style={{ display: 'none' }}>
-                <div className="assembly-layout">
-                  <div className="warehouse-panel">
-                    <h3>WAREHOUSE</h3>
-                    <div id="warehouse-grid" className="item-grid warehouse-grid" />
-                  </div>
-                  <div className="robot-panel">
-                    <div className="robot-diagram">
-                      <canvas id="robot-canvas" width="300" height="400" />
-                    </div>
-                    <div className="robot-inventory-section">
-                      <h4>ROBOT INVENTORY</h4>
-                      <div id="robot-inventory-grid" className="item-grid robot-inv-grid" />
-                    </div>
-                  </div>
-                  <div className="instructions-panel">
-                    <h3>MISSION BRIEFING</h3>
-                    <div id="instructions-list" className="instructions-scroll" />
-                    <button id="btn-departure" className="departure-btn">
-                      DEPARTURE
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* CRT Effects Layer */}
-              <div className="crt-glare" />
-              <div className="crt-phosphor" />
             </div>
-            {/* Power Indicator */}
-            <div className="power-indicator off" />
+
+            {/* 中部：车载收音机 */}
+            <div id="cockpit-console" className="ref-radio-wrap">
+              <div id="radio-transceiver" ref={radioContainerRef} />
+            </div>
+
+            {/* 右侧：档位、踏板、SONAR PING */}
+            <div id="cockpit-driving-ui" className="ref-driving">
+              <div className="ref-drive-label">DRIVE_SYS</div>
+              <div className="ref-gear-row">
+                <span className="ref-gear">P</span>
+                <span className="ref-gear">R</span>
+                <span className="ref-gear">N</span>
+                <span className="ref-gear ref-gear-active">D</span>
+                <span className="ref-gear">1</span>
+              </div>
+              <div className="ref-pedals">
+                <div className="ref-pedal">
+                  <div className="ref-pedal-bar"><div className="ref-pedal-fill ref-pedal-brake" /></div>
+                  <span className="ref-pedal-label">BRK</span>
+                </div>
+                <div className="ref-pedal">
+                  <div className="ref-pedal-bar"><div className="ref-pedal-fill ref-pedal-throttle" /></div>
+                  <span className="ref-pedal-label">THR</span>
+                </div>
+              </div>
+              <button className="ref-sonar-btn">SONAR PING</button>
+            </div>
+
+            {/* 居中方向盘（悬浮层） */}
+            <div id="cockpit-steering" className="ref-steering" />
           </div>
         </div>
       </div>
@@ -323,7 +415,7 @@ const AppInternal: React.FC = () => {
 
       {/* Inventory UI */}
       <div id="inventory-container" style={{ display: 'none' }} />
-    </>
+    </div>
   );
 };
 

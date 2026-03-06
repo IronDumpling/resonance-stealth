@@ -9,3 +9,4 @@ export * from './RadioSystem';
 export * from './InventorySystem';
 export * from './AntennaSystem';
 export * from './SLAMSystem';
+export * from './CameraSystem';

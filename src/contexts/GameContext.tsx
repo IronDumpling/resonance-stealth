@@ -10,8 +10,9 @@ import {
   RadioSystem, 
   InventorySystem, 
   AntennaSystem, 
-  SLAMSystem 
+  SLAMSystem,
 } from '@/systems';
+import { CameraSystem } from '@/systems/CameraSystem';
 import { CORE_TYPES } from '@/config/gameConfig';
 
 interface GameContextValue {
@@ -21,6 +22,7 @@ interface GameContextValue {
   inventorySystem: InventorySystem | null;
   antennaSystem: AntennaSystem | null;
   slamSystem: SLAMSystem | null;
+  cameraSystem: CameraSystem | null;
   setGameState: (state: IGameState | null) => void;
   initGame: (canvas?: HTMLCanvasElement | null) => void;
   isInitialized: boolean;
@@ -50,6 +52,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const inventorySystemRef = useRef<InventorySystem | null>(null);
   const antennaSystemRef = useRef<AntennaSystem | null>(null);
   const slamSystemRef = useRef<SLAMSystem | null>(null);
+  const cameraSystemRef = useRef<CameraSystem | null>(null);
 
   const initGame = (canvas?: HTMLCanvasElement | null) => {
     if (isInitialized) {
@@ -173,6 +176,10 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     inventorySystemRef.current = inventorySystem;
     inventorySystem.initPlayerInventory();
 
+    // 相机系统（依赖初始 camera 状态）
+    const cameraSystem = new CameraSystem();
+    cameraSystemRef.current = cameraSystem;
+
     // 游戏系统（依赖游戏状态、无线电系统、canvas）
     const gameSystem = new GameSystem(
       initialState,
@@ -254,6 +261,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     inventorySystem: inventorySystemRef.current,
     antennaSystem: antennaSystemRef.current,
     slamSystem: slamSystemRef.current,
+    cameraSystem: cameraSystemRef.current,
     setGameState,
     initGame,
     isInitialized,

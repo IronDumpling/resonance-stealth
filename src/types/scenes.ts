@@ -10,11 +10,17 @@ export const SCENES = {
   BOOT: 'boot',
   CRT_OFF: 'crt_off',
   CRT_ON: 'crt_on',
-  TACTICAL_RADAR: 'tactical_radar',  // 原 ROBOT
-  WIDE_RADAR: 'wide_radar',          // 原 RADIO 的 radar map 部分
-  SIGNAL_PROCESSING: 'signal_processing', // 原 RADIO 的 morse code + signal record + signal editing
-  ROBOT_ASSEMBLY: 'robot_assembly',
   MONITOR_MENU: 'monitor_menu',
+
+  // 新驾驶相关场景
+  DRIVE: 'drive',          // 驾驶舱主场景（挡风玻璃声纳 + 仪表盘 + 收音机 + 驾驶UI）
+  INVENTORY: 'inventory',  // 后备箱/物资管理场景
+
+  // 旧场景（后续将在cleanup阶段移除）
+  TACTICAL_RADAR: 'tactical_radar',        // 原 ROBOT
+  WIDE_RADAR: 'wide_radar',                // 原 RADIO 的 radar map 部分
+  SIGNAL_PROCESSING: 'signal_processing',  // 原 RADIO 的 morse code + signal record + signal editing
+  ROBOT_ASSEMBLY: 'robot_assembly',
   ESCAPE_RESULT: 'escape_result',
 } as const;
 

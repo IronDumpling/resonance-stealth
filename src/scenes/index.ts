@@ -12,3 +12,7 @@ export * from './TacticalRadarScene';
 export * from './WideRadarScene';
 export * from './SignalProcessingScene';
 export * from './EscapeResultScene';
+
+// 新驾驶相关场景
+export * from './DriveScene';
+export * from './InventoryScene';

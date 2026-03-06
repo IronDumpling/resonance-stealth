@@ -19,7 +19,7 @@ interface MenuOption {
 export class MonitorMenuScene extends Scene {
   selectedOption: number = 0;
   options: MenuOption[] = [
-    { id: 'robot_assembly', label: '1. ROBOT_ASSEMBLY' },
+    { id: 'start_drive', label: '1. START_DRIVE' },
     { id: 'power_off', label: '2. POWER_OFF' }
   ];
   blinkTimer: number = 0;
@@ -47,18 +47,22 @@ export class MonitorMenuScene extends Scene {
   override enter(data?: SceneData): void {
     super.enter(data);
     this.selectedOption = 0;
-    
+
+    // Start/Menu 时隐藏底部中控台，仅显示 SONAR 屏幕
+    const cockpitBottom = document.getElementById('cockpit-bottom');
+    if (cockpitBottom) cockpitBottom.style.display = 'none';
+
     // 设置输入上下文为MENU
     if (this.inputManager) {
       this.inputManager.setContext(INPUT_CONTEXTS.MENU);
     }
-    
+
     // 确保gameCanvas可见（MENU模式需要显示canvas）
     const gameCanvas = document.getElementById('gameCanvas');
     if (gameCanvas) {
       gameCanvas.style.display = 'block';
     }
-    
+
     // 隐藏其他UI元素
     const radioModeDisplay = document.getElementById('radio-mode-display');
     if (radioModeDisplay) radioModeDisplay.style.display = 'none';
@@ -75,7 +79,7 @@ export class MonitorMenuScene extends Scene {
     }
     
     if (this.gameState) {
-      logMsg("SELECT: [1] ROBOT_ASSEMBLY | [2] POWER_OFF", this.gameState);
+      logMsg("SELECT: [1] START_DRIVE | [2] POWER_OFF", this.gameState);
     }
   }
 
@@ -141,9 +145,9 @@ export class MonitorMenuScene extends Scene {
     const action = inputEvent.action;
     
     // 使用 action 或 key 处理输入
-    if (action === 'select_robot_assembly' || key === '1') {
+    if (action === 'select_start_drive' || key === '1') {
       if (this.sceneManager) {
-        this.sceneManager.switchScene(SCENES.ROBOT_ASSEMBLY, 'fade');
+        this.sceneManager.switchScene(SCENES.DRIVE, 'fade');
       }
       return true;
     }
@@ -175,9 +179,9 @@ export class MonitorMenuScene extends Scene {
     // Enter to confirm selected option
     if (action === 'confirm' || key === 'enter') {
       const option = this.options[this.selectedOption];
-      if (option.id === 'robot_assembly') {
+      if (option.id === 'start_drive') {
         if (this.sceneManager) {
-          this.sceneManager.switchScene(SCENES.ROBOT_ASSEMBLY, 'fade');
+          this.sceneManager.switchScene(SCENES.DRIVE, 'fade');
         }
       } else if (option.id === 'power_off') {
         // 触发CRT关机动画

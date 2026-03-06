@@ -34,7 +34,11 @@ export class CrtOnScene extends Scene {
     super.enter(data);
     this.animationStarted = false;
     this.animationComplete = false;
-    
+
+    // 开机动画时隐藏底部中控台
+    const cockpitBottom = document.getElementById('cockpit-bottom');
+    if (cockpitBottom) cockpitBottom.style.display = 'none';
+
     // 设置输入上下文为CRT_CONTROL
     if (this.inputManager) {
       this.inputManager.setContext(INPUT_CONTEXTS.CRT_CONTROL);

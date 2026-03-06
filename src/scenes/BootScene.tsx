@@ -37,14 +37,15 @@ export class BootScene extends Scene {
     this.bootTimer = 0;
     this.showPrompt = false;
     this.promptFadeIn = 0;
-    
+
+    // Start/Menu 时隐藏底部中控台，仅显示 SONAR 屏幕
+    const cockpitBottom = document.getElementById('cockpit-bottom');
+    if (cockpitBottom) cockpitBottom.style.display = 'none';
+
     // 设置输入上下文为CRT_CONTROL
     if (this.inputManager) {
       this.inputManager.setContext(INPUT_CONTEXTS.CRT_CONTROL);
     }
-    
-    // 注意：无线电系统和UI的初始化应该在App.tsx或GameContext中处理
-    // 这里不直接初始化，避免循环依赖
   }
 
   override update(deltaTime: number): void {
@@ -80,7 +81,7 @@ export class BootScene extends Scene {
       ctx.globalAlpha = this.promptFadeIn * blink;
       ctx.fillStyle = '#00ff00';
       ctx.font = 'bold 20px "Courier New"';
-      ctx.fillText('PRESS [ENTER] TO INITIALIZE', canvas.width / 2, canvas.height / 2 + 40);
+      ctx.fillText('PRESS ANY KEY TO POWER ON', canvas.width / 2, canvas.height / 2 + 40);
       ctx.globalAlpha = 1;
     }
   }
@@ -90,8 +91,8 @@ export class BootScene extends Scene {
     const key = (inputEvent.key || (inputEvent.originalEvent && inputEvent.originalEvent.key) || '').toLowerCase();
     const action = inputEvent.action;
     
-    // 只有在提示显示后才能按Enter
-    if (this.showPrompt && (action === 'confirm' || key === 'enter')) {
+    // 只有在提示显示后才能按键（任意键视为启动）
+    if (this.showPrompt && (action === 'confirm' || key)) {
       // 触发CRT开机动画
       if (this.crtRenderer) {
         this.crtRenderer.powerOn();

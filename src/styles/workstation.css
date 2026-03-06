@@ -1,40 +1,465 @@
 /**
- * Workstation Layout - First-Person View
- * 40% Radio Transceiver (Left) | 60% CRT Monitor (Right)
+ * Workstation / Cockpit Layout - First-Person View
  */
 
-/* Main Workstation Container */
+/* Main Workstation / Cockpit Container */
 #workstation-container {
     display: flex;
     width: 100vw;
     height: 100vh;
-    background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+    background: #000;
     overflow: hidden;
     position: relative;
+    justify-content: center;
+    align-items: stretch;
 }
 
-/* Left Side: Radio Transceiver Panel (40%) */
-#radio-transceiver {
-    width: 40%;
+/* 驾驶舱布局：参考 drive_scene_reference - 顶部声纳，底部三栏 */
+#cockpit-view {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
-    border-right: 3px solid #333;
-    box-shadow: 
-        inset -5px 0 15px rgba(0, 0, 0, 0.5),
-        5px 0 20px rgba(0, 0, 0, 0.7);
+    max-width: 100%;
+    overflow: hidden;
+}
+
+/* 顶部：挡风玻璃声纳区 */
+#cockpit-sonar-wrap {
+    flex: 0 0 55vh;
+    min-height: 0;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+}
+
+/* 声纳显示屏容器 */
+#crt-monitor-container {
+    flex: 1;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    min-width: 0;
+}
+
+/* Monitor Frame - 声纳挡风玻璃（参考 reference） */
+#monitor-frame {
+    width: 100%;
+    height: 100%;
+    background: #0a0a0b;
+    border-bottom: 8px solid #18181b;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
     position: relative;
+    overflow: hidden;
+}
+
+/* Monitor Screen - 仅包含 SONAR 显示 */
+#monitor-screen {
+    width: 100%;
+    height: 100%;
+    background: #0a0a0b;
+    position: relative;
+    overflow: hidden;
+}
+
+/* CRT 扫描线 / 屏幕效果 */
+#monitor-screen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.25) 50%),
+                linear-gradient(90deg, rgba(255,0,0,0.06), rgba(0,255,0,0.02), rgba(0,0,255,0.06));
+    background-size: 100% 4px, 3px 100%;
+    pointer-events: none;
+    z-index: 20;
+    opacity: 0.5;
+}
+
+/* 屏幕暗角 Vignette */
+#monitor-screen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.8) 100%);
+    pointer-events: none;
+    z-index: 10;
+}
+
+#monitor-screen canvas#gameCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 5;
+}
+
+/* 声纳 HUD 提示 */
+#sonar-hud {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    color: #22c55e;
+    font-family: monospace;
+    font-size: 11px;
+    opacity: 0.7;
+    z-index: 30;
+    line-height: 1.5;
+}
+
+/* 声纳同心网格（静态） */
+#sonar-grid {
+    position: absolute;
+    inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
-    box-sizing: border-box;
-    
-    /* Subtle perspective for depth */
-    transform: perspective(1500px) rotateY(2deg);
-    transform-origin: right center;
+    opacity: 0.2;
+    pointer-events: none;
+    z-index: 6;
 }
 
-/* Radio panel inner container */
+.sonar-circle {
+    position: absolute;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: 50%;
+}
+
+.sonar-circle:nth-child(1) { width: 60%; height: 60%; max-width: 400px; max-height: 400px; }
+.sonar-circle:nth-child(2) { width: 45%; height: 45%; max-width: 300px; max-height: 300px; }
+.sonar-circle:nth-child(3) { width: 30%; height: 30%; max-width: 200px; max-height: 200px; }
+
+.sonar-line {
+    position: absolute;
+    background: rgba(34, 197, 94, 0.3);
+}
+
+.sonar-line-h {
+    width: 100%;
+    height: 1px;
+}
+
+.sonar-line-v {
+    width: 1px;
+    height: 100%;
+}
+
+/* 底部三栏中控台 */
+#cockpit-bottom {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    position: relative;
+    z-index: 10;
+}
+
+/* 左侧：仪表盘（参考 reference DashboardStatus） */
+#cockpit-dashboard.ref-dashboard {
+    flex: 1;
+    background: #27272a;
+    padding: 24px;
+    border-right: 4px solid #0a0a0b;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: inset -10px 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.ref-gauge-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.ref-gauge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #18181b;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #3f3f46;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5);
+    min-width: 96px;
+}
+
+.ref-gauge-icon {
+    font-size: 18px;
+    margin-bottom: 8px;
+}
+
+.ref-gauge[data-color="blue"] .ref-gauge-icon,
+.ref-gauge[data-color="blue"] .ref-gauge-fill { color: #60a5fa; }
+.ref-gauge[data-color="blue"] .ref-gauge-fill { background: #60a5fa; }
+
+.ref-gauge[data-color="red"] .ref-gauge-icon,
+.ref-gauge[data-color="red"] .ref-gauge-fill { color: #ef4444; }
+.ref-gauge[data-color="red"] .ref-gauge-fill { background: #ef4444; }
+
+.ref-gauge[data-color="yellow"] .ref-gauge-icon,
+.ref-gauge[data-color="yellow"] .ref-gauge-fill { color: #eab308; }
+.ref-gauge[data-color="yellow"] .ref-gauge-fill { background: #eab308; }
+
+.ref-gauge[data-color="orange"] .ref-gauge-icon,
+.ref-gauge[data-color="orange"] .ref-gauge-fill { color: #f97316; }
+.ref-gauge[data-color="orange"] .ref-gauge-fill { background: #f97316; }
+
+.ref-gauge-bar {
+    width: 100%;
+    height: 8px;
+    background: #27272a;
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.ref-gauge-fill {
+    height: 100%;
+    border-radius: 9999px;
+    transition: width 0.2s;
+}
+
+.ref-gauge-label {
+    font-size: 10px;
+    color: #a1a1aa;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+}
+
+.ref-gauge-value {
+    font-size: 12px;
+    color: #fff;
+    font-family: monospace;
+}
+
+.ref-speedometer {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 128px;
+    height: 128px;
+    margin-left: auto;
+    margin-right: auto;
+    background: #18181b;
+    border-radius: 50%;
+    border: 4px solid #3f3f46;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+    position: relative;
+}
+
+.ref-speed-label {
+    position: absolute;
+    top: 8px;
+    font-size: 10px;
+    color: #71717a;
+}
+
+.ref-speed-value {
+    font-size: 28px;
+    font-weight: bold;
+    color: #fff;
+    font-family: monospace;
+}
+
+/* 中部：车载收音机 */
+#cockpit-console.ref-radio-wrap {
+    flex: 1.2;
+    background: #27272a;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.6);
+}
+
+#cockpit-console.ref-radio-wrap #radio-transceiver {
+    flex: 1;
+    max-width: none;
+    min-height: 0;
+}
+
+/* 右侧：驾驶系统 */
+#cockpit-driving-ui.ref-driving {
+    flex: 1;
+    background: #27272a;
+    padding: 24px;
+    border-left: 4px solid #0a0a0b;
+    display: flex;
+    flex-direction: column;
+    box-shadow: inset 10px 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.ref-drive-label {
+    color: #71717a;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    margin-bottom: 16px;
+}
+
+.ref-gear-row {
+    display: flex;
+    background: #18181b;
+    border-radius: 4px;
+    border: 1px solid #3f3f46;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+.ref-gear {
+    flex: 1;
+    text-align: center;
+    padding: 8px;
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 14px;
+    color: #71717a;
+}
+
+.ref-gear-active {
+    background: #3f3f46;
+    color: #fff;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.ref-pedals {
+    display: flex;
+    gap: 16px;
+    flex: 1;
+    align-items: flex-end;
+}
+
+.ref-pedal {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.ref-pedal-bar {
+    width: 32px;
+    height: 128px;
+    background: #18181b;
+    border-radius: 4px;
+    border: 1px solid #3f3f46;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+}
+
+.ref-pedal-fill {
+    width: 100%;
+    height: 0;
+    transition: height 0.1s;
+}
+
+.ref-pedal-brake {
+    background: #ef4444;
+}
+
+.ref-pedal-throttle {
+    background: #3b82f6;
+}
+
+.ref-pedal-label {
+    font-size: 10px;
+    color: #71717a;
+    font-family: monospace;
+    margin-top: 8px;
+}
+
+.ref-sonar-btn {
+    margin-top: 24px;
+    width: 100%;
+    padding: 12px;
+    background: #7f1d1d;
+    border: 2px solid #b91c1c;
+    color: #fecaca;
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 0 15px rgba(220, 38, 38, 0.5);
+    font-family: monospace;
+    transition: background 0.2s, color 0.2s;
+}
+
+.ref-sonar-btn:hover {
+    background: #991b1b;
+    color: #fff;
+}
+
+/* 居中方向盘（悬浮层，参考 reference） */
+#cockpit-steering.ref-steering {
+    position: absolute;
+    bottom: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 400px;
+    height: 400px;
+    z-index: 50;
+    pointer-events: none;
+}
+
+#cockpit-steering.ref-steering::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 30px solid #18181b;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.8),
+                inset 0 5px 15px rgba(255, 255, 255, 0.1);
+}
+
+#cockpit-steering.ref-steering::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #0a0a0b;
+    border: 4px solid #3f3f46;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+/* 驾驶舱底部阴影渐变 */
+#cockpit-bottom::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 48px;
+    background: linear-gradient(to top, #000, transparent);
+    pointer-events: none;
+    z-index: 50;
+}
+
+/* 车载收音机容器（在 ref-radio-wrap 内） */
+#radio-transceiver {
+    width: 100%;
+    max-width: 480px;
+    min-height: 220px;
+    background: linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%);
+    border: 3px solid #444;
+    box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.6),
+        inset 0 0 15px rgba(0, 0, 0, 0.4);
+    border-radius: 8px;
+    padding: 12px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 20;
+}
+
 #radio-transceiver::before {
     content: '';
     position: absolute;
@@ -52,75 +477,6 @@
         );
     pointer-events: none;
     z-index: 1;
-}
-
-/* Right Side: CRT Monitor Container (60%) */
-#crt-monitor-container {
-    width: 60%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px;
-    box-sizing: border-box;
-    position: relative;
-    
-    /* Subtle perspective for depth */
-    transform: perspective(1500px) rotateY(-1deg);
-    transform-origin: left center;
-}
-
-/* Monitor Frame (CRT Bezel) */
-#monitor-frame {
-    width: 100%;
-    max-width: 1200px;
-    height: 90%;
-    background: linear-gradient(145deg, #3a3a3a 0%, #1a1a1a 100%);
-    border-radius: 12px;
-    padding: 30px;
-    box-sizing: border-box;
-    position: relative;
-    box-shadow:
-        0 10px 40px rgba(0, 0, 0, 0.9),
-        inset 0 2px 5px rgba(255, 255, 255, 0.1),
-        inset 0 -2px 5px rgba(0, 0, 0, 0.5);
-}
-
-/* Monitor bezel details */
-#monitor-frame::before {
-    content: '';
-    position: absolute;
-    top: 15px;
-    left: 15px;
-    right: 15px;
-    bottom: 15px;
-    border: 2px solid #444;
-    border-radius: 8px;
-    pointer-events: none;
-}
-
-/* Monitor Screen */
-#monitor-screen {
-    width: 100%;
-    height: 100%;
-    background: #000;
-    border-radius: 6px;
-    position: relative;
-    overflow: hidden;
-    box-shadow:
-        inset 0 0 20px rgba(0, 0, 0, 0.9),
-        inset 0 0 40px rgba(0, 255, 100, 0.05);
-}
-
-/* Game Canvas */
-#monitor-screen canvas#gameCanvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: block;
-    z-index: 999; /* 确保canvas在CRT效果层之上 */
 }
 
 /* Radio Mode Display Overlay */
@@ -353,6 +709,15 @@
     margin-top: 5px;
 }
 
+/* 旧场景覆盖层（WideRadar / SignalProcessing / Assembly 显示时覆盖驾驶舱） */
+#wide-radar-display,
+#signal-processing-display,
+#assembly-container {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+}
+
 /* Radar Map Container */
 #radar-map-container {
     border: 2px solid #00ff00;
@@ -452,13 +817,13 @@
 
 /* Responsive adjustments */
 @media (max-width: 1200px) {
-    #radio-transceiver {
-        width: 35%;
+    #cockpit-view {
+        padding: 16px;
+        gap: 12px;
     }
     
-    #crt-monitor-container {
-        width: 65%;
-        padding: 20px;
+    #radio-transceiver {
+        max-width: 360px;
     }
 }
 
@@ -484,76 +849,6 @@
 
 #inventory-container > * {
     pointer-events: auto;
-}
-
-/* Player Status UI (左下角相对于 monitor-screen) */
-.player-status-ui {
-    pointer-events: none;
-    font-family: 'Courier New', monospace;
-    color: #ffffff;
-}
-
-.status-bar {
-    margin-bottom: 12px;
-    min-width: 200px;
-}
-
-.bar-label {
-    font-size: 12px;
-    color: #00ff00;
-    margin-bottom: 4px;
-    text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
-}
-
-.bar-container {
-    width: 100%;
-    height: 16px;
-    background: #333333;
-    border: 1px solid #00ff00;
-    border-radius: 2px;
-    overflow: hidden;
-    position: relative;
-    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
-}
-
-.bar-fill {
-    height: 100%;
-    width: 0%;
-    transition: width 0.2s, background-color 0.2s;
-    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
-}
-
-.bar-value {
-    font-size: 11px;
-    color: #ffffff;
-    margin-top: 2px;
-    text-shadow: 0 0 3px rgba(255, 255, 255, 0.5);
-}
-
-/* Energy bar specific */
-.energy-bar .bar-container {
-    border-color: #00ff00;
-}
-
-/* Overload bar specific */
-.overload-bar .bar-container {
-    border-color: #ffff00;
-}
-
-/* Durability bar specific */
-.durability-bar .bar-container {
-    border-color: #00aaff;
-}
-
-/* Log message */
-.log-message {
-    font-size: 14px;
-    color: #ffaa00;
-    margin-top: 8px;
-    text-shadow: 0 0 5px rgba(255, 170, 0, 0.8);
-    display: none;
-    max-width: 400px;
-    word-wrap: break-word;
 }
 
 #edge-glow {
