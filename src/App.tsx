@@ -31,6 +31,7 @@ import {
   InventoryScene,
 } from '@/scenes';
 import { RadioControlPanel } from '@/ui/RadioControlPanel';
+import { COCKPIT_CONFIG } from '@/config/gameConfig';
 
 // 内部App组件，可以使用Context
 const AppInternal: React.FC = () => {
@@ -47,6 +48,7 @@ const AppInternal: React.FC = () => {
   const { inputManager, isInitialized: inputInitialized } = useInputContext();
   const radioPanelRef = useRef<RadioControlPanel | null>(null);
   const radioContainerRef = useRef<HTMLDivElement | null>(null);
+  const radioControlsRef = useRef<HTMLDivElement | null>(null);
   const pageRootRef = useRef<HTMLDivElement | null>(null);
 
   const [sceneManager] = useState<SceneManager | null>(() => {
@@ -56,6 +58,7 @@ const AppInternal: React.FC = () => {
 
   const [uiManager] = useState<UIManager | null>(() => new UIManager());
   const [crtRenderer, setCrtRenderer] = useState<CrtRenderer | null>(null);
+  const [rxTxMode, setRxTxMode] = useState<'RX' | 'TX'>('RX');
 
   // 初始化CRT渲染器
   useEffect(() => {
@@ -131,13 +134,16 @@ const AppInternal: React.FC = () => {
       };
 
       const handleMouseMove = (event: GameInputEvent) => {
+        // 光标跟随：传递给 CameraSystem（Drive 模式下画面随鼠标旋转）
+        if (cameraSystem && event.x !== undefined && event.y !== undefined) {
+          cameraSystem.setMousePosition(event.x, event.y);
+        }
         // 更新鼠标状态(用于游戏场景)
         if (gameState && canvasRef.current && event.x !== undefined && event.y !== undefined) {
           const rect = canvasRef.current.getBoundingClientRect();
           const canvasX = event.x - rect.left;
           const canvasY = event.y - rect.top;
-          
-          // 使用GameSystem的updateMousePosition方法
+
           if (gameSystem) {
             gameSystem.updateMousePosition(canvasX, canvasY);
           }
@@ -159,21 +165,24 @@ const AppInternal: React.FC = () => {
         inputManager.off('onMouseMove', null, handleMouseMove);
       };
     }
-  }, [inputManager, sceneManager, gameState, gameSystem]);
+  }, [inputManager, sceneManager, gameState, gameSystem, cameraSystem]);
 
   // 初始化RadioControlPanel
   useEffect(() => {
-    if (radioContainerRef.current && radioSystem && !radioPanelRef.current) {
+    if (radioContainerRef.current && radioControlsRef.current && radioSystem && !radioPanelRef.current) {
       radioPanelRef.current = new RadioControlPanel(radioSystem);
-      radioPanelRef.current.init(radioContainerRef.current);
+      radioPanelRef.current.init(radioContainerRef.current, radioControlsRef.current);
     }
 
     return () => {
       // 清理
-      if (radioPanelRef.current && radioPanelRef.current.container) {
-        const container = radioPanelRef.current.container;
-        if (container && container.parentNode) {
-          container.parentNode.removeChild(container);
+      if (radioPanelRef.current) {
+        const panel = radioPanelRef.current;
+        if (panel.container && panel.container.parentNode) {
+          panel.container.parentNode.removeChild(panel.container);
+        }
+        if (panel.controlsContainer && panel.controlsContainer.parentNode) {
+          panel.controlsContainer.parentNode.removeChild(panel.controlsContainer);
         }
         radioPanelRef.current = null;
       }
@@ -246,22 +255,52 @@ const AppInternal: React.FC = () => {
     enabled: inputInitialized && gameInitialized,
   });
 
-  // 初始 transform 由 game loop 每帧更新，此处仅作 fallback
   const pageTransform =
     cameraSystem ? cameraSystem.getPageTransform() : 'none';
 
+  const ui = COCKPIT_CONFIG.uiLayers;
+  const cockpitVars = {
+    '--cockpit-sonar-translateZ': `${ui.sonar.translateZ}px`,
+    '--cockpit-sonar-rotateX': `${ui.sonar.rotateX}deg`,
+    '--cockpit-sonar-rotateY': `${ui.sonar.rotateY}deg`,
+    '--cockpit-bottom-rotateX': `${ui.cockpitBottom.rotateX}deg`,
+    '--cockpit-dashboard-translateZ': `${ui.dashboard.translateZ}px`,
+    '--cockpit-dashboard-rotateY': `${ui.dashboard.rotateY}deg`,
+    '--cockpit-radio-translateZ': `${ui.radio.translateZ}px`,
+    '--cockpit-radio-rotateY': `${ui.radio.rotateY}deg`,
+    '--cockpit-driving-translateZ': `${ui.driving.translateZ}px`,
+    '--cockpit-driving-rotateY': `${ui.driving.rotateY}deg`,
+    '--cockpit-steering-translateZ': `${ui.steering.translateZ}px`,
+    '--cockpit-steering-rotateX': `${ui.steering.rotateX}deg`,
+    '--cockpit-steering-translateY': `${ui.steering.translateY}px`,
+    '--cockpit-steering-width': `${ui.steering.width}px`,
+    '--cockpit-steering-height': `${ui.steering.height}px`,
+    '--cockpit-steering-bottom': `${ui.steering.bottom}px`,
+  } as React.CSSProperties;
+
   return (
     <div
-      ref={pageRootRef}
-      id="page-root"
+      id="perspective-root"
       style={{
         width: '100%',
         height: '100%',
-        transform: pageTransform,
-        transformOrigin: 'center center',
-        // 由 CameraSystem 控制过渡，不额外加 CSS transition
+        perspective: '1200px',
+        perspectiveOrigin: 'center center',
+        overflow: 'hidden',
+        ...cockpitVars,
       }}
     >
+      <div
+        ref={pageRootRef}
+        id="page-root"
+        style={{
+          width: '100%',
+          height: '100%',
+          transform: pageTransform,
+          transformOrigin: 'center center',
+          transformStyle: 'preserve-3d',
+        }}
+      >
       <div id="workstation-container">
         {/* 驾驶舱布局：参考 drive_scene_reference - 顶部声纳，底部三栏 */}
         <div id="cockpit-view">
@@ -386,7 +425,6 @@ const AppInternal: React.FC = () => {
                 <span className="ref-gear">R</span>
                 <span className="ref-gear">N</span>
                 <span className="ref-gear ref-gear-active">D</span>
-                <span className="ref-gear">1</span>
               </div>
               <div className="ref-pedals">
                 <div className="ref-pedal">
@@ -398,7 +436,14 @@ const AppInternal: React.FC = () => {
                   <span className="ref-pedal-label">THR</span>
                 </div>
               </div>
-              <button className="ref-sonar-btn">SONAR PING</button>
+              <div id="radio-controls" ref={radioControlsRef} className="ref-radio-controls" />
+              <button
+                className={`ref-sonar-btn ref-rxtx-btn ${rxTxMode === 'TX' ? 'ref-rxtx-tx' : ''}`}
+                onClick={() => setRxTxMode((m) => (m === 'RX' ? 'TX' : 'RX'))}
+              >
+                <span className="ref-rxtx-led" />
+                {rxTxMode}
+              </button>
             </div>
 
             {/* 居中方向盘（悬浮层） */}
@@ -415,6 +460,7 @@ const AppInternal: React.FC = () => {
 
       {/* Inventory UI */}
       <div id="inventory-container" style={{ display: 'none' }} />
+      </div>
     </div>
   );
 };

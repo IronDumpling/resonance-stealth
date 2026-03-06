@@ -48,6 +48,8 @@ interface ExtendedRadioSystem extends IRadioSystem {
 export class RadioControlPanel {
   radio: ExtendedRadioSystem | null = null;
   container: HTMLElement | null = null;
+  /** 控制区容器（当布局拆分为瀑布图+控制区时使用） */
+  controlsContainer: HTMLElement | null = null;
   isActive: boolean = false;
   isVisible: boolean = true;
   blinkTimer: number = 0;
@@ -81,33 +83,40 @@ export class RadioControlPanel {
 
   /**
    * 初始化DOM界面
+   * @param parentElement 瀑布图容器（radio-transceiver）
+   * @param controlsContainer 可选，控制区容器（cockpit-driving-ui 内），若提供则拆分布局
    */
-  init(parentElement?: HTMLElement | null): void {
-    // 获取左侧无线电收发器容器
+  init(parentElement?: HTMLElement | null, controlsContainer?: HTMLElement | null): void {
     const radioTransceiver = parentElement || document.getElementById('radio-transceiver');
-    
     if (!radioTransceiver) {
       console.error('Radio transceiver container not found!');
       return;
     }
-    
-    // 创建主容器
-    this.container = document.createElement('div');
-    this.container.id = 'radio-interface';
-    this.container.innerHTML = this.generateHTML();
-    
-    // 添加到左侧面板
-    radioTransceiver.appendChild(this.container);
-    
-    // 等待DOM渲染完成后初始化
+
+    if (controlsContainer) {
+      // 拆分布局：瀑布图在 radio-transceiver，控制在 cockpit-driving-ui
+      this.container = document.createElement('div');
+      this.container.id = 'radio-interface';
+      this.container.innerHTML = this.generateWaterfallHTML();
+      radioTransceiver.appendChild(this.container);
+
+      this.controlsContainer = document.createElement('div');
+      this.controlsContainer.id = 'radio-controls-panel';
+      this.controlsContainer.className = 'radio-controls-panel';
+      this.controlsContainer.innerHTML = this.generateControlsHTML();
+      controlsContainer.appendChild(this.controlsContainer);
+    } else {
+      // 传统布局：全部在 radio-transceiver
+      this.container = document.createElement('div');
+      this.container.id = 'radio-interface';
+      this.container.innerHTML = this.generateHTML();
+      radioTransceiver.appendChild(this.container);
+    }
+
     setTimeout(() => {
-      // 绑定事件
       this.bindEvents();
-      
-      // 初始化所有 canvas（瀑布图、指南针、信号表）
       this.initWaterfallCanvas();
-      
-      console.log('Radio UI DOM created and initialized in left panel');
+      console.log('Radio UI DOM created and initialized');
     }, 0);
   }
 
@@ -116,9 +125,8 @@ export class RadioControlPanel {
    */
   activate(): void {
     this.isActive = true;
-    if (this.container) {
-      this.container.classList.remove('disabled');
-    }
+    if (this.container) this.container.classList.remove('disabled');
+    if (this.controlsContainer) this.controlsContainer.classList.remove('disabled');
     console.log('Radio UI activated');
   }
 
@@ -127,19 +135,15 @@ export class RadioControlPanel {
    */
   deactivate(): void {
     this.isActive = false;
-    if (this.container) {
-      this.container.classList.add('disabled');
-    }
+    if (this.container) this.container.classList.add('disabled');
+    if (this.controlsContainer) this.controlsContainer.classList.add('disabled');
     console.log('Radio UI deactivated');
   }
 
-  /**
-   * 生成HTML结构
-   */
-  generateHTML(): string {
+  /** 瀑布图区域 HTML（标题 + 瀑布图 + 纸带） */
+  generateWaterfallHTML(): string {
     return `
-      <div class="radio-panel">
-        <!-- 顶部标题 -->
+      <div class="radio-panel radio-panel-waterfall">
         <div class="radio-header">
           <div class="screw"></div>
           <div class="screw"></div>
@@ -147,8 +151,6 @@ export class RadioControlPanel {
           <div class="screw"></div>
           <div class="screw"></div>
         </div>
-        
-        <!-- 瀑布图显示区 -->
         <div class="spectrum-container">
           <canvas id="waterfall-canvas" width="600" height="200"></canvas>
           <div class="tuner-line"></div>
@@ -161,17 +163,26 @@ export class RadioControlPanel {
             <span>200</span>
           </div>
         </div>
-        
-        <!-- 控制面板 -->
+        <div class="paper-tape-container">
+          <div class="tape-label">MORSE DECODER OUTPUT</div>
+          <div class="paper-tape" id="paper-tape">
+            <div class="tape-content" id="tape-content"></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /** 控制区 HTML（频率、旋钮、天线、信号表、EMIT WAVE） */
+  generateControlsHTML(): string {
+    return `
+      <div class="radio-controls-inner">
         <div class="control-row">
-          <!-- 频率显示 -->
           <div class="digital-display">
             <div class="display-label">FREQUENCY</div>
             <div class="display-value" id="freq-display">150.0</div>
             <div class="display-unit">MHz</div>
           </div>
-          
-          <!-- 粗调旋钮 -->
           <div class="knob-group">
             <div class="knob-label">COARSE</div>
             <div class="knob" id="knob-coarse">
@@ -182,8 +193,6 @@ export class RadioControlPanel {
               <button class="knob-btn" data-knob="coarse" data-dir="1">►</button>
             </div>
           </div>
-          
-          <!-- 精调旋钮 -->
           <div class="knob-group">
             <div class="knob-label">FINE</div>
             <div class="knob knob-small" id="knob-fine">
@@ -195,10 +204,7 @@ export class RadioControlPanel {
             </div>
           </div>
         </div>
-        
-        <!-- 天线和信号表 -->
         <div class="control-row">
-          <!-- 天线方向 -->
           <div class="instrument-group">
             <div class="instrument-label">ANTENNA DIRECTION</div>
             <div class="compass-meter">
@@ -213,8 +219,6 @@ export class RadioControlPanel {
               <button class="knob-btn" data-knob="antenna" data-dir="1">►</button>
             </div>
           </div>
-          
-          <!-- 信号强度表 -->
           <div class="instrument-group">
             <div class="instrument-label">SIGNAL STRENGTH</div>
             <div class="meter">
@@ -226,16 +230,99 @@ export class RadioControlPanel {
             </div>
           </div>
         </div>
-        
-        <!-- 操作按钮 -->
         <div class="button-row">
           <button class="action-btn" id="btn-wave">
             <span class="btn-led"></span>
             EMIT WAVE [SPACE]
           </button>
         </div>
-        
-        <!-- 摩斯码纸带输出 -->
+      </div>
+    `;
+  }
+
+  /**
+   * 生成完整 HTML 结构（传统布局，未拆分时使用）
+   */
+  generateHTML(): string {
+    return `
+      <div class="radio-panel">
+        <div class="radio-header">
+          <div class="screw"></div>
+          <div class="screw"></div>
+          <span>RF-9000 SPECTRUM ANALYZER</span>
+          <div class="screw"></div>
+          <div class="screw"></div>
+        </div>
+        <div class="spectrum-container">
+          <canvas id="waterfall-canvas" width="600" height="200"></canvas>
+          <div class="tuner-line"></div>
+          <div class="freq-scale">
+            <span>100</span>
+            <span>120</span>
+            <span>140</span>
+            <span>160</span>
+            <span>180</span>
+            <span>200</span>
+          </div>
+        </div>
+        <div class="control-row">
+          <div class="digital-display">
+            <div class="display-label">FREQUENCY</div>
+            <div class="display-value" id="freq-display">150.0</div>
+            <div class="display-unit">MHz</div>
+          </div>
+          <div class="knob-group">
+            <div class="knob-label">COARSE</div>
+            <div class="knob" id="knob-coarse">
+              <div class="knob-indicator"></div>
+            </div>
+            <div class="knob-buttons">
+              <button class="knob-btn" data-knob="coarse" data-dir="-1">◄</button>
+              <button class="knob-btn" data-knob="coarse" data-dir="1">►</button>
+            </div>
+          </div>
+          <div class="knob-group">
+            <div class="knob-label">FINE</div>
+            <div class="knob knob-small" id="knob-fine">
+              <div class="knob-indicator"></div>
+            </div>
+            <div class="knob-buttons">
+              <button class="knob-btn" data-knob="fine" data-dir="-1">◄</button>
+              <button class="knob-btn" data-knob="fine" data-dir="1">►</button>
+            </div>
+        </div>
+        <div class="control-row">
+          <div class="instrument-group">
+            <div class="instrument-label">ANTENNA DIRECTION</div>
+            <div class="compass-meter">
+              <canvas id="compass-canvas" width="120" height="120"></canvas>
+            </div>
+            <div class="knob knob-small" id="knob-ant" style="margin: 10px auto;">
+              <div class="knob-indicator"></div>
+            </div>
+            <div class="knob-buttons">
+              <button class="knob-btn" data-knob="antenna" data-dir="-1">◄</button>
+              <span id="antenna-display">0°</span>
+              <button class="knob-btn" data-knob="antenna" data-dir="1">►</button>
+            </div>
+          </div>
+          <div class="instrument-group">
+            <div class="instrument-label">SIGNAL STRENGTH</div>
+            <div class="meter">
+              <canvas id="meter-canvas" width="160" height="100"></canvas>
+            </div>
+            <div class="signal-info" id="signal-info">
+              <div id="signal-callsign">--</div>
+              <div id="signal-freq">-- MHz</div>
+            </div>
+          </div>
+        </div>
+        <div class="button-row">
+          <button class="action-btn" id="btn-wave">
+            <span class="btn-led"></span>
+            EMIT WAVE [SPACE]
+          </button>
+        </div>
         <div class="paper-tape-container">
           <div class="tape-label">MORSE DECODER OUTPUT</div>
           <div class="paper-tape" id="paper-tape">

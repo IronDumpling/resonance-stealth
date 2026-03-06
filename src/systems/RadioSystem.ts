@@ -4,30 +4,9 @@
  */
 
 import { IRadioSystem } from '@/types/systems';
-import { MORSE_CODE } from '@/config/gameConfig';
+import { MORSE_CODE, RADIO_CONFIG, SIGNAL_TYPES } from '@/config/gameConfig';
 import { IGameState } from '@/types/game';
 import { IAntennaSystem } from '@/types/systems';
-
-// 无线电配置
-const RADIO_CONFIG = {
-  FREQ_MIN: 100,          // 最低频率 (MHz)
-  FREQ_MAX: 200,          // 最高频率 (MHz)
-  COARSE_STEP: 5,         // 粗调步进 (MHz)
-  FINE_STEP: 0.1,         // 精调步进 (MHz)
-  SIGNAL_BANDWIDTH: 2.0,  // 信号带宽 (MHz)
-  NOISE_LEVEL: 0.15,      // 基础噪声等级
-  SPEED_OF_LIGHT: 300,    // 光速 (简化为 300 m/μs)
-  WATERFALL_HEIGHT: 100,  // 瀑布图历史行数
-  ANTENNA_SPEED: 5,       // 天线旋转速度 (度/秒)
-};
-
-// 信号类型定义
-const SIGNAL_TYPES = {
-  ASTRONAUT: 'astronaut',    // 宇航员信号（剧情）
-  SURVIVOR: 'survivor',       // 幸存者信号
-  BEACON: 'beacon',          // 信标信号
-  INTERFERENCE: 'interference' // 干扰信号
-} as const;
 
 // 无线电信号接口
 export interface IRadioSignal {

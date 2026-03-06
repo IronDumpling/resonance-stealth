@@ -13,6 +13,7 @@ import { SceneManager } from '@/systems/SceneManager';
 import { INPUT_CONTEXTS } from '@/types/systems';
 import { IGameState } from '@/types/game';
 import { CameraSystem } from '@/systems/CameraSystem';
+import { CFG } from '@/config/gameConfig';
 
 export class DriveScene extends Scene {
   // 依赖注入
@@ -39,7 +40,7 @@ export class DriveScene extends Scene {
 
     // 设置输入上下文为 DRIVE（驾驶模式）
     if (this.inputManager) {
-      this.inputManager.setContext(INPUT_CONTEXTS.TACTICAL_RADAR as INPUT_CONTEXTS | 'drive');
+      this.inputManager.setContext(INPUT_CONTEXTS.TACTICAL_RADAR);
       // 兼容旧的 TACTICAL_RADAR 上下文，后续会在 InputManager 中显式增加 DRIVE 上下文
     }
 
@@ -92,23 +93,32 @@ export class DriveScene extends Scene {
   }
 
   override render(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
-    // DriveScene 只负责在挡风玻璃区域画 SONAR 画面，页面级镜头由 CameraSystem + App.tsx 处理
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 占位绘制：挡风玻璃区域 + 一个简化的 SONAR 文本
+    // 声纳画布镜头：仅跟随玩家，使用 world 相机的 x/y
+    const scale = CFG.cameraFOV ?? 2.0;
+    const cam = this.cameraSystem?.getCamera('world') ?? this.gameState?.camera;
+    const camX = cam?.x ?? 0;
+    const camY = cam?.y ?? 0;
+
+    ctx.save();
+    ctx.translate(canvas.width / 2 - camX * scale, canvas.height / 2 - camY * scale);
+    ctx.scale(scale, scale);
+
+    // 占位绘制：以玩家为中心，后续由 SonarRenderer 接入
     ctx.strokeStyle = '#00ff00';
-    ctx.lineWidth = 2;
-    const w = canvas.width * 0.6;
-    const h = canvas.height * 0.5;
-    const x = (canvas.width - w) / 2;
-    const y = (canvas.height - h) / 2;
-    ctx.strokeRect(x, y, w, h);
+    ctx.lineWidth = 2 / scale;
+    const halfW = 80;
+    const halfH = 60;
+    ctx.strokeRect(-halfW, -halfH, halfW * 2, halfH * 2);
 
     ctx.fillStyle = '#00ff00';
-    ctx.font = '20px monospace';
+    ctx.font = `${20 / scale}px monospace`;
     ctx.textAlign = 'center';
-    ctx.fillText('SONAR VIEW', canvas.width / 2, y + 30);
+    ctx.fillText('SONAR VIEW', 0, -halfH + 25);
+
+    ctx.restore();
   }
 
   override handleInput(event: unknown): boolean {

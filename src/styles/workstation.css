@@ -2,7 +2,20 @@
  * Workstation / Cockpit Layout - First-Person View
  */
 
-/* Main Workstation / Cockpit Container */
+/* 3D 透视容器（配合 CameraSystem 的页面级 3D 镜头） */
+#perspective-root {
+  width: 100%;
+  height: 100%;
+  perspective: 1200px;
+  perspective-origin: center center;
+  overflow: hidden;
+}
+
+#page-root {
+  transform-style: preserve-3d;
+}
+
+/* Main Workstation / Cockpit Container（需 preserve-3d 以保持子元素 3D 视差） */
 #workstation-container {
     display: flex;
     width: 100vw;
@@ -12,6 +25,7 @@
     position: relative;
     justify-content: center;
     align-items: stretch;
+    transform-style: preserve-3d;
 }
 
 /* 驾驶舱布局：参考 drive_scene_reference - 顶部声纳，底部三栏 */
@@ -22,15 +36,18 @@
     height: 100%;
     max-width: 100%;
     overflow: hidden;
+    transform-style: preserve-3d;
 }
 
-/* 顶部：挡风玻璃声纳区 */
+/* 顶部：挡风玻璃声纳区（最远，略微上仰，参数见 gameConfig COCKPIT_CONFIG.uiLayers.sonar） */
 #cockpit-sonar-wrap {
     flex: 0 0 55vh;
     min-height: 0;
     display: flex;
     align-items: stretch;
     justify-content: center;
+    transform: translateZ(var(--cockpit-sonar-translateZ, -280px)) rotateX(var(--cockpit-sonar-rotateX, 5deg)) rotateY(var(--cockpit-sonar-rotateY, 0deg));
+    transform-style: preserve-3d;
 }
 
 /* 声纳显示屏容器 */
@@ -145,19 +162,22 @@
     height: 100%;
 }
 
-/* 底部三栏中控台 */
+/* 底部三栏中控台（中控台整体倾斜，参数见 gameConfig COCKPIT_CONFIG.uiLayers.cockpitBottom） */
 #cockpit-bottom {
     flex: 1;
     display: flex;
     min-height: 0;
     position: relative;
     z-index: 10;
+    transform: rotateX(var(--cockpit-bottom-rotateX, -15deg));
+    transform-style: preserve-3d;
 }
 
-/* 左侧：仪表盘（参考 reference DashboardStatus） */
+/* 左侧：仪表盘（参考 reference DashboardStatus，向驾驶员倾斜，参数见 gameConfig COCKPIT_CONFIG.uiLayers.dashboard） */
 #cockpit-dashboard.ref-dashboard {
     flex: 1;
     background: #27272a;
+    transform: translateZ(var(--cockpit-dashboard-translateZ, 40px)) rotateY(var(--cockpit-dashboard-rotateY, 18deg));
     padding: 24px;
     border-right: 4px solid #0a0a0b;
     display: flex;
@@ -264,10 +284,11 @@
     font-family: monospace;
 }
 
-/* 中部：车载收音机 */
+/* 中部：车载收音机（最凸出，参数见 gameConfig COCKPIT_CONFIG.uiLayers.radio） */
 #cockpit-console.ref-radio-wrap {
     flex: 1.2;
     background: #27272a;
+    transform: translateZ(var(--cockpit-radio-translateZ, 90px)) rotateY(var(--cockpit-radio-rotateY, 0deg));
     padding: 24px;
     display: flex;
     flex-direction: column;
@@ -278,12 +299,24 @@
     flex: 1;
     max-width: none;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
-/* 右侧：驾驶系统 */
+/* 右侧面板内的收音机控制区（瀑布图在中间，控制移至此） */
+.ref-radio-controls {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+}
+
+/* 右侧：驾驶系统（向驾驶员倾斜，参数见 gameConfig COCKPIT_CONFIG.uiLayers.driving） */
 #cockpit-driving-ui.ref-driving {
     flex: 1;
     background: #27272a;
+    transform: translateZ(var(--cockpit-driving-translateZ, 40px)) rotateY(var(--cockpit-driving-rotateY, -18deg));
     padding: 24px;
     border-left: 4px solid #0a0a0b;
     display: flex;
@@ -370,35 +403,86 @@
     margin-top: 8px;
 }
 
-.ref-sonar-btn {
+/* RX/TX 与实体按钮 3D 风格 */
+.ref-sonar-btn,
+.ref-rxtx-btn {
     margin-top: 24px;
     width: 100%;
     padding: 12px;
-    background: #7f1d1d;
-    border: 2px solid #b91c1c;
+    background: linear-gradient(180deg, #7f1d1d 0%, #5c1515 100%);
+    border: 3px solid #450a0a;
+    border-top-color: #b91c1c;
+    border-left-color: #991b1b;
     color: #fecaca;
     font-weight: bold;
     letter-spacing: 0.15em;
     border-radius: 8px;
     cursor: pointer;
-    box-shadow: 0 0 15px rgba(220, 38, 38, 0.5);
+    box-shadow:
+        0 4px 0 #450a0a,
+        0 6px 12px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
     font-family: monospace;
-    transition: background 0.2s, color 0.2s;
+    transition: transform 0.1s, box-shadow 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
-.ref-sonar-btn:hover {
-    background: #991b1b;
+.ref-sonar-btn:hover,
+.ref-rxtx-btn:hover {
+    background: linear-gradient(180deg, #991b1b 0%, #7f1d1d 100%);
     color: #fff;
 }
 
-/* 居中方向盘（悬浮层，参考 reference） */
+.ref-sonar-btn:active,
+.ref-rxtx-btn:active {
+    transform: translateY(2px);
+    box-shadow:
+        0 2px 0 #450a0a,
+        0 4px 8px rgba(0, 0, 0, 0.5),
+        inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.ref-rxtx-led {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 6px #22c55e;
+}
+
+.ref-rxtx-btn.ref-rxtx-tx .ref-rxtx-led {
+    background: #ef4444;
+    box-shadow: 0 0 6px #ef4444;
+}
+
+.ref-gear {
+    box-shadow:
+        inset 0 2px 4px rgba(255, 255, 255, 0.05),
+        0 2px 0 rgba(0, 0, 0, 0.3);
+    border: 1px solid #27272a;
+}
+
+.ref-gear:active {
+    transform: translateY(1px);
+}
+
+.ref-gear-active {
+    box-shadow:
+        inset 0 0 10px rgba(0, 0, 0, 0.5),
+        0 2px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* 居中方向盘（悬浮层，离玩家最近，参考 3d_css，参数见 gameConfig COCKPIT_CONFIG.uiLayers.steering） */
 #cockpit-steering.ref-steering {
     position: absolute;
-    bottom: -100px;
+    bottom: var(--cockpit-steering-bottom, -100px);
     left: 50%;
-    transform: translateX(-50%);
-    width: 400px;
-    height: 400px;
+    transform: translateX(-50%) translateZ(var(--cockpit-steering-translateZ, 300px)) rotateX(var(--cockpit-steering-rotateX, -10deg)) translateY(var(--cockpit-steering-translateY, 0px));
+    width: var(--cockpit-steering-width, 450px);
+    height: var(--cockpit-steering-height, 450px);
     z-index: 50;
     pointer-events: none;
 }

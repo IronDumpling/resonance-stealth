@@ -1,0 +1,203 @@
+import React, { useState, useEffect } from 'react';
+
+// --- [ 1. 挡风玻璃 / 声纳屏幕 (位于最深处) ] ---
+const SonarScreen = () => (
+  <div 
+    className="absolute top-0 left-1/2 w-[1000px] h-[500px] -ml-[500px] bg-zinc-950 border-8 border-zinc-800 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,1)]"
+    style={{ 
+      // 核心3D定位：向后推300px，稍微向上仰5度
+      transform: 'translateZ(-300px) translateY(-100px) rotateX(5deg)',
+      transformStyle: 'preserve-3d' 
+    }}
+  >
+    {/* 屏幕反光与扫描线 */}
+    <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.4)_50%)] bg-[length:100%_4px] pointer-events-none z-20"></div>
+    <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none z-30"></div>
+    
+    {/* 声纳动画 */}
+    <div className="w-full h-full flex items-center justify-center opacity-40">
+      <div className="w-[800px] h-[800px] border border-green-500/50 rounded-full flex items-center justify-center">
+        <div className="w-[500px] h-[500px] border border-green-500/40 rounded-full flex items-center justify-center">
+           <div className="w-[200px] h-[200px] border border-green-500/30 rounded-full"></div>
+        </div>
+      </div>
+      <div className="absolute top-1/2 left-1/2 w-[800px] h-[800px] -mt-[400px] -ml-[400px] animate-[spin_4s_linear_infinite]">
+        <div className="w-1/2 h-1/2 bg-gradient-to-br from-green-500/0 to-green-500/30 origin-bottom-right rounded-tl-full border-r-2 border-green-400"></div>
+      </div>
+    </div>
+    
+    <div className="absolute top-6 left-8 text-green-500 font-mono text-sm font-bold opacity-80 drop-shadow-[0_0_5px_rgba(34,197,94,0.8)]">
+      [ SONAR_SYS.ACTIVE ]<br/>SCANNING...
+    </div>
+  </div>
+);
+
+// --- [ 2. 状态仪表盘 (位于左侧，向内倾斜) ] ---
+const StatusPanel = () => (
+  <div 
+    className="absolute top-0 left-0 w-[300px] h-[250px] bg-zinc-800 border-4 border-zinc-700 p-4 shadow-[20px_20px_30px_rgba(0,0,0,0.8),inset_0_0_20px_rgba(0,0,0,0.5)] flex flex-col justify-between"
+    style={{ 
+      // 核心3D定位：向右旋转20度（面朝驾驶员），稍微拉近
+      transform: 'translateX(-320px) translateZ(50px) rotateY(20deg)',
+      transformStyle: 'preserve-3d'
+    }}
+  >
+    {/* 面板厚度 (伪3D侧边) */}
+    <div className="absolute top-0 right-[-20px] w-[20px] h-full bg-zinc-900 origin-left" style={{ transform: 'rotateY(90deg)' }}></div>
+
+    <div className="text-zinc-500 font-mono text-xs font-bold border-b border-zinc-600 pb-2 mb-2">VEHICLE STATUS</div>
+    <div className="grid grid-cols-2 gap-3">
+      {['HULL', 'BATT', 'O2', 'FUEL'].map((stat, i) => (
+        <div key={stat} className="bg-zinc-900 border border-zinc-700 p-2 rounded relative shadow-inner">
+          <div className="text-[10px] text-zinc-400 font-mono">{stat}</div>
+          <div className={`text-lg font-bold font-mono ${i === 1 ? 'text-yellow-500' : 'text-blue-400'}`}>
+            {Math.floor(Math.random() * 40 + 60)}%
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// --- [ 3. 复古收音机 (位于中间，最凸出) ] ---
+const RadioPanel = () => (
+  <div 
+    className="absolute top-0 left-1/2 w-[400px] h-[250px] -ml-[200px] bg-[#2a2a2c] border-4 border-zinc-400 p-4 shadow-[0_30px_40px_rgba(0,0,0,0.8),inset_0_0_30px_rgba(0,0,0,0.8)] flex flex-col"
+    style={{ 
+      // 核心3D定位：从仪表盘基座凸出 80px
+      transform: 'translateZ(80px)',
+      transformStyle: 'preserve-3d'
+    }}
+  >
+    {/* 收音机的顶部和侧面厚度 (打造真正的盒子感) */}
+    <div className="absolute top-[-20px] left-0 w-full h-[20px] bg-zinc-500 origin-bottom" style={{ transform: 'rotateX(90deg)' }}></div>
+    <div className="absolute top-0 left-[-20px] w-[20px] h-full bg-zinc-600 origin-right" style={{ transform: 'rotateY(-90deg)' }}></div>
+    <div className="absolute top-0 right-[-20px] w-[20px] h-full bg-zinc-600 origin-left" style={{ transform: 'rotateY(90deg)' }}></div>
+
+    <div className="flex gap-4 mb-4">
+      {/* 频率显示屏 */}
+      <div className="flex-1 bg-black border-2 border-zinc-600 p-3 relative overflow-hidden flex flex-col justify-center shadow-inner">
+         <div className="absolute inset-0 bg-white/5 pointer-events-none"></div>
+         <div className="text-amber-500 font-mono text-3xl font-bold drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]">98.5 MHz</div>
+         <div className="w-full h-1 bg-zinc-800 mt-2 relative">
+            <div className="absolute top-[-4px] left-[60%] w-1 h-3 bg-red-500"></div>
+         </div>
+      </div>
+      {/* 调频大旋钮 */}
+      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-zinc-300 to-zinc-600 border-2 border-zinc-400 shadow-[0_10px_15px_rgba(0,0,0,0.5)] flex items-center justify-center relative cursor-pointer hover:scale-105 transition-transform">
+        <div className="w-14 h-14 rounded-full border border-zinc-500/50"></div>
+      </div>
+    </div>
+
+    {/* 下方扬声器网罩 */}
+    <div className="flex-1 bg-[#111] rounded border-2 border-zinc-800" style={{backgroundImage: 'radial-gradient(#000 30%, transparent 35%)', backgroundSize: '8px 8px'}}></div>
+  </div>
+);
+
+// --- [ 4. 驾驶控制区 (位于右侧，向内倾斜) ] ---
+const DrivePanel = () => (
+  <div 
+    className="absolute top-0 right-0 w-[300px] h-[250px] bg-zinc-800 border-4 border-zinc-700 p-4 shadow-[-20px_20px_30px_rgba(0,0,0,0.8),inset_0_0_20px_rgba(0,0,0,0.5)] flex flex-col justify-between"
+    style={{ 
+      // 核心3D定位：向左旋转20度（面朝驾驶员），稍微拉近
+      transform: 'translateX(320px) translateZ(50px) rotateY(-20deg)',
+      transformStyle: 'preserve-3d'
+    }}
+  >
+    {/* 面板厚度 (伪3D侧边) */}
+    <div className="absolute top-0 left-[-20px] w-[20px] h-full bg-zinc-900 origin-right" style={{ transform: 'rotateY(-90deg)' }}></div>
+
+    <div className="text-zinc-500 font-mono text-xs font-bold border-b border-zinc-600 pb-2 mb-2 text-right">DRIVE CONTROL</div>
+    
+    <div className="flex bg-zinc-900 rounded border border-zinc-700 overflow-hidden mb-4">
+      {['P', 'R', 'N', 'D'].map(g => (
+        <div key={g} className={`flex-1 text-center py-2 font-mono font-bold ${g === 'D' ? 'bg-zinc-600 text-white shadow-inner' : 'text-zinc-600'}`}>
+          {g}
+        </div>
+      ))}
+    </div>
+
+    <button className="mt-auto w-full py-4 bg-red-900/80 border-2 border-red-500 text-red-200 font-bold font-mono text-lg rounded shadow-[0_0_20px_rgba(220,38,38,0.4)] hover:bg-red-700 transition-colors active:translate-y-1">
+      PING SONAR
+    </button>
+  </div>
+);
+
+// --- [ 主场景：组装所有 3D 元素 ] ---
+export default function Cockpit3DScene() {
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  // 监听鼠标移动，转换为视角的旋转角度 (限制在 ±15 度以内)
+  const handleMouseMove = (e) => {
+    const x = (e.clientX / window.innerWidth - 0.5) * 30; // 左右晃动
+    const y = (e.clientY / window.innerHeight - 0.5) * 30; // 上下晃动
+    setMousePos({ x, y });
+  };
+
+  return (
+    // 1. 最外层容器：设置 perspective (透视视距)，数值越小畸变越大，1000px比较自然
+    <div 
+      className="w-full h-screen bg-[#050505] overflow-hidden flex items-center justify-center relative cursor-crosshair select-none"
+      style={{ perspective: '1200px' }}
+      onMouseMove={handleMouseMove}
+    >
+      <div className="absolute top-4 left-4 text-white/30 font-mono text-xs z-50 pointer-events-none">
+        MOVE MOUSE TO LOOK AROUND
+      </div>
+
+      {/* 2. 摄像机云台：响应鼠标移动，旋转整个场景 */}
+      <div 
+        className="relative w-full h-full"
+        style={{ 
+          // 鼠标上下移动改变 rotateX，左右移动改变 rotateY
+          transform: `rotateX(${-mousePos.y}deg) rotateY(${mousePos.x}deg)`,
+          transformStyle: 'preserve-3d',
+          transition: 'transform 0.1s ease-out' // 稍微加一点延迟，让转动更柔和
+        }}
+      >
+        
+        {/* === 空间元素 1：挡风玻璃声纳 === */}
+        <SonarScreen />
+
+        {/* === 空间元素 2：中控台基座 === */}
+        {/* 这个基座整体向后倾斜 20 度，模拟真实的汽车仪表台斜度 */}
+        <div 
+          className="absolute top-[50%] left-1/2 w-[800px] h-[300px] -ml-[400px]"
+          style={{ 
+            transform: 'translateY(100px) translateZ(0px) rotateX(-20deg)',
+            transformStyle: 'preserve-3d' 
+          }}
+        >
+          {/* 中控台的黑色底座背景 */}
+          <div className="absolute inset-[-50px] bg-zinc-900 border-t-[10px] border-zinc-950 shadow-[0_50px_100px_rgba(0,0,0,1)] rounded-t-[50px] opacity-90" style={{ transform: 'translateZ(-10px)' }}></div>
+          
+          <StatusPanel />
+          <RadioPanel />
+          <DrivePanel />
+        </div>
+
+        {/* === 空间元素 3：悬浮方向盘 (离你最近) === */}
+        {/* 通过高 translateZ 让它突出屏幕，贴近玩家 */}
+        <div 
+          className="absolute top-1/2 left-1/2 w-[450px] h-[450px] -ml-[225px] -mt-[100px]"
+          style={{ 
+            transform: 'translateY(250px) translateZ(300px) rotateX(-10deg)',
+            transformStyle: 'preserve-3d' 
+          }}
+        >
+           {/* 方向盘外圈 */}
+           <div className="w-full h-full rounded-full border-[35px] border-zinc-900 shadow-[0_30px_50px_rgba(0,0,0,0.9),inset_0_5px_15px_rgba(255,255,255,0.1)] relative">
+              {/* 方向盘辐条 */}
+              <div className="absolute top-1/2 left-0 w-full h-[60px] -mt-[30px] bg-zinc-800 border-y-4 border-zinc-700 shadow-xl flex items-center justify-center">
+                 <div className="w-[100px] h-[100px] rounded-full bg-zinc-950 border-4 border-zinc-700 shadow-inner flex items-center justify-center">
+                    <span className="text-zinc-500 font-bold text-sm tracking-widest">A.E.S</span>
+                 </div>
+              </div>
+              <div className="absolute bottom-0 left-1/2 w-[60px] h-[50%] -ml-[30px] bg-zinc-800 border-x-4 border-zinc-700 shadow-xl"></div>
+           </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}

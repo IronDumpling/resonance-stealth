@@ -217,9 +217,12 @@
     margin-top: 5px;
 }
 
+/* 旋钮按钮 - 实体 3D 风格 */
 .knob-btn {
-    background: linear-gradient(135deg, #444 0%, #222 100%);
+    background: linear-gradient(180deg, #555 0%, #333 50%, #222 100%);
     border: 2px solid #333;
+    border-top-color: #666;
+    border-left-color: #555;
     color: #999;
     padding: 5px 12px;
     border-radius: 4px;
@@ -227,17 +230,24 @@
     font-size: 14px;
     font-family: 'Courier New', monospace;
     transition: all 0.1s;
+    box-shadow:
+        0 2px 0 #1a1a1a,
+        0 3px 6px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .knob-btn:hover {
-    background: linear-gradient(135deg, #555 0%, #333 100%);
+    background: linear-gradient(180deg, #666 0%, #444 50%, #333 100%);
     color: #fff;
 }
 
 .knob-btn:active, .knob-btn.active {
-    background: #111;
-    transform: translateY(1px);
-    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.8);
+    background: linear-gradient(180deg, #333 0%, #222 100%);
+    transform: translateY(2px);
+    box-shadow:
+        0 0 0 #1a1a1a,
+        0 1px 3px rgba(0, 0, 0, 0.5),
+        inset 0 2px 5px rgba(0, 0, 0, 0.8);
 }
 
 /* 仪表组 */
@@ -308,10 +318,13 @@
     gap: 10px;
 }
 
+/* 操作按钮 - 实体 3D 风格 */
 .action-btn {
     flex: 1;
-    background: linear-gradient(135deg, #2c5f2d 0%, #1a3a1b 100%);
-    border: 2px solid #3a7a3c;
+    background: linear-gradient(180deg, #2c5f2d 0%, #1a3a1b 50%, #0f2610 100%);
+    border: 3px solid #1a3a1b;
+    border-top-color: #3a7a3c;
+    border-left-color: #2c5f2d;
     color: #00ff00;
     padding: 12px 8px;
     border-radius: 4px;
@@ -320,18 +333,27 @@
     font-size: 11px;
     font-weight: bold;
     position: relative;
-    transition: all 0.2s;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    transition: transform 0.1s, box-shadow 0.1s;
+    box-shadow:
+        0 4px 0 #0f2610,
+        0 6px 12px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .action-btn:hover {
-    background: linear-gradient(135deg, #3a7a3c 0%, #2c5f2d 100%);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.7);
+    background: linear-gradient(180deg, #3a7a3c 0%, #2c5f2d 50%, #1a3a1b 100%);
+    box-shadow:
+        0 4px 0 #0f2610,
+        0 8px 16px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .action-btn:active {
-    transform: translateY(1px);
-    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.8);
+    transform: translateY(2px);
+    box-shadow:
+        0 2px 0 #0f2610,
+        0 4px 8px rgba(0, 0, 0, 0.5),
+        inset 0 2px 5px rgba(0, 0, 0, 0.8);
 }
 
 .btn-led {
@@ -561,6 +583,58 @@
 .paper-content::-webkit-scrollbar-thumb {
     background: #d2b48c;
     border-radius: 4px;
+}
+
+/* 瀑布图专用面板（仅标题+瀑布+纸带，横向布局） */
+.radio-panel-waterfall {
+    max-height: none;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.radio-panel-waterfall .spectrum-container {
+    flex: 1;
+    min-height: 80px;
+}
+
+.radio-panel-waterfall .paper-tape-container {
+    flex: 0 0 auto;
+    max-height: 80px;
+}
+
+/* 控制区面板（在右侧驾驶面板内） */
+.radio-controls-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+}
+
+.radio-controls-panel.disabled {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+.radio-controls-inner .control-row {
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.radio-controls-inner .control-row:last-of-type {
+    margin-bottom: 0;
+}
+
+.radio-controls-inner .instrument-group,
+.radio-controls-inner .knob-group {
+    flex: 1;
+    min-width: 80px;
+}
+
+.radio-controls-inner .button-row {
+    margin-top: 4px;
 }
 
 /* 响应式调整 */

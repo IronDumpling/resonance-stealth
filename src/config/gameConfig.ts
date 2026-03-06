@@ -168,6 +168,76 @@ export const CFG: IGameConfig = {
   cameraSmoothing: true       // 是否启用平滑跟随
 };
 
+/**
+ * 驾驶舱与页面相机配置（可统一微调）
+ * Cockpit & Page Camera Config - Centralized tweakable parameters
+ */
+export const COCKPIT_CONFIG = {
+  /** Boot/Menu 镜头：拉近、上移对准 SONAR 屏幕 */
+  bootMenuCamera: {
+    translateZ: 500,
+    rotateX: -20,
+    translateY: 200,
+  },
+  /** 光标跟随旋转（Drive 模式下） */
+  mouseLook: {
+    maxAngle: 18,   // 最大旋转角度（度）
+    lerp: 0.08,     // lerp 系数（越小越平滑）
+  },
+  /** 驾驶舱 UI 3D 分层（由远到近） */
+  uiLayers: {
+    sonar: {
+      translateZ: -280,
+      rotateX: 5,
+      rotateY: 0,
+    },
+    cockpitBottom: {
+      rotateX: -15,
+    },
+    dashboard: {
+      translateZ: 40,
+      rotateY: 18,
+    },
+    radio: {
+      translateZ: 90,
+      rotateY: 0,
+    },
+    driving: {
+      translateZ: 40,
+      rotateY: -18,
+    },
+    steering: {
+      translateZ: 300,
+      rotateX: -10,
+      translateY: 0,
+      width: 450,
+      height: 450,
+      bottom: -100,
+    },
+  },
+};
+
+/** 无线电系统配置 */
+export const RADIO_CONFIG = {
+  FREQ_MIN: 100,          // 最低频率 (MHz)
+  FREQ_MAX: 200,          // 最高频率 (MHz)
+  COARSE_STEP: 5,         // 粗调步进 (MHz)
+  FINE_STEP: 0.1,         // 精调步进 (MHz)
+  SIGNAL_BANDWIDTH: 2.0,  // 信号带宽 (MHz)
+  NOISE_LEVEL: 0.15,      // 基础噪声等级
+  SPEED_OF_LIGHT: 300,    // 光速 (简化为 300 m/μs)
+  WATERFALL_HEIGHT: 100,  // 瀑布图历史行数
+  ANTENNA_SPEED: 5,       // 天线旋转速度 (度/秒)
+};
+
+/** 信号类型定义 */
+export const SIGNAL_TYPES = {
+  ASTRONAUT: 'astronaut',
+  SURVIVOR: 'survivor',
+  BEACON: 'beacon',
+  INTERFERENCE: 'interference',
+} as const;
+
 // 核心类型定义
 export const CORE_TYPES: ICoreTypes = {
   SCAVENGER: {
