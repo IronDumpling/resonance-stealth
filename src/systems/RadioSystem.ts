@@ -39,6 +39,8 @@ export interface IRadioSignal {
     morseCode: string;
     quality: string;
   };
+  corruptText?(text: string, rate: number): string;
+  corruptMorse?(morse: string, rate: number): string;
   update(deltaTime: number): boolean;
 }
 
@@ -560,18 +562,22 @@ export class RadioSystem implements IRadioSystem {
         } else if (strength >= 50) {
           // 部分信息损坏
           const corruptionRate = 1 - (strength - 50) / 30; // 50%时损坏50%，80%时损坏0%
+          const ct = this.corruptText!;
+          const cm = this.corruptMorse!;
           return {
-            callsign: this.corruptText(this.callsign, corruptionRate * 0.3),
-            message: this.corruptText(this.message, corruptionRate * 0.4),
-            morseCode: this.corruptMorse(this.morseCode, corruptionRate * 0.4),
+            callsign: ct.call(this, this.callsign, corruptionRate * 0.3),
+            message: ct.call(this, this.message, corruptionRate * 0.4),
+            morseCode: cm.call(this, this.morseCode, corruptionRate * 0.4),
             quality: 'noisy'
           };
         } else if (strength >= 20) {
           // 严重损坏
+          const ct = this.corruptText!;
+          const cm = this.corruptMorse!;
           return {
-            callsign: this.corruptText(this.callsign, 0.7),
-            message: this.corruptText(this.message, 0.8),
-            morseCode: this.corruptMorse(this.morseCode, 0.8),
+            callsign: ct.call(this, this.callsign, 0.7),
+            message: ct.call(this, this.message, 0.8),
+            morseCode: cm.call(this, this.morseCode, 0.8),
             quality: 'poor'
           };
         } else {

@@ -115,7 +115,7 @@ export class SceneManager implements ISceneManager {
     const gameCanvas = document.getElementById('gameCanvas');
     const radioModeDisplay = document.getElementById('radio-mode-display');
     
-    if (mode === DISPLAY_MODES.ROBOT_DISPLAY) {
+    if (mode === DISPLAY_MODES.COCKPIT_DISPLAY) {
       if (gameCanvas) gameCanvas.style.display = 'block';
       if (radioModeDisplay) radioModeDisplay.style.display = 'none';
     } else if (mode === DISPLAY_MODES.RADIO_DISPLAY) {

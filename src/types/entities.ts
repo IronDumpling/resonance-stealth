@@ -91,8 +91,36 @@ export interface IItem extends IBaseEntity {
   hintElement?: HTMLElement | null;
 }
 
-// 物品类型
-export type ItemType = 'energy_bottle' | 'cold_core' | 'core_hot' | 'signal_source';
+// 物品类型（扩展：燃油/电池/修复材料等）
+export type ItemType =
+  | 'energy_bottle' | 'cold_core' | 'core_hot' | 'signal_source'
+  | 'fuel_can_small' | 'fuel_can_box' | 'repair_kit_small' | 'battery_small';
+
+// 物品定义（占格/堆叠/使用效果）
+export interface IItemDef {
+  id: ItemType;
+  name: string;
+  width: number;   // 占格宽度
+  height: number;  // 占格高度
+  stackMax: number; // 堆叠上限，1 表示不可堆叠
+  icon: string;
+  color: string;
+  /** 使用效果：'fuel_small' | 'fuel_medium' | 'repair' | 'charge' */
+  useEffect?: string;
+  useAmount?: number; // 恢复量
+}
+
+// 后备箱格子物品（带网格位置与堆叠数）
+export interface ITrunkItem extends IItem {
+  gridX: number;
+  gridY: number;
+  count: number; // 堆叠数量
+}
+
+// 地面掉落物（世界坐标持久）
+export interface IGroundItem extends IItem {
+  count: number;
+}
 
 // 能量瓶接口
 export interface IEnergyBottle extends IItem {
@@ -139,6 +167,7 @@ export interface IEntityCollection {
   echoes: IEcho[];
   particles: IParticle[];
   items: IItem[];
+  groundItems: IGroundItem[];  // 地图上的掉落物，丢弃后持久存在
   wallEchoes: IWallEcho[];
   radiations: IRadiation[];
   base: IBase | null;

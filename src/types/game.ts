@@ -4,7 +4,7 @@
  */
 
 import { IEntityCollection, IPlayer, ICore } from './entities';
-import { IMouseState, IAntennaSystem, ISLAMSystem } from './systems';
+import { IMouseState, IAntennaSystem } from './systems';
 
 // 键盘状态接口
 export interface IKeysState {
@@ -25,8 +25,33 @@ export interface ICamera {
   y: number;
 }
 
+// 车辆状态
+export type VehicleGear = 'P' | 'R' | 'N' | 'D';
+
+export interface IVehicleState {
+  gear: VehicleGear;
+  speed: number;       // 当前速度（像素/秒）
+  steeringAngle: number;  // 转向角（弧度）
+  engineOn: boolean;
+  throttle: number;    // 0-1
+  brake: number;       // 0-1
+}
+
+// 生存系统状态（生命/完整度/燃油/电量）
+export interface ISurvivalState {
+  life: number;        // 玩家生命 (0-100)
+  integrity: number;   // 车完整度 (0-100)
+  armorDropped: boolean;  // 完整度归零后护甲是否已掉落
+  fuel: number;       // 燃油 (0-100)
+  battery: number;    // 电量 (0-100)
+}
+
 // 游戏状态接口
 export interface IGameState {
+  // 生存状态
+  survival: ISurvivalState;
+  // 车辆状态
+  vehicle: IVehicleState;
   // 玩家状态
   p: IPlayer;
   
@@ -50,7 +75,9 @@ export interface IGameState {
   
   // 系统引用
   antennaSystem: IAntennaSystem | null;
-  slamSystem: ISLAMSystem | null;
+
+  /** 当前场景（用于判断是否执行驾驶逻辑） */
+  currentScene?: string;
 }
 
 // 游戏配置接口（空结构，保留类型定义）

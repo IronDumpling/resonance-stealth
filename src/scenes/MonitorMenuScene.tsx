@@ -69,12 +69,6 @@ export class MonitorMenuScene extends Scene {
     const radioModeDisplay = document.getElementById('radio-mode-display');
     if (radioModeDisplay) radioModeDisplay.style.display = 'none';
     
-    const assemblyContainer = document.getElementById('assembly-container');
-    if (assemblyContainer) {
-      assemblyContainer.classList.remove('active');
-      assemblyContainer.style.display = 'none';
-    }
-    
     // Set display mode to MENU
     if (this.sceneManager) {
       this.sceneManager.switchDisplayMode(DISPLAY_MODES.MENU);

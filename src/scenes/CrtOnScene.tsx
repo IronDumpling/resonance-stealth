@@ -67,7 +67,7 @@ export class CrtOnScene extends Scene {
     }
   }
 
-  override update(deltaTime: number): void {
+  override update(_deltaTime: number): void {
     // 检查开机动画是否完成
     if (this.crtRenderer && this.animationStarted && !this.animationComplete) {
       const isComplete = this.crtRenderer.isPoweredOn && !this.crtRenderer.isTransitioning;

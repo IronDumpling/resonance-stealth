@@ -17,7 +17,7 @@ export class WaveRenderer {
    * @param ctx Canvas 2D 上下文
    * @param waves 波纹数组
    */
-  renderWorldMode(ctx: CanvasRenderingContext2D, waves: unknown[]): void {
+  renderWorldMode(_ctx: CanvasRenderingContext2D, _waves: unknown[]): void {
     // 空实现，保留方法签名
   }
 
@@ -30,11 +30,11 @@ export class WaveRenderer {
    * @param scale 雷达缩放比例
    */
   renderRadarMode(
-    ctx: CanvasRenderingContext2D,
-    waves: unknown[],
-    centerX: number,
-    centerY: number,
-    scale: number
+    _ctx: CanvasRenderingContext2D,
+    _waves: unknown[],
+    _centerX: number,
+    _centerY: number,
+    _scale: number
   ): void {
     // 空实现，保留方法签名
   }

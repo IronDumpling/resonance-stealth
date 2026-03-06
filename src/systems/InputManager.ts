@@ -58,36 +58,15 @@ export class InputManager implements IInputManager {
     
     // 菜单上下文
     this.registerContext(INPUT_CONTEXTS.MENU, {
-      '1': 'select_robot_assembly',
+      '1': 'select_start_drive',
       '2': 'select_power_off',
       'arrowup': 'navigate_up',
       'arrowdown': 'navigate_down',
       'enter': 'confirm',
     });
 
-    // 组装上下文
-    this.registerContext(INPUT_CONTEXTS.ROBOT_ASSEMBLY, {
-      '1': 'select_core_scavenger',
-      '2': 'select_core_mimic',
-      '3': 'select_core_heavy',
-      'enter': 'deploy',
-      'escape': 'menu',
-    });
-
-    // 通用无线电控制上下文（频率调整、天线旋转、发射波）
-    // 这个上下文可以在多个场景中同时激活（TACTICAL_RADAR, WIDE_RADAR, SIGNAL_PROCESSING）
-    this.registerContext(INPUT_CONTEXTS.RADIO_CONTROLS, {
-      'arrowup': 'freq_up',
-      'arrowdown': 'freq_down',
-      'arrowleft': 'antenna_left',
-      'arrowright': 'antenna_right',
-      ' ': 'emit_wave',  // space key - 发射波纹
-      'escape': 'menu',
-    });
-    
-    // 战术雷达场景上下文（游戏主场景）
-    // 包含游戏控制和无线电控制
-    this.registerContext(INPUT_CONTEXTS.TACTICAL_RADAR, {
+    // 驾驶场景上下文（游戏主场景）
+    this.registerContext(INPUT_CONTEXTS.DRIVE, {
       'w': 'move_up',
       'a': 'move_left',
       's': 'move_down',
@@ -96,24 +75,22 @@ export class InputManager implements IInputManager {
       'e': 'interact',
       'r': 'refill_energy',
       'f': 'struggle',
-      'p': 'signal_processing',
-      'm': 'wide_radar',
-    });
-    
-    // 广域雷达场景上下文
-    // 包含雷达地图控制和无线电控制
-    this.registerContext(INPUT_CONTEXTS.WIDE_RADAR, {
-      'm': 'tactical_radar',
-    });
-    
-    // 信号处理场景上下文
-    // 包含信号处理控制和无线电控制
-    this.registerContext(INPUT_CONTEXTS.SIGNAL_PROCESSING, {
-      'p': 'tactical_radar',
+      'tab': 'inventory',
     });
 
-    this.registerContext(INPUT_CONTEXTS.ESCAPE_RESULT, {
-      'enter': 'robot_assembly',
+    // 后备箱场景上下文
+    this.registerContext(INPUT_CONTEXTS.INVENTORY, {
+      'tab': 'drive',
+    });
+
+    // 通用无线电控制上下文（频率调整、天线旋转、发射波）
+    this.registerContext(INPUT_CONTEXTS.RADIO_CONTROLS, {
+      'arrowup': 'freq_up',
+      'arrowdown': 'freq_down',
+      'arrowleft': 'antenna_left',
+      'arrowright': 'antenna_right',
+      ' ': 'emit_wave',
+      'escape': 'menu',
     });
   }
 
@@ -200,9 +177,8 @@ export class InputManager implements IInputManager {
    * 检查当前上下文是否支持无线电控制
    */
   private supportsRadioControls(): boolean {
-    return this.currentContext === INPUT_CONTEXTS.TACTICAL_RADAR ||
-           this.currentContext === INPUT_CONTEXTS.WIDE_RADAR ||
-           this.currentContext === INPUT_CONTEXTS.SIGNAL_PROCESSING;
+    return this.currentContext === INPUT_CONTEXTS.DRIVE ||
+           this.currentContext === INPUT_CONTEXTS.INVENTORY;
   }
 
   /**
@@ -469,9 +445,8 @@ export class InputManager implements IInputManager {
   shouldPreventDefault(key: string): boolean {
     // 在游戏上下文中阻止空格键的默认行为(页面滚动)
     if (key === ' ' && (
-      this.currentContext === INPUT_CONTEXTS.TACTICAL_RADAR ||
-      this.currentContext === INPUT_CONTEXTS.WIDE_RADAR ||
-      this.currentContext === INPUT_CONTEXTS.SIGNAL_PROCESSING ||
+      this.currentContext === INPUT_CONTEXTS.DRIVE ||
+      this.currentContext === INPUT_CONTEXTS.INVENTORY ||
       this.currentContext === INPUT_CONTEXTS.RADIO_CONTROLS
     )) {
       return true;

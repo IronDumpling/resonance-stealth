@@ -3,7 +3,6 @@
  * Inventory Scene
  *
  * 负责显示后备箱格子与相关物资操作。
- * 目前先作为占位，实现 Drive <-> Inventory 的场景切换与基本渲染。
  */
 
 import { Scene } from './Scene';
@@ -13,25 +12,30 @@ import { SceneManager } from '@/systems/SceneManager';
 import { INPUT_CONTEXTS } from '@/types/systems';
 import { IGameState } from '@/types/game';
 import { CameraSystem } from '@/systems/CameraSystem';
+import type { InventorySystem } from '@/systems/InventorySystem';
+import { TrunkUI } from '@/ui/TrunkUI';
 
 export class InventoryScene extends Scene {
-  // 依赖注入
   inputManager: InputManager | null = null;
   sceneManager: SceneManager | null = null;
   gameState: IGameState | null = null;
   cameraSystem: CameraSystem | null = null;
+  inventorySystem: InventorySystem | null = null;
+  trunkUI: TrunkUI | null = null;
 
   constructor(
     inputManager?: InputManager,
     sceneManager?: SceneManager,
     gameState?: IGameState,
-    cameraSystem?: CameraSystem
+    cameraSystem?: CameraSystem,
+    inventorySystem?: InventorySystem
   ) {
     super(SCENES.INVENTORY);
     this.inputManager = inputManager || null;
     this.sceneManager = sceneManager || null;
     this.gameState = gameState || null;
     this.cameraSystem = cameraSystem || null;
+    this.inventorySystem = inventorySystem || null;
   }
 
   override enter(data?: SceneData): void {
@@ -45,8 +49,7 @@ export class InventoryScene extends Scene {
 
     // 设置输入上下文为 INVENTORY（后备箱操作）
     if (this.inputManager) {
-      this.inputManager.setContext(INPUT_CONTEXTS.RADIO_CONTROLS as INPUT_CONTEXTS | 'inventory');
-      // 先复用一个现有上下文，后续在 InputManager 中补充 INVENTORY 专用映射
+      this.inputManager.setContext(INPUT_CONTEXTS.INVENTORY);
     }
 
     // 显示 gameCanvas（可用于未来在后视镜/后备箱上画东西）
@@ -55,10 +58,12 @@ export class InventoryScene extends Scene {
       gameCanvas.style.display = 'block';
     }
 
-    // 显示 inventory-container，作为后备箱 UI 根节点
+    // 显示并初始化后备箱 UI
     const inventoryContainer = document.getElementById('inventory-container');
-    if (inventoryContainer) {
+    if (inventoryContainer && this.inventorySystem) {
       inventoryContainer.style.display = 'flex';
+      this.trunkUI = new TrunkUI();
+      this.trunkUI.init(inventoryContainer, this.inventorySystem);
     }
 
     // 切换显示模式为 MENU（或单独的 INVENTORY_DISPLAY，后续可细化）
@@ -76,7 +81,11 @@ export class InventoryScene extends Scene {
   override exit(): void {
     super.exit();
 
-    // 隐藏后备箱 UI 容器
+    if (this.trunkUI) {
+      this.trunkUI.destroy();
+      this.trunkUI = null;
+    }
+
     const inventoryContainer = document.getElementById('inventory-container');
     if (inventoryContainer) {
       inventoryContainer.style.display = 'none';
@@ -104,7 +113,7 @@ export class InventoryScene extends Scene {
     const action = inputEvent.action;
 
     // Tab 返回 Drive 场景（镜头向右 180° 的动画后续由 CameraSystem 处理）
-    if (action === 'back_to_drive' || key === 'tab') {
+    if (action === 'drive' || key === 'tab') {
       if (this.sceneManager) {
         this.sceneManager.switchScene(SCENES.DRIVE, 'fade');
       }

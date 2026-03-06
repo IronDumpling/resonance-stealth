@@ -9,8 +9,9 @@ import {
   GameSystem, 
   RadioSystem, 
   InventorySystem, 
-  AntennaSystem, 
-  SLAMSystem,
+  AntennaSystem,
+  SurvivalSystem,
+  VehicleSystem,
 } from '@/systems';
 import { CameraSystem } from '@/systems/CameraSystem';
 import { CORE_TYPES } from '@/config/gameConfig';
@@ -21,8 +22,9 @@ interface GameContextValue {
   radioSystem: RadioSystem | null;
   inventorySystem: InventorySystem | null;
   antennaSystem: AntennaSystem | null;
-  slamSystem: SLAMSystem | null;
   cameraSystem: CameraSystem | null;
+  survivalSystem: SurvivalSystem | null;
+  vehicleSystem: VehicleSystem | null;
   setGameState: (state: IGameState | null) => void;
   initGame: (canvas?: HTMLCanvasElement | null) => void;
   isInitialized: boolean;
@@ -51,8 +53,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const radioSystemRef = useRef<RadioSystem | null>(null);
   const inventorySystemRef = useRef<InventorySystem | null>(null);
   const antennaSystemRef = useRef<AntennaSystem | null>(null);
-  const slamSystemRef = useRef<SLAMSystem | null>(null);
   const cameraSystemRef = useRef<CameraSystem | null>(null);
+  const survivalSystemRef = useRef<SurvivalSystem | null>(null);
+  const vehicleSystemRef = useRef<VehicleSystem | null>(null);
 
   const initGame = (canvas?: HTMLCanvasElement | null) => {
     if (isInitialized) {
@@ -88,6 +91,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         currentCore: CORE_TYPES.SCAVENGER,
         durability: 100,
         inventory: new Array(6).fill(null),
+        overloadedStunTimer: 0,
       },
       keys: {
         w: false,
@@ -113,21 +117,28 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         echoes: [],
         particles: [],
         items: [],
+        groundItems: [],
         wallEchoes: [],
         radiations: [],
         base: null,
         baseEchoes: [],
       },
       antennaSystem: null,
-      slamSystem: null,
+      survival: { life: 0, integrity: 0, armorDropped: false, fuel: 0, battery: 0 },
+      vehicle: { gear: 'P', speed: 0, steeringAngle: 0, engineOn: false, throttle: 0, brake: 0 },
     };
 
+    // 生存系统（初始化 survival 状态）
+    const survivalSystem = new SurvivalSystem();
+    survivalSystemRef.current = survivalSystem;
+    survivalSystem.initSurvival(initialState);
+
+    const vehicleSystem = new VehicleSystem();
+    vehicleSystemRef.current = vehicleSystem;
+    vehicleSystem.setSurvivalSystem(survivalSystem);
+    vehicleSystem.initVehicle(initialState);
+
     // 2. 初始化系统（按依赖顺序）
-    
-    // SLAM系统（无依赖）
-    const slamSystem = new SLAMSystem();
-    slamSystemRef.current = slamSystem;
-    initialState.slamSystem = slamSystem;
 
     // 天线系统（无依赖）
     const antennaSystem = new AntennaSystem();
@@ -154,8 +165,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       initialState,
       {
         onInventoryUpdate: () => {
-          // UI更新回调
-          console.log('Inventory updated');
+          // UI 更新回调
         },
         onLogMessage: (message: string) => {
           if (initialState) {
@@ -163,13 +173,20 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             initialState.messageTimer = 3.0;
           }
         },
-        onAddEnergy: (amount: number) => {
-          if (initialState) {
-            initialState.p.en = Math.min(100, initialState.p.en + amount);
+        onAddFuel: (amount: number) => {
+          if (initialState?.survival) {
+            initialState.survival.fuel = Math.min(100, initialState.survival.fuel + amount);
           }
         },
-        onSpawnParticles: (_x, _y, _color, _count) => {
-          // 粒子效果回调
+        onAddBattery: (amount: number) => {
+          if (initialState?.survival) {
+            initialState.survival.battery = Math.min(100, initialState.survival.battery + amount);
+          }
+        },
+        onAddIntegrity: (amount: number) => {
+          if (initialState?.survival) {
+            initialState.survival.integrity = Math.min(100, initialState.survival.integrity + amount);
+          }
         },
       }
     );
@@ -200,8 +217,14 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           console.log('Init walls callback');
         },
         // 实体更新回调（将在后续阶段实现）
-        updatePlayer: (_deltaTime) => {
-          // 玩家更新逻辑
+        updatePlayer: (deltaTime) => {
+          if (vehicleSystem && initialState && initialState.currentScene === 'drive') {
+            vehicleSystem.update(initialState, deltaTime);
+            if (survivalSystem) {
+              const isMoving = Math.abs(initialState.vehicle?.speed ?? 0) > 0.5;
+              survivalSystem.consumeFuelForDriving(initialState, deltaTime, isMoving);
+            }
+          }
         },
         updateEnemies: () => {
           // 敌人更新逻辑
@@ -260,8 +283,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     radioSystem: radioSystemRef.current,
     inventorySystem: inventorySystemRef.current,
     antennaSystem: antennaSystemRef.current,
-    slamSystem: slamSystemRef.current,
     cameraSystem: cameraSystemRef.current,
+    survivalSystem: survivalSystemRef.current,
+    vehicleSystem: vehicleSystemRef.current,
     setGameState,
     initGame,
     isInitialized,

@@ -38,10 +38,13 @@ export class DriveScene extends Scene {
   override enter(data?: SceneData): void {
     super.enter(data);
 
+    if (this.gameState) {
+      this.gameState.currentScene = SCENES.DRIVE;
+    }
+
     // 设置输入上下文为 DRIVE（驾驶模式）
     if (this.inputManager) {
-      this.inputManager.setContext(INPUT_CONTEXTS.TACTICAL_RADAR);
-      // 兼容旧的 TACTICAL_RADAR 上下文，后续会在 InputManager 中显式增加 DRIVE 上下文
+      this.inputManager.setContext(INPUT_CONTEXTS.DRIVE);
     }
 
     // 显示 gameCanvas
@@ -50,14 +53,10 @@ export class DriveScene extends Scene {
       gameCanvas.style.display = 'block';
     }
 
-    // 隐藏旧的无线电/装配等 UI 容器
+    // 隐藏旧的无线电 UI 容器
     const radioModeDisplay = document.getElementById('radio-mode-display');
     if (radioModeDisplay) {
       radioModeDisplay.style.display = 'none';
-    }
-    const assemblyContainer = document.getElementById('assembly-container');
-    if (assemblyContainer) {
-      assemblyContainer.style.display = 'none';
     }
 
     // 显示世界 UI 容器（驾驶舱 HUD 会挂在这里）
@@ -66,9 +65,9 @@ export class DriveScene extends Scene {
       worldUI.style.display = 'block';
     }
 
-    // 设置显示模式为 ROBOT_DISPLAY（后续可重命名为 COCKPIT_DISPLAY）
+    // 设置显示模式为驾驶舱
     if (this.sceneManager) {
-      this.sceneManager.switchDisplayMode(DISPLAY_MODES.ROBOT_DISPLAY);
+      this.sceneManager.switchDisplayMode(DISPLAY_MODES.COCKPIT_DISPLAY);
     }
 
     // 相机切换到驾驶模式，并使用驾驶舱相机作为主相机
@@ -86,6 +85,9 @@ export class DriveScene extends Scene {
 
   override exit(): void {
     super.exit();
+    if (this.gameState) {
+      this.gameState.currentScene = undefined;
+    }
     const cockpitBottom = document.getElementById('cockpit-bottom');
     const cockpitSteering = document.getElementById('cockpit-steering');
     if (cockpitBottom) cockpitBottom.style.display = 'none';
@@ -131,7 +133,7 @@ export class DriveScene extends Scene {
     const action = inputEvent.action;
 
     // Tab 打开后备箱（切换到 Inventory 场景）
-    if (action === 'open_inventory' || key === 'tab') {
+    if (action === 'inventory' || key === 'tab') {
       if (this.sceneManager) {
         this.sceneManager.switchScene(SCENES.INVENTORY, 'fade');
       }

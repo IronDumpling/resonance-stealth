@@ -27,7 +27,7 @@ export abstract class BaseEntity implements IBaseEntity {
    * 更新实体状态
    * @param deltaTime 时间差（秒）
    */
-  update(deltaTime: number): void {
+  update(_deltaTime: number): void {
     // 空实现，保留方法签名
   }
 
@@ -35,7 +35,7 @@ export abstract class BaseEntity implements IBaseEntity {
    * 渲染实体
    * @param ctx Canvas 2D 上下文
    */
-  render(ctx: CanvasRenderingContext2D): void {
+  render(_ctx: CanvasRenderingContext2D): void {
     // 空实现，保留方法签名
   }
 }

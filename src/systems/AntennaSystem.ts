@@ -66,8 +66,6 @@ export class AntennaSystem implements IAntennaSystem {
       // 检查波纹是否在天线范围内（考虑波纹半径）
       // 如果波纹的任何部分在天线范围内，就认为被接收
       const waveMinDist = Math.max(0, distance - (w.r || 0));  // 波纹最近边缘到玩家的距离
-      const waveMaxDist = distance + (w.r || 0);  // 波纹最远边缘到玩家的距离
-      
       // 波纹是否与天线范围有交集
       if (waveMinDist > this.range) continue;  // 波纹完全在天线范围外
       
@@ -76,14 +74,7 @@ export class AntennaSystem implements IAntennaSystem {
       const angleDiff = this.normalizeAngle(angleToWave - this.direction);
       
       // 对于扇形检测，需要考虑波纹的扩散角度
-      // 简化：如果波纹中心在扇形内，或者波纹扩散角度与扇形有交集
       const waveSpread = w.spread || 0;
-      const waveStartAngle = (w.angle || 0) - waveSpread / 2;
-      const waveEndAngle = (w.angle || 0) + waveSpread / 2;
-      
-      // 检查波纹角度范围是否与天线扇形有交集
-      const antennaStartAngle = this.direction - this.angle / 2;
-      const antennaEndAngle = this.direction + this.angle / 2;
       
       let angleOverlap = false;
       // 简化检测：如果波纹中心角度在扇形内，或者波纹角度范围与扇形有交集

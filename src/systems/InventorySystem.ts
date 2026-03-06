@@ -1,310 +1,275 @@
 /**
- * 背包系统
- * Inventory System
+ * 后备箱/物资系统
+ * Trunk & Inventory System
+ *
+ * 管理后备箱网格、安全屋无限仓库、地面掉落物。
+ * 支持拖拽、丢弃、拾取、使用物品。
  */
 
-import { IInventorySystem } from '@/types/systems';
-import { CFG, CORE_TYPES } from '@/config/gameConfig';
-import { IItem, IHotCore } from '@/types/entities';
+import type { IGameState } from '@/types/game';
+import type { IItem, ITrunkItem, IGroundItem, ItemType } from '@/types/entities';
+import { getItemDef } from '@/config/itemDefs';
 
-// 仓库系统接口
-export interface IWarehouse {
-  items: (IItem | null)[];
-  maxSize: number;
-}
+const TRUNK_WIDTH = 4;
+const TRUNK_HEIGHT = 6;
 
-// 游戏状态接口（用于访问玩家背包）
-export interface IGameStateForInventory {
-  p: {
-    inventory: (IItem | null)[];
-    en: number;
-    getMaxEnergy?: () => number;
-  };
-}
-
-export class InventorySystem implements IInventorySystem {
-  warehouse: IWarehouse = {
-    items: [],
-    maxSize: 36
-  };
-  
-  gameState: IGameStateForInventory | null = null;
+export interface IInventoryCallbacks {
   onInventoryUpdate?: () => void;
   onLogMessage?: (message: string) => void;
-  onAddEnergy?: (amount: number) => void;
-  onSpawnParticles?: (x: number, y: number, color: string, count: number) => void;
+  onAddFuel?: (amount: number) => void;
+  onAddBattery?: (amount: number) => void;
+  onAddIntegrity?: (amount: number) => void;
+}
+
+export class InventorySystem {
+  trunkItems: ITrunkItem[] = [];
+  trunkWidth = TRUNK_WIDTH;
+  trunkHeight = TRUNK_HEIGHT;
+  safehouseWarehouse: ITrunkItem[] = [];
+  gameState: IGameState | null = null;
+  callbacks: IInventoryCallbacks = {};
 
   constructor(
-    gameState?: IGameStateForInventory | null,
-    callbacks?: {
-      onInventoryUpdate?: () => void;
-      onLogMessage?: (message: string) => void;
-      onAddEnergy?: (amount: number) => void;
-      onSpawnParticles?: (x: number, y: number, color: string, count: number) => void;
-    }
+    gameState?: IGameState | null,
+    callbacks?: IInventoryCallbacks
   ) {
     this.gameState = gameState || null;
-    if (callbacks) {
-      this.onInventoryUpdate = callbacks.onInventoryUpdate;
-      this.onLogMessage = callbacks.onLogMessage;
-      this.onAddEnergy = callbacks.onAddEnergy;
-      this.onSpawnParticles = callbacks.onSpawnParticles;
-    }
+    if (callbacks) this.callbacks = callbacks;
   }
 
-  /**
-   * 初始化仓库
-   */
-  initWarehouse(): void {
-    this.warehouse.items = new Array(36).fill(null);
-    console.log('Warehouse initialized with 36 slots');
+  private getOccupiedCells(items: ITrunkItem[]): Set<string> {
+    const occupied = new Set<string>();
+    for (const item of items) {
+      const def = getItemDef(item.type as ItemType);
+      if (!def) continue;
+      for (let dy = 0; dy < def.height; dy++) {
+        for (let dx = 0; dx < def.width; dx++) {
+          occupied.add(`${item.gridX + dx},${item.gridY + dy}`);
+        }
+      }
+    }
+    return occupied;
   }
 
-  /**
-   * 初始化玩家背包
-   */
-  initPlayerInventory(): void {
-    if (!this.gameState) {
-      console.error('Game state not set for InventorySystem');
-      return;
+  private canPlaceAt(items: ITrunkItem[], item: ITrunkItem, gx: number, gy: number): boolean {
+    const def = getItemDef(item.type as ItemType);
+    if (!def) return false;
+    if (gx + def.width > this.trunkWidth || gy + def.height > this.trunkHeight) return false;
+    const occupied = this.getOccupiedCells(items.filter(i => i !== item));
+    for (let dy = 0; dy < def.height; dy++) {
+      for (let dx = 0; dx < def.width; dx++) {
+        if (occupied.has(`${gx + dx},${gy + dy}`)) return false;
+      }
     }
-    
-    const inventorySize = CFG.inventorySize || 6;
-    this.gameState.p.inventory = new Array(inventorySize).fill(null);
-    
-    // 初始拾荒者核心（core_hot类型）
-    this.gameState.p.inventory[0] = {
-      type: 'core_hot',
+    return true;
+  }
+
+  /** 找到可放置物品的第一个空位 */
+  private findPlacement(items: ITrunkItem[], item: ITrunkItem): { x: number; y: number } | null {
+    const def = getItemDef(item.type as ItemType);
+    if (!def) return null;
+    for (let gy = 0; gy <= this.trunkHeight - def.height; gy++) {
+      for (let gx = 0; gx <= this.trunkWidth - def.width; gx++) {
+        if (this.canPlaceAt(items, item, gx, gy)) return { x: gx, y: gy };
+      }
+    }
+    return null;
+  }
+
+  /** 添加物品到后备箱 */
+  addToTrunk(type: ItemType, count: number = 1): boolean {
+    const def = getItemDef(type);
+    if (!def) return false;
+    const existing = this.trunkItems.find(
+      i => i.type === type && (def.stackMax > 1 ? i.count < def.stackMax : false)
+    );
+    if (existing && def.stackMax > 1) {
+      const add = Math.min(count, def.stackMax - existing.count);
+      existing.count += add;
+      this.notifyUpdate();
+      return add === count;
+    }
+    const newItem: ITrunkItem = {
+      type,
       x: 0,
       y: 0,
       visibleTimer: 0,
-      value: 0,
-      coreData: CORE_TYPES.SCAVENGER
-    } as IHotCore;
-    
-    console.log('Player inventory initialized with Scavenger core');
-  }
-
-  /**
-   * 添加物品到背包
-   */
-  addItem(item: unknown): boolean {
-    if (!this.gameState) {
-      console.error('Game state not set for InventorySystem');
-      return false;
-    }
-    
-    const itemType = (item as IItem).type;
-    if (!itemType) {
-      console.error('Invalid item type');
-      return false;
-    }
-    
-    // 检查是否有空位（null槽位），但跳过slot 0（核心槽位）
-    let emptySlotIndex = -1;
-    for (let i = 1; i < this.gameState.p.inventory.length; i++) {
-      if (this.gameState.p.inventory[i] === null) {
-        emptySlotIndex = i;
-        break;
-      }
-    }
-    
-    // 如果slot 0为空，且物品是core_hot，可以放入slot 0
-    if (this.gameState.p.inventory[0] === null && itemType === 'core_hot') {
-      emptySlotIndex = 0;
-    }
-    
-    if (emptySlotIndex === -1) {
-      if (this.onLogMessage) {
-        this.onLogMessage("INVENTORY FULL");
-      }
-      return false;
-    }
-    
-    // 验证：如果目标槽位是0，只允许core_hot
-    if (emptySlotIndex === 0 && itemType !== 'core_hot') {
-      if (this.onLogMessage) {
-        this.onLogMessage("CORE SLOT ONLY ACCEPTS HOT CORE");
-      }
-      return false;
-    }
-    
-    const newItem: IItem = {
-      ...(item as IItem),
-      id: Math.random().toString(36).substr(2, 9)
+      gridX: 0,
+      gridY: 0,
+      count: Math.min(count, def.stackMax),
     };
-    
-    // 放入槽位
-    this.gameState.p.inventory[emptySlotIndex] = newItem;
-    
-    // 更新UI
-    if (this.onInventoryUpdate) {
-      this.onInventoryUpdate();
+    const pos = this.findPlacement(this.trunkItems, newItem);
+    if (!pos) {
+      this.callbacks.onLogMessage?.('TRUNK FULL');
+      return false;
     }
-    
+    newItem.gridX = pos.x;
+    newItem.gridY = pos.y;
+    this.trunkItems.push(newItem);
+    this.notifyUpdate();
     return true;
   }
 
-  /**
-   * 从背包移除物品（按索引）
-   */
-  removeItem(index: number): boolean {
-    if (!this.gameState) {
-      console.error('Game state not set for InventorySystem');
-      return false;
-    }
-    
-    if (index < 0 || index >= this.gameState.p.inventory.length) {
-      return false;
-    }
-    
-    // 将该槽位设置为null而不是删除，保持背包大小固定
-    this.gameState.p.inventory[index] = null;
-    
-    // 更新UI
-    if (this.onInventoryUpdate) {
-      this.onInventoryUpdate();
-    }
-    
-    return true;
-  }
-
-  /**
-   * 从背包移除物品（按类型，移除第一个匹配的）
-   */
-  removeItemByType(itemType: string): boolean {
-    if (!this.gameState) {
-      console.error('Game state not set for InventorySystem');
-      return false;
-    }
-    
-    const index = this.gameState.p.inventory.findIndex(
-      item => item && item.type === itemType
+  /** 从后备箱移除物品（按 grid 位置） */
+  removeFromTrunk(gridX: number, gridY: number): ITrunkItem | null {
+    const idx = this.trunkItems.findIndex(
+      i => gridX >= i.gridX && gridX < i.gridX + (getItemDef(i.type as ItemType)?.width ?? 1) &&
+           gridY >= i.gridY && gridY < i.gridY + (getItemDef(i.type as ItemType)?.height ?? 1)
     );
-    
-    if (index !== -1) {
-      return this.removeItem(index);
-    }
-    
-    return false;
+    if (idx < 0) return null;
+    const [item] = this.trunkItems.splice(idx, 1);
+    this.notifyUpdate();
+    return item;
   }
 
-  /**
-   * 获取所有物品
-   */
+  /** 丢弃到地面（世界坐标） */
+  dropToGround(item: ITrunkItem, worldX: number, worldY: number): boolean {
+    if (!this.gameState) return false;
+    const idx = this.trunkItems.indexOf(item);
+    if (idx < 0) return false;
+    this.trunkItems.splice(idx, 1);
+    const ground: IGroundItem = {
+      ...item,
+      x: worldX,
+      y: worldY,
+      count: item.count,
+    };
+    this.gameState.entities.groundItems.push(ground);
+    this.notifyUpdate();
+    this.callbacks.onLogMessage?.('DROPPED');
+    return true;
+  }
+
+  /** 从地面拾取到后备箱 */
+  pickFromGround(groundItem: IGroundItem): boolean {
+    if (!this.gameState) return false;
+    const idx = this.gameState.entities.groundItems.indexOf(groundItem);
+    if (idx < 0) return false;
+    this.gameState.entities.groundItems.splice(idx, 1);
+    const trunkItem: ITrunkItem = {
+      ...groundItem,
+      gridX: 0,
+      gridY: 0,
+      count: groundItem.count,
+    };
+    const pos = this.findPlacement(this.trunkItems, trunkItem);
+    if (!pos) {
+      this.gameState.entities.groundItems.push(groundItem);
+      this.callbacks.onLogMessage?.('TRUNK FULL');
+      return false;
+    }
+    trunkItem.gridX = pos.x;
+    trunkItem.gridY = pos.y;
+    this.trunkItems.push(trunkItem);
+    this.notifyUpdate();
+    return true;
+  }
+
+  /** 使用物品（燃油/电池/修复） */
+  useItem(item: ITrunkItem): boolean {
+    const def = getItemDef(item.type as ItemType);
+    if (!def?.useEffect || !this.gameState) return false;
+    const survival = this.gameState.survival;
+    if (!survival) return false;
+
+    switch (def.useEffect) {
+      case 'fuel_small':
+      case 'fuel_medium':
+        survival.fuel = Math.min(100, survival.fuel + (def.useAmount ?? 0));
+        this.callbacks.onAddFuel?.(def.useAmount ?? 0);
+        break;
+      case 'charge':
+        survival.battery = Math.min(100, survival.battery + (def.useAmount ?? 0));
+        this.callbacks.onAddBattery?.(def.useAmount ?? 0);
+        break;
+      case 'repair':
+        survival.integrity = Math.min(100, survival.integrity + (def.useAmount ?? 0));
+        this.callbacks.onAddIntegrity?.(def.useAmount ?? 0);
+        break;
+      default:
+        return false;
+    }
+
+    item.count--;
+    if (item.count <= 0) {
+      const idx = this.trunkItems.indexOf(item);
+      if (idx >= 0) this.trunkItems.splice(idx, 1);
+    }
+    this.notifyUpdate();
+    this.callbacks.onLogMessage?.(`USED ${def.name}`);
+    return true;
+  }
+
+  /** 转移到安全屋仓库 */
+  transferToWarehouse(item: ITrunkItem): boolean {
+    const idx = this.trunkItems.indexOf(item);
+    if (idx < 0) return false;
+    this.trunkItems.splice(idx, 1);
+    this.safehouseWarehouse.push(item);
+    this.notifyUpdate();
+    return true;
+  }
+
+  /** 从仓库取回后备箱 */
+  transferFromWarehouse(item: ITrunkItem): boolean {
+    const idx = this.safehouseWarehouse.indexOf(item);
+    if (idx < 0) return false;
+    this.safehouseWarehouse.splice(idx, 1);
+    const pos = this.findPlacement(this.trunkItems, item);
+    if (!pos) {
+      this.safehouseWarehouse.push(item);
+      this.callbacks.onLogMessage?.('TRUNK FULL');
+      return false;
+    }
+    item.gridX = pos.x;
+    item.gridY = pos.y;
+    this.trunkItems.push(item);
+    this.notifyUpdate();
+    return true;
+  }
+
+  getTrunkItems(): ITrunkItem[] {
+    return this.trunkItems;
+  }
+
+  getWarehouseItems(): ITrunkItem[] {
+    return this.safehouseWarehouse;
+  }
+
+  getGroundItems(): IGroundItem[] {
+    return this.gameState?.entities.groundItems ?? [];
+  }
+
+  private notifyUpdate(): void {
+    this.callbacks.onInventoryUpdate?.();
+  }
+
+  // --- 兼容旧接口（供现有代码调用）---
+  addItem(item: unknown): boolean {
+    const i = item as IItem;
+    return this.addToTrunk(i.type as ItemType, 1);
+  }
+
+  removeItem(_index: number): boolean {
+    return false; // 旧接口按索引，新系统按网格
+  }
+
   getItems(): unknown[] {
-    if (!this.gameState) {
-      return [];
-    }
-    
-    return this.gameState.p.inventory.filter(item => item !== null);
+    return this.trunkItems;
   }
 
-  /**
-   * 获取背包中某类型物品的数量
-   */
-  getInventoryCount(itemType: string): number {
-    if (!this.gameState) {
-      return 0;
-    }
-    
-    return this.gameState.p.inventory.filter(
-      item => item && item.type === itemType
-    ).length;
+  /** 初始化玩家背包（兼容：给后备箱放一些测试物品） */
+  initPlayerInventory(): void {
+    this.trunkItems = [];
+    // 测试用：放几个物品
+    this.addToTrunk('fuel_can_small', 1);
+    this.addToTrunk('repair_kit_small', 3);
+    this.addToTrunk('battery_small', 2);
+    this.notifyUpdate();
   }
 
-  /**
-   * 使用能量瓶
-   */
-  useenergyBottle(): boolean {
-    if (!this.gameState) {
-      console.error('Game state not set for InventorySystem');
-      return false;
-    }
-    
-    if (this.getInventoryCount('energy_bottle') === 0) {
-      if (this.onLogMessage) {
-        this.onLogMessage("NO ENERGY FLASK");
-      }
-      return false;
-    }
-    
-    // 使用player的getMaxEnergy方法（如果可用），否则使用默认值
-    const maxEnergy = this.gameState.p.getMaxEnergy ? this.gameState.p.getMaxEnergy() : 100;
-    if (this.gameState.p.en >= maxEnergy) {
-      if (this.onLogMessage) {
-        this.onLogMessage("ENERGY FULL");
-      }
-      return false;
-    }
-    
-    if (this.removeItemByType('energy_bottle')) {
-      const energyValue = CFG.energyBottleVal || 30;
-      if (this.onAddEnergy) {
-        this.onAddEnergy(energyValue);
-      }
-      if (this.onLogMessage) {
-        this.onLogMessage(`ENERGY RESTORED (+${energyValue})`);
-      }
-      if (this.onSpawnParticles && this.gameState.p) {
-        // 需要玩家位置，这里暂时使用 (0, 0)
-        // 实际使用时应该从 gameState 获取玩家位置
-        this.onSpawnParticles(0, 0, '#00ff00', 20);
-      }
-      return true;
-    }
-    
-    return false;
-  }
-
-  /**
-   * 将背包物品转移到仓库
-   */
-  transferInventoryToWarehouse(): number {
-    if (!this.gameState) {
-      console.error('Game state not set for InventorySystem');
-      return 0;
-    }
-    
-    let transferredCount = 0;
-    
-    // 遍历玩家背包
-    for (let i = 0; i < this.gameState.p.inventory.length; i++) {
-      const item = this.gameState.p.inventory[i];
-      
-      // 跳过空槽位
-      if (!item) continue;
-      
-      // 在仓库中寻找空位
-      const emptySlotIndex = this.warehouse.items.findIndex(slot => slot === null);
-      
-      if (emptySlotIndex !== -1) {
-        // 找到空位，转移物品
-        this.warehouse.items[emptySlotIndex] = item;
-        this.gameState.p.inventory[i] = null;
-        transferredCount++;
-      } else {
-        // 仓库已满，保留在背包中
-        console.warn('Warehouse is full, item remains in inventory');
-      }
-    }
-    
-    // 更新UI
-    if (this.onInventoryUpdate) {
-      this.onInventoryUpdate();
-    }
-    
-    if (this.onLogMessage) {
-      this.onLogMessage(`TRANSFERRED ${transferredCount} ITEMS TO WAREHOUSE`);
-    }
-    
-    return transferredCount;
-  }
-
-  /**
-   * 获取仓库
-   */
-  getWarehouse(): IWarehouse {
-    return this.warehouse;
+  /** 初始化仓库（兼容） */
+  initWarehouse(): void {
+    this.safehouseWarehouse = [];
   }
 }

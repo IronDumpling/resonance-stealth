@@ -24,11 +24,11 @@ export class Enemy extends BaseEntity implements IEnemy {
     // 空实现，保留方法签名
   }
 
-  override update(deltaTime: number): void {
+  override update(_deltaTime: number): void {
     // 空实现，保留方法签名
   }
 
-  override render(ctx: CanvasRenderingContext2D): void {
+  override render(_ctx: CanvasRenderingContext2D): void {
     // 空实现，保留方法签名
   }
 }

@@ -12,16 +12,8 @@ export const SCENES = {
   CRT_ON: 'crt_on',
   MONITOR_MENU: 'monitor_menu',
 
-  // 新驾驶相关场景
   DRIVE: 'drive',          // 驾驶舱主场景（挡风玻璃声纳 + 仪表盘 + 收音机 + 驾驶UI）
   INVENTORY: 'inventory',  // 后备箱/物资管理场景
-
-  // 旧场景（后续将在cleanup阶段移除）
-  TACTICAL_RADAR: 'tactical_radar',        // 原 ROBOT
-  WIDE_RADAR: 'wide_radar',                // 原 RADIO 的 radar map 部分
-  SIGNAL_PROCESSING: 'signal_processing',  // 原 RADIO 的 morse code + signal record + signal editing
-  ROBOT_ASSEMBLY: 'robot_assembly',
-  ESCAPE_RESULT: 'escape_result',
 } as const;
 
 export type SceneType = typeof SCENES[keyof typeof SCENES];
@@ -32,8 +24,7 @@ export const DISPLAY_MODES = {
   BOOTING: 'booting',
   MENU: 'menu',
   RADIO_DISPLAY: 'radio_display',
-  ROBOT_DISPLAY: 'robot_display',
-  ASSEMBLY_DISPLAY: 'assembly_display',
+  COCKPIT_DISPLAY: 'cockpit_display',  // 驾驶舱显示（原 ROBOT_DISPLAY）
 } as const;
 
 export type DisplayMode = typeof DISPLAY_MODES[keyof typeof DISPLAY_MODES];

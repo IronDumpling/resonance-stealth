@@ -18,7 +18,7 @@ export abstract class Scene implements IScene {
   /**
    * 场景进入时调用
    */
-  enter(data?: SceneData): void {
+  enter(_data?: SceneData): void {
     this.isActive = true;
     // 空实现，保留方法签名
   }
@@ -34,21 +34,21 @@ export abstract class Scene implements IScene {
   /**
    * 每帧更新
    */
-  update(deltaTime: number): void {
+  update(_deltaTime: number): void {
     // 空实现，保留方法签名
   }
 
   /**
    * 渲染场景
    */
-  render(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
+  render(_ctx: CanvasRenderingContext2D, _canvas: HTMLCanvasElement): void {
     // 空实现，保留方法签名
   }
 
   /**
    * 处理输入
    */
-  handleInput?(event: unknown): void {
+  handleInput?(_event: unknown): void {
     // 空实现，保留方法签名
   }
 }

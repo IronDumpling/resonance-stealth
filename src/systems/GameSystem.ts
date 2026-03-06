@@ -335,8 +335,8 @@ export class GameSystem implements IGameSystem {
       );
       
       // 将反弹波记录到SLAM系统
-      if (this.gameState.slamSystem && reflections.length > 0) {
-        this.gameState.slamSystem.addPointsFromReflections(reflections);
+      if (reflections.length > 0) {
+        // SLAM removed; 后续由 SonarSystem 接管回波缓存
       }
     }
     

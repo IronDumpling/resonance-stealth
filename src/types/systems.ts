@@ -10,12 +10,9 @@ export const INPUT_CONTEXTS = {
   NONE: 'none',
   CRT_CONTROL: 'crt_control',
   MENU: 'menu',
-  ROBOT_ASSEMBLY: 'robot_assembly',
-  TACTICAL_RADAR: 'tactical_radar',       // 战术雷达场景
-  WIDE_RADAR: 'wide_radar',               // 广域雷达场景
-  SIGNAL_PROCESSING: 'signal_processing', // 信号处理场景
-  RADIO_CONTROLS: 'radio_controls',       // 通用无线电控制（频率、天线、发射波）
-  ESCAPE_RESULT: 'escape_result',
+  DRIVE: 'drive',           // 驾驶场景
+  INVENTORY: 'inventory',   // 后备箱场景
+  RADIO_CONTROLS: 'radio_controls',  // 通用无线电控制（频率、天线、发射波）
 } as const;
 
 export type InputContext = typeof INPUT_CONTEXTS[keyof typeof INPUT_CONTEXTS];
@@ -105,12 +102,6 @@ export interface IInventorySystem {
 export interface IAntennaSystem {
   updateDirection(angle: number): void;
   detectReflectedWaves(waves: unknown[], x: number, y: number): unknown[];
-}
-
-// SLAM系统接口
-export interface ISLAMSystem {
-  addPointsFromReflections(reflections: unknown[]): void;
-  getPoints(): unknown[];
 }
 
 // UI管理器接口

@@ -20,18 +20,35 @@ import {
   CrtOffScene,
   CrtOnScene,
   MonitorMenuScene,
-  // 旧场景（将逐步废弃）
-  RobotAssemblyScene,
-  TacticalRadarScene,
-  WideRadarScene,
-  SignalProcessingScene,
-  EscapeResultScene,
-  // 新驾驶相关场景
   DriveScene,
   InventoryScene,
 } from '@/scenes';
 import { RadioControlPanel } from '@/ui/RadioControlPanel';
 import { COCKPIT_CONFIG } from '@/config/gameConfig';
+import type { ISurvivalState } from '@/types/game';
+
+/** 将生存状态同步到仪表盘 DOM（HULL/HP/BATT/FUEL） */
+function syncSurvivalDashboard(survival: ISurvivalState | null | undefined): void {
+  if (!survival) return;
+  const grid = document.querySelector('#cockpit-dashboard .ref-gauge-grid');
+  if (!grid) return;
+  const gauges = grid.querySelectorAll('.ref-gauge');
+  const max = 100;
+  const data: Array<{ value: number; label: string }> = [
+    { value: survival.integrity, label: 'HULL' },
+    { value: survival.life, label: 'HP' },
+    { value: survival.battery, label: 'BATT' },
+    { value: survival.fuel, label: 'FUEL' },
+  ];
+  gauges.forEach((g, i) => {
+    const d = data[i];
+    if (!d) return;
+    const fill = g.querySelector('.ref-gauge-fill') as HTMLElement;
+    const val = g.querySelector('.ref-gauge-value');
+    if (fill) fill.style.width = `${Math.max(0, Math.min(max, d.value))}%`;
+    if (val) val.textContent = `${Math.round(d.value)}/${max}`;
+  });
+}
 
 // 内部App组件，可以使用Context
 const AppInternal: React.FC = () => {
@@ -42,6 +59,8 @@ const AppInternal: React.FC = () => {
     radioSystem, 
     inventorySystem, 
     cameraSystem,
+    survivalSystem,
+    vehicleSystem,
     initGame,
     isInitialized: gameInitialized 
   } = useGameContext();
@@ -108,7 +127,7 @@ const AppInternal: React.FC = () => {
       );
       sceneManager.registerScene(
         SCENES.INVENTORY,
-        new InventoryScene(inputManager, sceneManager, gameState, cameraSystem || undefined)
+        new InventoryScene(inputManager, sceneManager, gameState, cameraSystem || undefined, inventorySystem || undefined)
       );
 
       // 设置初始场景（启动界面）
@@ -198,6 +217,23 @@ const AppInternal: React.FC = () => {
   // 游戏循环
   useGameLoop({
     onUpdate: (deltaTime: number) => {
+      // 生命归零时显示游戏结束
+      if (gameState && survivalSystem && !survivalSystem.isAlive(gameState)) {
+        gameState.currentMessage = 'GAME OVER';
+        gameState.messageTimer = 999;
+      }
+
+      // 同步按键状态到 gameState（供 VehicleSystem 等使用）
+      if (inputManager && gameState) {
+        gameState.keys.w = inputManager.isKeyDown('w');
+        gameState.keys.a = inputManager.isKeyDown('a');
+        gameState.keys.s = inputManager.isKeyDown('s');
+        gameState.keys.d = inputManager.isKeyDown('d');
+        gameState.keys.e = inputManager.isKeyDown('e');
+        gameState.keys.r = inputManager.isKeyDown('r');
+        gameState.keys.f = inputManager.isKeyDown('f');
+      }
+
       // 更新游戏系统
       if (gameSystem && gameState) {
         gameSystem.update(deltaTime);
@@ -236,6 +272,26 @@ const AppInternal: React.FC = () => {
       // 云台 transform（光标跟随）也需每帧更新，否则 React 不重渲染时 gimbal 不随鼠标动
       if (cockpitGimbalRef.current && cameraSystem) {
         cockpitGimbalRef.current.style.transform = cameraSystem.getGimbalTransform();
+      }
+      // 同步生存状态到仪表盘
+      if (gameState?.survival) {
+        syncSurvivalDashboard(gameState.survival);
+      }
+      // 同步车辆状态到驾驶 UI（档位、速度、踏板）
+      if (gameState?.vehicle && vehicleSystem) {
+        const gear = vehicleSystem.getGear(gameState);
+        const speed = Math.round(Math.abs(vehicleSystem.getSpeed(gameState)));
+        const v = gameState.vehicle;
+        const speedEl = document.querySelector('.ref-speed-value');
+        if (speedEl) speedEl.textContent = String(speed);
+        document.querySelectorAll('.ref-gear').forEach((el, i) => {
+          const gs = ['P', 'R', 'N', 'D'];
+          el.classList.toggle('ref-gear-active', gs[i] === gear);
+        });
+        const brakeFill = document.querySelector('.ref-pedal-brake') as HTMLElement;
+        const thrFill = document.querySelector('.ref-pedal-throttle') as HTMLElement;
+        if (brakeFill) brakeFill.style.height = `${v.brake * 100}%`;
+        if (thrFill) thrFill.style.height = `${v.throttle * 100}%`;
       }
 
       // 渲染场景
@@ -343,46 +399,6 @@ const AppInternal: React.FC = () => {
                     <div className="sonar-line sonar-line-h" />
                     <div className="sonar-line sonar-line-v" />
                   </div>
-
-                  {/* Wide Radar Display (for WideRadarScene) */}
-                <div id="wide-radar-display" style={{ display: 'none' }}>
-                  <div id="radar-map-container">
-                    <div className="radar-header">RADAR MAP</div>
-                    <canvas id="radar-canvas" />
-                  </div>
-                </div>
-
-                {/* Signal Processing Display (for SignalProcessingScene) */}
-                <div id="signal-processing-display" style={{ display: 'none' }}>
-                  <div id="morse-reference" />
-                  <div id="decode-input" />
-                </div>
-
-                {/* Assembly Scene UI */}
-                <div id="assembly-container" style={{ display: 'none' }}>
-                  <div className="assembly-layout">
-                    <div className="warehouse-panel">
-                      <h3>WAREHOUSE</h3>
-                      <div id="warehouse-grid" className="item-grid warehouse-grid" />
-                    </div>
-                    <div className="robot-panel">
-                      <div className="robot-diagram">
-                        <canvas id="robot-canvas" width="300" height="400" />
-                      </div>
-                      <div className="robot-inventory-section">
-                        <h4>ROBOT INVENTORY</h4>
-                        <div id="robot-inventory-grid" className="item-grid robot-inv-grid" />
-                      </div>
-                    </div>
-                    <div className="instructions-panel">
-                      <h3>MISSION BRIEFING</h3>
-                      <div id="instructions-list" className="instructions-scroll" />
-                      <button id="btn-departure" className="departure-btn">
-                        DEPARTURE
-                      </button>
-                    </div>
-                  </div>
-                </div>
 
                 {/* CRT Effects Layer */}
                 <div className="crt-glare" />
