@@ -37,13 +37,23 @@ export class InventorySystem {
     if (callbacks) this.callbacks = callbacks;
   }
 
+  /** 获取物品旋转后的有效占格尺寸 */
+  getRotatedDimensions(item: ITrunkItem): { width: number; height: number } {
+    const def = getItemDef(item.type as ItemType);
+    if (!def) return { width: 1, height: 1 };
+    const r = (item.rotation ?? 0) % 360;
+    if (r === 90 || r === 270) {
+      return { width: def.height, height: def.width };
+    }
+    return { width: def.width, height: def.height };
+  }
+
   private getOccupiedCells(items: ITrunkItem[]): Set<string> {
     const occupied = new Set<string>();
     for (const item of items) {
-      const def = getItemDef(item.type as ItemType);
-      if (!def) continue;
-      for (let dy = 0; dy < def.height; dy++) {
-        for (let dx = 0; dx < def.width; dx++) {
+      const { width, height } = this.getRotatedDimensions(item);
+      for (let dy = 0; dy < height; dy++) {
+        for (let dx = 0; dx < width; dx++) {
           occupied.add(`${item.gridX + dx},${item.gridY + dy}`);
         }
       }
@@ -51,13 +61,13 @@ export class InventorySystem {
     return occupied;
   }
 
-  private canPlaceAt(items: ITrunkItem[], item: ITrunkItem, gx: number, gy: number): boolean {
-    const def = getItemDef(item.type as ItemType);
-    if (!def) return false;
-    if (gx + def.width > this.trunkWidth || gy + def.height > this.trunkHeight) return false;
+  /** 检查物品能否放置在 (gx, gy)，考虑旋转 */
+  canPlaceAt(items: ITrunkItem[], item: ITrunkItem, gx: number, gy: number): boolean {
+    const { width, height } = this.getRotatedDimensions(item);
+    if (gx + width > this.trunkWidth || gy + height > this.trunkHeight) return false;
     const occupied = this.getOccupiedCells(items.filter(i => i !== item));
-    for (let dy = 0; dy < def.height; dy++) {
-      for (let dx = 0; dx < def.width; dx++) {
+    for (let dy = 0; dy < height; dy++) {
+      for (let dx = 0; dx < width; dx++) {
         if (occupied.has(`${gx + dx},${gy + dy}`)) return false;
       }
     }
@@ -66,14 +76,38 @@ export class InventorySystem {
 
   /** 找到可放置物品的第一个空位 */
   private findPlacement(items: ITrunkItem[], item: ITrunkItem): { x: number; y: number } | null {
-    const def = getItemDef(item.type as ItemType);
-    if (!def) return null;
-    for (let gy = 0; gy <= this.trunkHeight - def.height; gy++) {
-      for (let gx = 0; gx <= this.trunkWidth - def.width; gx++) {
+    const { width, height } = this.getRotatedDimensions(item);
+    for (let gy = 0; gy <= this.trunkHeight - height; gy++) {
+      for (let gx = 0; gx <= this.trunkWidth - width; gx++) {
         if (this.canPlaceAt(items, item, gx, gy)) return { x: gx, y: gy };
       }
     }
     return null;
+  }
+
+  /** 移动物品到新位置，若无效则忽略 */
+  moveItem(item: ITrunkItem, newGridX: number, newGridY: number): boolean {
+    if (!this.trunkItems.includes(item)) return false;
+    if (!this.canPlaceAt(this.trunkItems, item, newGridX, newGridY)) return false;
+    item.gridX = newGridX;
+    item.gridY = newGridY;
+    this.notifyUpdate();
+    return true;
+  }
+
+  /** 旋转物品，dir: 1=顺时针90°，-1=逆时针90° */
+  rotateItem(item: ITrunkItem, dir: 1 | -1): boolean {
+    if (!this.trunkItems.includes(item)) return false;
+    const r = (item.rotation ?? 0) + dir * 90;
+    const newRotation = ((r % 360) + 360) % 360;
+    const prevRotation = item.rotation ?? 0;
+    item.rotation = newRotation;
+    if (!this.canPlaceAt(this.trunkItems, item, item.gridX, item.gridY)) {
+      item.rotation = prevRotation;
+      return false;
+    }
+    this.notifyUpdate();
+    return true;
   }
 
   /** 添加物品到后备箱 */
@@ -112,10 +146,11 @@ export class InventorySystem {
 
   /** 从后备箱移除物品（按 grid 位置） */
   removeFromTrunk(gridX: number, gridY: number): ITrunkItem | null {
-    const idx = this.trunkItems.findIndex(
-      i => gridX >= i.gridX && gridX < i.gridX + (getItemDef(i.type as ItemType)?.width ?? 1) &&
-           gridY >= i.gridY && gridY < i.gridY + (getItemDef(i.type as ItemType)?.height ?? 1)
-    );
+    const idx = this.trunkItems.findIndex((i) => {
+      const { width, height } = this.getRotatedDimensions(i);
+      return gridX >= i.gridX && gridX < i.gridX + width &&
+             gridY >= i.gridY && gridY < i.gridY + height;
+    });
     if (idx < 0) return null;
     const [item] = this.trunkItems.splice(idx, 1);
     this.notifyUpdate();
@@ -258,13 +293,13 @@ export class InventorySystem {
     return this.trunkItems;
   }
 
-  /** 初始化玩家背包（兼容：给后备箱放一些测试物品） */
+  /** 初始化玩家背包（直接放置物资，暂不实现拾取） */
   initPlayerInventory(): void {
     this.trunkItems = [];
-    // 测试用：放几个物品
-    this.addToTrunk('fuel_can_small', 1);
-    this.addToTrunk('repair_kit_small', 3);
-    this.addToTrunk('battery_small', 2);
+    this.addToTrunk('fuel_can_small', 2);
+    this.addToTrunk('fuel_can_box', 1);
+    this.addToTrunk('repair_kit_small', 4);
+    this.addToTrunk('battery_small', 3);
     this.notifyUpdate();
   }
 

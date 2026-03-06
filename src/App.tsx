@@ -24,7 +24,7 @@ import {
   InventoryScene,
 } from '@/scenes';
 import { RadioControlPanel } from '@/ui/RadioControlPanel';
-import { COCKPIT_CONFIG } from '@/config/gameConfig';
+import { COCKPIT_CONFIG, INVENTORY_UI_LAYERS } from '@/config/gameConfig';
 import type { ISurvivalState } from '@/types/game';
 import type { VehicleGear } from '@/types/game';
 
@@ -111,6 +111,7 @@ const AppInternal: React.FC = () => {
   const radioControlsRef = useRef<HTMLDivElement | null>(null);
   const pageRootRef = useRef<HTMLDivElement | null>(null);
   const cockpitGimbalRef = useRef<HTMLDivElement | null>(null);
+  const cockpitInventoryViewRef = useRef<HTMLDivElement | null>(null);
 
   const [sceneManager] = useState<SceneManager | null>(() => {
     const sm = new SceneManager();
@@ -319,9 +320,11 @@ const AppInternal: React.FC = () => {
         gameState.keys.a = inputManager.isKeyDown('a');
         gameState.keys.s = inputManager.isKeyDown('s');
         gameState.keys.d = inputManager.isKeyDown('d');
+        gameState.keys.space = inputManager.isKeyDown('space');
         gameState.keys.e = inputManager.isKeyDown('e');
         gameState.keys.r = inputManager.isKeyDown('r');
         gameState.keys.f = inputManager.isKeyDown('f');
+        gameState.keys.shift = inputManager.isKeyDown('shift');
       }
 
       // 更新游戏系统
@@ -362,6 +365,10 @@ const AppInternal: React.FC = () => {
       // 云台 transform（光标跟随）也需每帧更新，否则 React 不重渲染时 gimbal 不随鼠标动
       if (cockpitGimbalRef.current && cameraSystem) {
         cockpitGimbalRef.current.style.transform = cameraSystem.getGimbalTransform();
+      }
+      // 页面容器 translateX（cockpit/inventory 滑动）
+      if (cockpitInventoryViewRef.current && cameraSystem) {
+        cockpitInventoryViewRef.current.style.transform = `translateX(${cameraSystem.getContainerTranslateX()}%)`;
       }
       // 同步生存状态到仪表盘（含油门刹车条）
       if (gameState?.survival && gameState?.vehicle) {
@@ -460,6 +467,15 @@ const AppInternal: React.FC = () => {
           transformStyle: 'preserve-3d',
         }}
       >
+      <div ref={cockpitInventoryViewRef} id="cockpit-inventory-view">
+        <div
+          id="cockpit-panel"
+          style={{
+            width: '100%',
+            flexShrink: 0,
+            transformStyle: 'preserve-3d',
+          }}
+        >
       <div id="workstation-container">
         {/* 云台：仅 rotateX/rotateY 光标跟随，无 overflow，3D 视差由兄弟元素实现 */}
         <div
@@ -669,9 +685,25 @@ const AppInternal: React.FC = () => {
 
       {/* World UI Container (for in-game overlays) */}
       <div id="world-ui-container" />
+        </div>
 
+        {/* Inventory Panel */}
+        <div
+          id="inventory-panel"
+          style={{
+            width: '100%',
+            flexShrink: 0,
+            transformStyle: 'preserve-3d',
+            ['--inv-trunk-translateZ' as string]: `${INVENTORY_UI_LAYERS.trunkGrid.translateZ}px`,
+            ['--inv-trunk-rotateY' as string]: `${INVENTORY_UI_LAYERS.trunkGrid.rotateY}deg`,
+            ['--inv-warehouse-translateZ' as string]: `${INVENTORY_UI_LAYERS.warehousePanel.translateZ}px`,
+            ['--inv-warehouse-rotateY' as string]: `${INVENTORY_UI_LAYERS.warehousePanel.rotateY}deg`,
+          }}
+        >
       {/* Inventory UI */}
       <div id="inventory-container" style={{ display: 'none' }} />
+        </div>
+      </div>
       </div>
     </div>
   );

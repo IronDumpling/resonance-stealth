@@ -746,7 +746,7 @@ export class RadioSystem implements IRadioSystem {
         
         // 在信号位置创建任务道具（如果还没有创建）
         if (!(wave as any).signal.questItemCreated && this.callbacks.spawnItem && (wave as any).signal.x && (wave as any).signal.y) {
-          this.callbacks.spawnItem('quest_item', (wave as any).signal.x, (wave as any).signal.y);
+          this.callbacks.spawnItem('battery_small', (wave as any).signal.x, (wave as any).signal.y);
           (wave as any).signal.questItemCreated = true;
           if (this.callbacks.logMsg) {
             this.callbacks.logMsg(`QUEST ITEM SPAWNED AT SIGNAL LOCATION`);

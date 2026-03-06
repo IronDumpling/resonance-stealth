@@ -179,6 +179,8 @@ export const COCKPIT_CONFIG = {
     rotateX: -20,
     translateY: 180,
   },
+  /** 驾驶/后备箱面板切换动画时长（秒） */
+  inventoryTransition: { duration: 0.5 },
   /** 光标跟随旋转（Drive 模式下） */
   mouseLook: {
     maxAngle: 18,   // 最大旋转角度（度）
@@ -215,6 +217,13 @@ export const COCKPIT_CONFIG = {
       bottom: -100,
     },
   },
+};
+
+/** 后备箱 UI 3D 分层 */
+export const INVENTORY_UI_LAYERS = {
+  panel: { translateZ: 0, rotateX: 0, rotateY: 0 },
+  trunkGrid: { translateZ: 20, rotateY: 5 },
+  warehousePanel: { translateZ: 10, rotateY: -5 },
 };
 
 /** 无线电系统配置 */

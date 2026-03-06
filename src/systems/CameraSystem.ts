@@ -19,9 +19,13 @@ import type { IGameState } from '@/types/game';
 import { lerp } from '@/utils/math';
 import { COCKPIT_CONFIG } from '@/config/gameConfig';
 
+const INVENTORY_TRANSITION = COCKPIT_CONFIG.inventoryTransition?.duration ?? 0.5;
+
 export type CameraId = 'world' | 'sonar' | 'cockpit' | 'inventory';
 
 export type CameraMode = 'start' | 'menu' | 'drive' | 'inventory';
+
+export type PageMode = 'drive' | 'inventory';
 
 export interface CameraState {
   x: number;
@@ -53,6 +57,11 @@ export class CameraSystem {
   /** 光标跟随：当前插值角度（度） */
   private mouseLookX = 0;
   private mouseLookY = 0;
+
+  /** 页面面板平移：整个容器 translateX，0=drive -100=inventory（左移以显示右侧 inventory） */
+  private containerTranslateX = 0;
+  private pageMode: PageMode = 'drive';
+  private pageTransitionDuration = INVENTORY_TRANSITION;
 
   constructor() {
     this.cameras = {
@@ -142,15 +151,27 @@ export class CameraSystem {
 
   /**
    * 获取云台 3D transform 字符串（用于 #cockpit-gimbal）
-   * 仅包含光标跟随旋转 rotateX、rotateY，仅在 Drive 模式生效
+   * 仅包含光标跟随旋转 rotateX、rotateY，在 cockpit/inventory 相机下均生效
    */
   getGimbalTransform(): string {
-    const cam = this.cameras[this.activeCamera];
-    const isDrive =
-      (this.activeCamera === 'cockpit' || this.activeCamera === 'inventory') &&
-      cam.mode === 'drive';
-    if (!isDrive) return 'rotateX(0deg) rotateY(0deg)';
+    const hasGimbal =
+      this.activeCamera === 'cockpit' || this.activeCamera === 'inventory';
+    if (!hasGimbal) return 'rotateX(0deg) rotateY(0deg)';
     return `rotateX(${-this.mouseLookY}deg) rotateY(${this.mouseLookX}deg)`;
+  }
+
+  /**
+   * 设置页面模式（驾驶/后备箱），用于 cockpit/inventory 面板的 translateX 动画
+   */
+  setPageMode(mode: PageMode): void {
+    this.pageMode = mode;
+  }
+
+  /**
+   * 获取 cockpit-inventory-view 容器的 translateX 百分比（0=drive, -100=inventory）
+   */
+  getContainerTranslateX(): number {
+    return this.containerTranslateX;
   }
 
   /**
@@ -241,6 +262,14 @@ export class CameraSystem {
     // 4. 为了兼容旧代码，暂时把 world camera 写回 gameState.camera
     gameState.camera.x = worldCam.x;
     gameState.camera.y = worldCam.y;
+
+    // 5. 页面容器 translateX 插值（整体左移以显示 inventory）
+    const targetContainerX = this.pageMode === 'drive' ? 0 : -100;
+    this.containerTranslateX = lerp(
+      this.containerTranslateX,
+      targetContainerX,
+      Math.min(1, (deltaTime / this.pageTransitionDuration) * 4)
+    );
   }
 
   /**
@@ -277,7 +306,8 @@ export class CameraSystem {
 
     if (id === 'inventory') {
       if (mode === 'inventory') {
-        return { translateZ: 0, rotateX: 0, rotateY: 180 };
+        // 使用 cockpit/inventory 面板 translateX 滑动，不再 rotateY 180
+        return { translateZ: 0, rotateX: 0, rotateY: 0 };
       }
       if (mode === 'drive') {
         return { translateZ: 0, rotateX: 0, rotateY: 0 };

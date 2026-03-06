@@ -84,16 +84,15 @@ export interface ICore {
   description: string;
 }
 
-// 物品基类接口
+// 物品基类接口（type 可为 ItemType 或旧版世界实体类型）
 export interface IItem extends IBaseEntity {
-  type: ItemType;
+  type: string;
   visibleTimer: number;
   hintElement?: HTMLElement | null;
 }
 
-// 物品类型（扩展：燃油/电池/修复材料等）
+// 后备箱物品类型（仅四种）
 export type ItemType =
-  | 'energy_bottle' | 'cold_core' | 'core_hot' | 'signal_source'
   | 'fuel_can_small' | 'fuel_can_box' | 'repair_kit_small' | 'battery_small';
 
 // 物品定义（占格/堆叠/使用效果）
@@ -110,11 +109,12 @@ export interface IItemDef {
   useAmount?: number; // 恢复量
 }
 
-// 后备箱格子物品（带网格位置与堆叠数）
+// 后备箱格子物品（带网格位置、堆叠数与旋转）
 export interface ITrunkItem extends IItem {
   gridX: number;
   gridY: number;
   count: number; // 堆叠数量
+  rotation?: number; // 0 | 90 | 180 | 270 度，默认 0
 }
 
 // 地面掉落物（世界坐标持久）

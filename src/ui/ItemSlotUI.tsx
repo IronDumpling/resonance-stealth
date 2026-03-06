@@ -20,14 +20,14 @@ export class ItemSlotUI {
     }
 
     switch (item.type) {
-      case 'energy_bottle':
-        return { icon: '⚡', color: '#00ff00' };
-      case 'core_hot': 
-        return { icon: '◆', color: '#ff6600' };
-      case 'core_cold':
-        return { icon: '◇', color: '#8888ff' };
-      case 'signal_source':
-        return { icon: '◉', color: '#ffaa00' };
+      case 'fuel_can_small':
+        return { icon: '⛽', color: '#f97316' };
+      case 'fuel_can_box':
+        return { icon: '🛢', color: '#ea580c' };
+      case 'repair_kit_small':
+        return { icon: '🔧', color: '#22c55e' };
+      case 'battery_small':
+        return { icon: '▣', color: '#eab308' };
       default:
         return { icon: '?', color: '#ffffff' };
     }
@@ -113,14 +113,12 @@ export class ItemSlotUI {
       
       // 根据物品类型设置背景色
       let backgroundColor = 'rgba(0, 0, 0, 0.3)';
-      if (item.type === 'energy_bottle') {
-        backgroundColor = 'rgba(0, 255, 0, 0.3)';
-      } else if (item.type === 'core_hot' || item.type === 'core_hot') {
-        backgroundColor = 'rgba(255, 100, 0, 0.3)';
-      } else if (item.type === 'core_cold') {
-        backgroundColor = 'rgba(136, 136, 255, 0.3)';
-      } else if (item.type === 'signal_source') {
-        backgroundColor = 'rgba(255, 170, 0, 0.3)';
+      if (item.type === 'fuel_can_small' || item.type === 'fuel_can_box') {
+        backgroundColor = 'rgba(249, 115, 22, 0.3)';
+      } else if (item.type === 'repair_kit_small') {
+        backgroundColor = 'rgba(34, 197, 94, 0.3)';
+      } else if (item.type === 'battery_small') {
+        backgroundColor = 'rgba(234, 179, 8, 0.3)';
       }
       
       slot.style.background = backgroundColor;
@@ -194,15 +192,10 @@ export class ItemSlotUI {
   /**
    * 检查物品是否可以放置在指定槽位
    */
-  static canPlaceInSlot(item: InventoryItem | null, slotIndex: number, source: string): boolean {
-    // 核心槽位（inventory的第一个槽位）只能放置core_hot类型的物品
-    if (slotIndex === 0 && source === 'inventory') {
-      if (!item) {
-        return true; // 允许移除核心
-      }
-      return item.type === 'core_hot' || item.type === 'core_hot';
-    }
-    // 其他槽位可以放置任何物品
-    return true;
+  static canPlaceInSlot(item: InventoryItem | null, _slotIndex: number, _source: string): boolean {
+    // 所有槽位可放置四种物资类型
+    if (!item) return true;
+    const trunkTypes = ['fuel_can_small', 'fuel_can_box', 'repair_kit_small', 'battery_small'];
+    return trunkTypes.includes(item.type);
   }
 }

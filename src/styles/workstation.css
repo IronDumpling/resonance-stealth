@@ -15,6 +15,22 @@
   transform-style: preserve-3d;
 }
 
+/* Cockpit + Inventory 并排面板容器（translateX 滑动切换） */
+#cockpit-inventory-view {
+  display: flex;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+}
+
+#cockpit-panel,
+#inventory-panel {
+  width: 100%;
+  min-width: 100%;
+  height: 100%;
+}
+
 /* Main Workstation / Cockpit Container（需 preserve-3d 以保持子元素 3D 视差） */
 #workstation-container {
     position: relative;
@@ -1216,18 +1232,35 @@
     pointer-events: auto;
 }
 
+#inventory-panel {
+  transform-style: preserve-3d;
+  perspective: 800px;
+}
+
 #inventory-container {
-    pointer-events: none;
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  transform-style: preserve-3d;
 }
 
 #inventory-container > * {
-    pointer-events: auto;
+  pointer-events: auto;
+  transform-style: preserve-3d;
+}
+
+.inventory-trunk-grid {
+  transform: translateZ(var(--inv-trunk-translateZ, 20px)) rotateY(var(--inv-trunk-rotateY, 5deg));
+  transform-style: preserve-3d;
+}
+
+.inventory-warehouse {
+  transform: translateZ(var(--inv-warehouse-translateZ, 10px)) rotateY(var(--inv-warehouse-rotateY, -5deg));
+  transform-style: preserve-3d;
 }
 
 #edge-glow {

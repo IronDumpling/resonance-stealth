@@ -74,6 +74,7 @@ export class DriveScene extends Scene {
     if (this.cameraSystem) {
       this.cameraSystem.setMode('cockpit', 'drive', 0.8);
       this.cameraSystem.setActiveCamera('cockpit');
+      this.cameraSystem.setPageMode('drive');
     }
 
     // 显示底部中控台与方向盘（Drive 模式）
@@ -132,8 +133,8 @@ export class DriveScene extends Scene {
     const key = (inputEvent.key || (inputEvent.originalEvent && inputEvent.originalEvent.key) || '').toLowerCase();
     const action = inputEvent.action;
 
-    // Tab 打开后备箱（切换到 Inventory 场景）
-    if (action === 'inventory' || key === 'tab') {
+    // Shift 打开后备箱（切换到 Inventory 场景）
+    if (action === 'inventory' || key === 'shift') {
       if (this.sceneManager) {
         this.sceneManager.switchScene(SCENES.INVENTORY, 'fade');
       }

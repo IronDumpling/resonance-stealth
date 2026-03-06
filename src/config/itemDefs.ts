@@ -6,42 +6,6 @@
 import type { IItemDef, ItemType } from '@/types/entities';
 
 export const ITEM_DEFS: Record<ItemType, IItemDef> = {
-  energy_bottle: {
-    id: 'energy_bottle',
-    name: 'Energy Bottle',
-    width: 1,
-    height: 1,
-    stackMax: 5,
-    icon: '⚡',
-    color: '#00ff00',
-  },
-  cold_core: {
-    id: 'cold_core',
-    name: 'Cold Core',
-    width: 1,
-    height: 1,
-    stackMax: 1,
-    icon: '◇',
-    color: '#8888ff',
-  },
-  core_hot: {
-    id: 'core_hot',
-    name: 'Hot Core',
-    width: 1,
-    height: 1,
-    stackMax: 1,
-    icon: '◆',
-    color: '#ff6600',
-  },
-  signal_source: {
-    id: 'signal_source',
-    name: 'Signal Source',
-    width: 1,
-    height: 1,
-    stackMax: 1,
-    icon: '◉',
-    color: '#ffaa00',
-  },
   // 小瓶87号燃油：高2格宽1格，不可堆叠，使用添加少量燃油
   fuel_can_small: {
     id: 'fuel_can_small',
@@ -92,6 +56,6 @@ export const ITEM_DEFS: Record<ItemType, IItemDef> = {
   },
 };
 
-export function getItemDef(type: ItemType): IItemDef | undefined {
-  return ITEM_DEFS[type];
+export function getItemDef(type: ItemType | string): IItemDef | undefined {
+  return type in ITEM_DEFS ? ITEM_DEFS[type as ItemType] : undefined;
 }

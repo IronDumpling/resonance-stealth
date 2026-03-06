@@ -113,37 +113,8 @@ export class GameSystem implements IGameSystem {
       }
     }
     
-    // 生成能量瓶
-    const numEnergyBottle = typeof CFG.numEnergyBottle === 'number' ? CFG.numEnergyBottle : 25;
-    if (this.callbacks.spawnItem) {
-      for (let i = 0; i < numEnergyBottle; i++) {
-        this.callbacks.spawnItem('energy_bottle');
-      }
-    }
-    
-    // 生成信号源
-    const storySignals = CFG.storySignals;
-    if (storySignals && Array.isArray(storySignals) && storySignals.length > 0) {
-      const spawnItem = this.callbacks.spawnItem;
-      if (spawnItem) {
-        storySignals.forEach((signalConfig: any) => {
-          // 计算信号源的世界坐标
-          const angleRad = (signalConfig.direction || 0) * Math.PI / 180;
-          const distanceMeters = (signalConfig.distance || 0) * 1000;
-          const signalX = baseX + Math.cos(angleRad) * distanceMeters;
-          const signalY = baseY - Math.sin(angleRad) * distanceMeters;
-          
-          // 生成信号源物品
-          spawnItem('signal_source', signalX, signalY, {
-            frequency: signalConfig.frequency,
-            message: signalConfig.message || '',
-            callsign: signalConfig.callsign || `SIGNAL-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
-            strength: signalConfig.strength || 50,
-            waveEmitInterval: 5.0  // 每5秒发射一次
-          });
-        });
-      }
-    }
+    // 物资生成（暂不实现地面拾取，物资直接放在后备箱 initPlayerInventory）
+    // 保留 spawnItem 回调供后续地图资源点使用
     
     // 初始化相机位置为玩家位置
     this.gameState.camera.x = this.gameState.p.x;

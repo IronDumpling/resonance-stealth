@@ -75,6 +75,7 @@ export class InventoryScene extends Scene {
     if (this.cameraSystem) {
       this.cameraSystem.setMode('inventory', 'inventory', 0.6);
       this.cameraSystem.setActiveCamera('inventory');
+      this.cameraSystem.setPageMode('inventory');
     }
   }
 
@@ -112,12 +113,40 @@ export class InventoryScene extends Scene {
     const key = (inputEvent.key || (inputEvent.originalEvent && inputEvent.originalEvent.key) || '').toLowerCase();
     const action = inputEvent.action;
 
-    // Tab 返回 Drive 场景（镜头向右 180° 的动画后续由 CameraSystem 处理）
-    if (action === 'drive' || key === 'tab') {
+    // Shift 返回 Drive 场景
+    if (action === 'drive' || key === 'shift') {
       if (this.sceneManager) {
         this.sceneManager.switchScene(SCENES.DRIVE, 'fade');
       }
       return true;
+    }
+
+    // WASD/QE 移动与旋转选中物品
+    if (this.trunkUI?.getSelectedItem()) {
+      if (action === 'inv_move_up') {
+        this.trunkUI.handleMove(0, -1);
+        return true;
+      }
+      if (action === 'inv_move_down') {
+        this.trunkUI.handleMove(0, 1);
+        return true;
+      }
+      if (action === 'inv_move_left') {
+        this.trunkUI.handleMove(-1, 0);
+        return true;
+      }
+      if (action === 'inv_move_right') {
+        this.trunkUI.handleMove(1, 0);
+        return true;
+      }
+      if (action === 'inv_rotate_left') {
+        this.trunkUI.handleRotate(-1);
+        return true;
+      }
+      if (action === 'inv_rotate_right') {
+        this.trunkUI.handleRotate(1);
+        return true;
+      }
     }
 
     return false;

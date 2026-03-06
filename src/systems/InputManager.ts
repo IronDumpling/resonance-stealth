@@ -67,20 +67,24 @@ export class InputManager implements IInputManager {
 
     // 驾驶场景上下文（游戏主场景）
     this.registerContext(INPUT_CONTEXTS.DRIVE, {
-      'w': 'move_up',
-      'a': 'move_left',
-      's': 'move_down',
-      'd': 'move_right',
-      'shift': 'run',
+      'w': 'throttle',
+      'a': 'left_turn',
+      's': 'brake',
+      'd': 'right_turn',
+      'shift': 'inventory',
       'e': 'interact',
-      'r': 'refill_energy',
-      'f': 'struggle',
-      'tab': 'inventory',
+      'space': 'emit_sonar'
     });
 
     // 后备箱场景上下文
     this.registerContext(INPUT_CONTEXTS.INVENTORY, {
-      'tab': 'drive',
+      'shift': 'drive',
+      'w': 'inv_move_up',
+      'a': 'inv_move_left',
+      's': 'inv_move_down',
+      'd': 'inv_move_right',
+      'q': 'inv_rotate_left',
+      'e': 'inv_rotate_right',
     });
 
     // 通用无线电控制上下文（频率调整、天线旋转、发射波）
@@ -129,10 +133,11 @@ export class InputManager implements IInputManager {
    * 支持检查多个上下文（用于通用控制，如无线电控制）
    */
   getAction(key: string, additionalContexts?: InputContext[]): string | null {
+    const k = this.normalizeKey(key);
     // 首先检查当前上下文
     const currentBindings = this.keyBindings.get(this.currentContext);
     if (currentBindings) {
-      const action = currentBindings[key.toLowerCase()];
+      const action = currentBindings[k];
       if (action) return action;
     }
     
@@ -141,7 +146,7 @@ export class InputManager implements IInputManager {
       for (const context of additionalContexts) {
         const bindings = this.keyBindings.get(context);
         if (bindings) {
-          const action = bindings[key.toLowerCase()];
+          const action = bindings[k];
           if (action) return action;
         }
       }
@@ -170,7 +175,7 @@ export class InputManager implements IInputManager {
    * 检查按键是否按下
    */
   isKeyDown(key: string): boolean {
-    return this.activeKeys.has(key.toLowerCase());
+    return this.activeKeys.has(this.normalizeKey(key));
   }
 
   /**
@@ -281,11 +286,17 @@ export class InputManager implements IInputManager {
     console.log('Input event listeners bound');
   }
 
+  /** 标准化按键名（空格键 ' ' -> 'space'，与绑定一致） */
+  private normalizeKey(key: string): string {
+    const k = key.toLowerCase();
+    return k === ' ' ? 'space' : k;
+  }
+
   /**
    * 处理键盘按下
    */
   handleKeyDown(event: KeyboardEvent): void {
-    const key = event.key.toLowerCase();
+    const key = this.normalizeKey(event.key);
     
     // 防止重复触发
     if (this.activeKeys.has(key)) return;
@@ -327,7 +338,7 @@ export class InputManager implements IInputManager {
    * 处理键盘释放
    */
   handleKeyUp(event: KeyboardEvent): void {
-    const key = event.key.toLowerCase();
+    const key = this.normalizeKey(event.key);
     
     this.activeKeys.delete(key);
     
