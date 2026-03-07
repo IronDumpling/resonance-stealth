@@ -14,8 +14,9 @@ import {
   VehicleSystem,
 } from '@/systems';
 import { CameraSystem } from '@/systems/CameraSystem';
-import { CORE_TYPES, CFG } from '@/config/gameConfig';
-import { generateWorld } from '@/utils/worldGen';
+import { CORE_TYPES } from '@/config/gameConfig';
+import { assembleMapFromConfig } from '@/utils/worldAssemble';
+import { getDefaultMapConfig } from '@/config/mapConfig';
 import { flashEdgeGlow } from '@/utils/ui';
 
 interface GameContextValue {
@@ -224,20 +225,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         },
         initWalls: () => {
           if (!canvas || !initialState) return;
-          const mapScale = CFG.mapScale || 5;
-          const baseX = canvas.width * mapScale / 2;
-          const baseY = canvas.height * mapScale / 2;
-          const playerX = baseX;
-          const playerY = baseY - 120;
-          const { obstacles, groundItems } = generateWorld({
-            canvasWidth: canvas.width,
-            canvasHeight: canvas.height,
-            mapScale,
-            playerX,
-            playerY,
-            numObstacles: typeof CFG.numWalls === 'number' ? CFG.numWalls : 30,
-            numItems: 20,
-          });
+          const config = getDefaultMapConfig(canvas.width, canvas.height);
+          const { obstacles, groundItems } = assembleMapFromConfig(config, canvas.width, canvas.height);
           initialState.entities.obstacles.push(...obstacles);
           initialState.entities.groundItems.push(...groundItems);
         },
