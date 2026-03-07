@@ -14,7 +14,9 @@ import {
   VehicleSystem,
 } from '@/systems';
 import { CameraSystem } from '@/systems/CameraSystem';
-import { CORE_TYPES } from '@/config/gameConfig';
+import { CORE_TYPES, CFG } from '@/config/gameConfig';
+import { generateWorld } from '@/utils/worldGen';
+import { flashEdgeGlow } from '@/utils/ui';
 
 interface GameContextValue {
   gameState: IGameState | null;
@@ -26,7 +28,7 @@ interface GameContextValue {
   survivalSystem: SurvivalSystem | null;
   vehicleSystem: VehicleSystem | null;
   setGameState: (state: IGameState | null) => void;
-  initGame: (canvas?: HTMLCanvasElement | null) => void;
+  initGame: (canvas?: HTMLCanvasElement | null, edgeGlowElement?: HTMLElement | null) => void;
   isInitialized: boolean;
 }
 
@@ -57,7 +59,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const survivalSystemRef = useRef<SurvivalSystem | null>(null);
   const vehicleSystemRef = useRef<VehicleSystem | null>(null);
 
-  const initGame = (canvas?: HTMLCanvasElement | null) => {
+  const initGame = (canvas?: HTMLCanvasElement | null, edgeGlowElement?: HTMLElement | null) => {
     if (isInitialized) {
       console.warn('Game already initialized');
       return;
@@ -103,6 +105,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         r: false,
         e: false,
         shift: false,
+        l: false,
       },
       mouse: { x: 0, y: 0, buttons: [], wheelDelta: 0 },
       freq: 150,
@@ -126,10 +129,14 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       antennaSystem: null,
       survival: { life: 0, integrity: 0, armorDropped: false, fuel: 0, battery: 0 },
       vehicle: { gear: 'P', speed: 0, steeringAngle: 0, engineOn: false, throttle: 0, brake: 0 },
+      sonarViewMode: 'fog',
     };
 
-    // 生存系统（初始化 survival 状态）
-    const survivalSystem = new SurvivalSystem();
+    // 生存系统（初始化 survival 状态，碰撞时触发 edge glow）
+    const survivalSystem = new SurvivalSystem({}, {
+      onIntegrityHit: () => flashEdgeGlow('blue', 300, edgeGlowElement ?? null),
+      onLifeHit: () => flashEdgeGlow('red', 300, edgeGlowElement ?? null),
+    });
     survivalSystemRef.current = survivalSystem;
     survivalSystem.initSurvival(initialState);
 
@@ -214,7 +221,23 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           console.log('Spawn base callback');
         },
         initWalls: () => {
-          console.log('Init walls callback');
+          if (!canvas || !initialState) return;
+          const mapScale = CFG.mapScale || 5;
+          const baseX = canvas.width * mapScale / 2;
+          const baseY = canvas.height * mapScale / 2;
+          const playerX = baseX;
+          const playerY = baseY - 120;
+          const { obstacles, groundItems } = generateWorld({
+            canvasWidth: canvas.width,
+            canvasHeight: canvas.height,
+            mapScale,
+            playerX,
+            playerY,
+            numObstacles: typeof CFG.numWalls === 'number' ? CFG.numWalls : 30,
+            numItems: 20,
+          });
+          initialState.entities.obstacles.push(...obstacles);
+          initialState.entities.groundItems.push(...groundItems);
         },
         // 实体更新回调（将在后续阶段实现）
         updatePlayer: (deltaTime) => {

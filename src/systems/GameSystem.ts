@@ -95,6 +95,7 @@ export class GameSystem implements IGameSystem {
     this.gameState.entities.obstacles = [];
     this.gameState.entities.radiations = [];
     this.gameState.entities.items = [];
+    this.gameState.entities.groundItems = [];
     this.gameState.entities.baseEchoes = [];
     
     // 初始化玩家频率

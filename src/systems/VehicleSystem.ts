@@ -70,10 +70,12 @@ export class VehicleSystem {
     const effectiveThrottle = v.gear === 'N' ? 0 : v.throttle;
     const effectiveBrake = v.gear === 'N' ? 0 : v.brake;
 
-    // 转向：方向盘角度（度），-900~900，按住 A/D 持续转动，松开静止不回正
-    const steerInput = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
-    v.steeringAngle += steerInput * STEERING_WHEEL_RATE_DEG * deltaTime;
-    v.steeringAngle = Math.max(-STEERING_WHEEL_MAX_DEG, Math.min(STEERING_WHEEL_MAX_DEG, v.steeringAngle));
+    // 转向：P 档锁死方向盘，其余档位可转动
+    if (v.gear !== 'P') {
+      const steerInput = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+      v.steeringAngle += steerInput * STEERING_WHEEL_RATE_DEG * deltaTime;
+      v.steeringAngle = Math.max(-STEERING_WHEEL_MAX_DEG, Math.min(STEERING_WHEEL_MAX_DEG, v.steeringAngle));
+    }
 
     // 速度更新（S 刹车始终向 0 减速；松油门缓慢滑行；踩刹车快速减速）
     v.speed = computeNextSpeed(
@@ -104,7 +106,7 @@ export class VehicleSystem {
         p.y = prevY;
         v.speed *= -0.3; // 反弹
         if (this.collisionCooldown <= 0 && this.survivalSystem) {
-          this.survivalSystem.applyCollisionDamage(state);
+          this.survivalSystem.applyCollisionDamage(state, Math.abs(v.speed));
           this.collisionCooldown = 0.5;
         }
       }

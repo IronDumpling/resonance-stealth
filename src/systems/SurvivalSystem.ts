@@ -19,6 +19,13 @@ export interface SurvivalConfig {
   lifeLossPerCollision: number;   // 完整度归零后的碰撞扣生命
 }
 
+export interface SurvivalCallbacks {
+  /** 碰撞扣完整度时触发（用于 edge glow 蓝光） */
+  onIntegrityHit?: () => void;
+  /** 碰撞扣生命时触发（用于 edge glow 红光） */
+  onLifeHit?: () => void;
+}
+
 const DEFAULT_CONFIG: SurvivalConfig = {
   maxLife: 100,
   maxIntegrity: 100,
@@ -32,9 +39,11 @@ const DEFAULT_CONFIG: SurvivalConfig = {
 
 export class SurvivalSystem {
   config: SurvivalConfig;
+  callbacks: SurvivalCallbacks;
 
-  constructor(config: Partial<SurvivalConfig> = {}) {
+  constructor(config: Partial<SurvivalConfig> = {}, callbacks: SurvivalCallbacks = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.callbacks = callbacks;
   }
 
   /** 初始化生存状态 */
@@ -64,17 +73,22 @@ export class SurvivalSystem {
     return true;
   }
 
-  /** 碰撞扣完整度/生命 */
-  applyCollisionDamage(state: IGameState): void {
+  /** 碰撞扣完整度/生命，speed 越大扣得越多 */
+  applyCollisionDamage(state: IGameState, speed: number = 0): void {
     const s = state.survival;
     if (!s) return;
+    const speedFactor = Math.min(2, Math.max(0.5, Math.abs(speed) / 60 + 0.5));
+    const integrityLoss = Math.ceil(this.config.integrityLossPerCollision * speedFactor);
+    const lifeLoss = Math.ceil(this.config.lifeLossPerCollision * speedFactor);
     if (s.integrity > 0) {
-      s.integrity = Math.max(0, s.integrity - this.config.integrityLossPerCollision);
+      s.integrity = Math.max(0, s.integrity - integrityLoss);
+      this.callbacks.onIntegrityHit?.();
       if (s.integrity <= 0) {
         s.armorDropped = true;
       }
     } else {
-      s.life = Math.max(0, s.life - this.config.lifeLossPerCollision);
+      s.life = Math.max(0, s.life - lifeLoss);
+      this.callbacks.onLifeHit?.();
     }
   }
 

@@ -118,6 +118,8 @@ const AppInternal: React.FC = () => {
     const sm = new SceneManager();
     return sm;
   });
+  const gameStateRef = useRef<typeof gameState>(null);
+  gameStateRef.current = gameState;
 
   const [uiManager] = useState<UIManager | null>(() => new UIManager());
   const [crtRenderer, setCrtRenderer] = useState<CrtRenderer | null>(null);
@@ -142,7 +144,7 @@ const AppInternal: React.FC = () => {
   // 初始化游戏系统（当canvas和输入系统都准备好时）
   useEffect(() => {
     if (canvasRef.current && inputInitialized && !gameInitialized) {
-      initGame(canvasRef.current);
+      initGame(canvasRef.current, document.getElementById('edge-glow'));
     }
   }, [canvasRef.current, inputInitialized, gameInitialized, initGame]);
 
@@ -170,7 +172,7 @@ const AppInternal: React.FC = () => {
       // 新驾驶相关场景
       sceneManager.registerScene(
         SCENES.DRIVE,
-        new DriveScene(inputManager, sceneManager, gameState, cameraSystem || undefined)
+        new DriveScene(inputManager, sceneManager, gameState, cameraSystem || undefined, inventorySystem || undefined)
       );
       sceneManager.registerScene(
         SCENES.INVENTORY,
@@ -330,6 +332,7 @@ const AppInternal: React.FC = () => {
         gameState.keys.r = inputManager.isKeyDown('r');
         gameState.keys.f = inputManager.isKeyDown('f');
         gameState.keys.shift = inputManager.isKeyDown('shift');
+        gameState.keys.l = inputManager.isKeyDown('l');
       }
 
       // 更新游戏系统
@@ -411,21 +414,22 @@ const AppInternal: React.FC = () => {
         }
       }
 
-      // 渲染场景
+      // 渲染场景（传入最新 gameState 供场景使用，用 ref 避免闭包陈旧）
+      const latestState = gameStateRef.current ?? gameState;
       if (canvasRef.current && sceneManager && crtRenderer) {
-        // 使用 crtRenderer 的 canvas 和 ctx，确保一致性
         const canvas = crtRenderer.canvas;
         const ctx = crtRenderer.ctx;
         if (canvas && ctx) {
+          (sceneManager as { gameState?: unknown }).gameState = latestState ?? null;
           crtRenderer.render(() => {
             sceneManager.render(ctx, canvas);
           });
         }
       } else if (canvasRef.current && sceneManager) {
-        // 如果没有 crtRenderer，直接渲染
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         if (ctx) {
+          (sceneManager as { gameState?: unknown }).gameState = latestState ?? null;
           sceneManager.render(ctx, canvas);
         }
       }

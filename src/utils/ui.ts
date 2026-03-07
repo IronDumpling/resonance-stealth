@@ -20,7 +20,7 @@ export function logMsg(
 let edgeGlowFlashTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function flashEdgeGlow(
-  color: 'white' | 'red' | 'green' | 'cyan',
+  color: 'white' | 'red' | 'green' | 'cyan' | 'blue',
   duration: number,
   edgeGlowElement: HTMLElement | null
 ): void {
@@ -40,6 +40,8 @@ export function flashEdgeGlow(
     edgeGlowElement.style.boxShadow = 'inset 0 0 20px 8px rgba(0, 255, 0, 0.8)';
   } else if (color === 'cyan') {
     edgeGlowElement.style.boxShadow = 'inset 0 0 20px 8px rgba(0, 255, 255, 0.8)';
+  } else if (color === 'blue') {
+    edgeGlowElement.style.boxShadow = 'inset 0 0 20px 8px rgba(59, 130, 246, 0.8)';
   }
   
   // 显示闪烁

@@ -73,7 +73,9 @@ export class InputManager implements IInputManager {
       'd': 'right_turn',
       'shift': 'inventory',
       'e': 'interact',
-      'space': 'emit_sonar'
+      'space': 'emit_sonar',
+      // 开发者专用：明亮/迷雾模式切换
+      'l': 'toggle_map_visibility',
     });
 
     // 后备箱场景上下文

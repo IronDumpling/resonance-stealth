@@ -174,7 +174,6 @@ export const STEERING_WHEEL_MAX_DEG = 900;
 export const STEERING_WHEEL_RATE_DEG = 360;
 /** 转向比（方向盘:前轮），900° 方向盘 → 30° 前轮 */
 export const STEERING_RATIO = 30;
-
 /**
  * 驾驶舱与页面相机配置（可统一微调）
  * Cockpit & Page Camera Config - Centralized tweakable parameters
@@ -184,7 +183,7 @@ export const COCKPIT_CONFIG = {
   bootMenuCamera: {
     translateZ: 510,
     rotateX: -20,
-    translateY: 180,
+    translateY: 170,
   },
   /** 驾驶/后备箱面板切换动画时长（秒） */
   inventoryTransition: { duration: 0.5 },
@@ -193,6 +192,8 @@ export const COCKPIT_CONFIG = {
     maxAngle: 18,   // 最大旋转角度（度）
     lerp: 0.08,     // lerp 系数（越小越平滑）
   },
+  /** 声纳相机跟随玩家（lerp 系数，越小延迟越明显） */
+  sonarFollowLerp: 0.1,
   /** 驾驶舱 UI 3D 分层（由远到近） */
   uiLayers: {
     sonar: {

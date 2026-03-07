@@ -253,11 +253,19 @@ export class CameraSystem {
     this.mouseLookX = lerp(this.mouseLookX, this.mouseLookTargetX, mouseLerp);
     this.mouseLookY = lerp(this.mouseLookY, this.mouseLookTargetY, mouseLerp);
 
-    // 3. 根据 world camera 推导 sonar camera（仅跟随玩家）
+    // 3. 根据 world camera 推导 sonar camera（lerp 平滑跟随，玩家停止/移动时有轻微延迟）
     const worldCam = this.cameras.world;
     const sonarCam = this.cameras.sonar;
-    sonarCam.x = worldCam.x;
-    sonarCam.y = worldCam.y;
+    const dist = Math.hypot(worldCam.x - sonarCam.x, worldCam.y - sonarCam.y);
+    if (dist > 500) {
+      // 初次进入或传送后，直接对齐避免长距离 lerp
+      sonarCam.x = worldCam.x;
+      sonarCam.y = worldCam.y;
+    } else {
+      const sonarLerp = COCKPIT_CONFIG.sonarFollowLerp ?? 0.1;
+      sonarCam.x = lerp(sonarCam.x, worldCam.x, sonarLerp);
+      sonarCam.y = lerp(sonarCam.y, worldCam.y, sonarLerp);
+    }
 
     // 4. 为了兼容旧代码，暂时把 world camera 写回 gameState.camera
     gameState.camera.x = worldCam.x;

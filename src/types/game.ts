@@ -17,6 +17,7 @@ export interface IKeysState {
   r: boolean;
   e: boolean;
   shift: boolean;
+  l?: boolean;
 }
 
 // 相机接口
@@ -78,6 +79,9 @@ export interface IGameState {
 
   /** 当前场景（用于判断是否执行驾驶逻辑） */
   currentScene?: string;
+
+  /** 声纳视图模式：bright=明亮（全地图可见），fog=迷雾（仅声纳探测可见，暂无声纳时仅玩家） */
+  sonarViewMode?: 'bright' | 'fog';
 }
 
 // 游戏配置接口（空结构，保留类型定义）

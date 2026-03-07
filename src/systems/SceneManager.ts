@@ -19,6 +19,8 @@ import {
 export class SceneManager implements ISceneManager {
   currentScene: SceneType = SCENES.BOOT;
   previousScene: SceneType | null = null;
+  /** 当前游戏状态（每帧由渲染循环设置，供场景获取最新状态） */
+  gameState: unknown = null;
   displayMode: DisplayMode = DISPLAY_MODES.OFF;
   radioState: RadioState = RADIO_STATE.INACTIVE;
   previousDisplayMode: DisplayMode | null = null;
