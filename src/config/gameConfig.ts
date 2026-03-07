@@ -168,6 +168,13 @@ export const CFG: IGameConfig = {
   cameraSmoothing: true       // 是否启用平滑跟随
 };
 
+/** 方向盘最大转角（度），2.5 圈 lock-to-lock */
+export const STEERING_WHEEL_MAX_DEG = 900;
+/** 方向盘转动速率（度/秒），约 1 圈/秒 */
+export const STEERING_WHEEL_RATE_DEG = 360;
+/** 转向比（方向盘:前轮），900° 方向盘 → 30° 前轮 */
+export const STEERING_RATIO = 30;
+
 /**
  * 驾驶舱与页面相机配置（可统一微调）
  * Cockpit & Page Camera Config - Centralized tweakable parameters

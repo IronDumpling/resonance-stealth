@@ -31,7 +31,7 @@ export type VehicleGear = 'P' | 'R' | 'N' | 'D';
 export interface IVehicleState {
   gear: VehicleGear;
   speed: number;       // 当前速度（像素/秒）
-  steeringAngle: number;  // 转向角（弧度）
+  steeringAngle: number;  // 方向盘角度（度），-900 ~ 900，2.5 圈 lock-to-lock
   engineOn: boolean;
   throttle: number;    // 0-1
   brake: number;       // 0-1

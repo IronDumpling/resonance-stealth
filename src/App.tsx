@@ -388,7 +388,7 @@ const AppInternal: React.FC = () => {
           gameState.vehicle.brake
         );
       }
-      // 同步车辆状态：档位杆、速度表盘
+      // 同步车辆状态：档位杆、速度表盘、方向盘
       if (gameState?.vehicle && vehicleSystem) {
         const gear = vehicleSystem.getGear(gameState);
         const speed = Math.abs(vehicleSystem.getSpeed(gameState));
@@ -405,6 +405,10 @@ const AppInternal: React.FC = () => {
         }
         const speedVal = document.querySelector('.ref-speed-value');
         if (speedVal) speedVal.textContent = String(Math.round(speed));
+        const cockpitSteeringEl = document.getElementById('cockpit-steering');
+        if (cockpitSteeringEl) {
+          cockpitSteeringEl.style.setProperty('--cockpit-steering-rotateZ', `${gameState.vehicle.steeringAngle}deg`);
+        }
       }
 
       // 渲染场景
@@ -435,6 +439,7 @@ const AppInternal: React.FC = () => {
     cameraSystem ? cameraSystem.getGimbalTransform() : 'rotateX(0deg) rotateY(0deg)';
 
   const ui = COCKPIT_CONFIG.uiLayers;
+  const steeringAngle = gameState?.vehicle?.steeringAngle ?? 0;
   const cockpitVars = {
     '--cockpit-sonar-translateZ': `${ui.sonar.translateZ}px`,
     '--cockpit-sonar-rotateX': `${ui.sonar.rotateX}deg`,
@@ -452,6 +457,7 @@ const AppInternal: React.FC = () => {
     '--cockpit-steering-width': `${ui.steering.width}px`,
     '--cockpit-steering-height': `${ui.steering.height}px`,
     '--cockpit-steering-bottom': `${ui.steering.bottom}px`,
+    '--cockpit-steering-rotateZ': `${steeringAngle}deg`,
   } as React.CSSProperties;
 
   return (
@@ -696,8 +702,14 @@ const AppInternal: React.FC = () => {
 
           </div>
 
-          {/* 3. 方向盘（最近，absolute，Boot/Menu 时隐藏） */}
-          <div id="cockpit-steering" className="ref-steering cockpit-layer cockpit-steering" style={{ display: 'none' }} />
+          {/* 3. 方向盘（三辐式，最近，absolute，Boot/Menu 时隐藏） */}
+          <div id="cockpit-steering" className="ref-steering cockpit-layer cockpit-steering" style={{ display: 'none' }}>
+            <div className="steering-rim" />
+            <div className="steering-spoke steering-spoke-left" />
+            <div className="steering-spoke steering-spoke-right" />
+            <div className="steering-spoke steering-spoke-bottom" />
+            <div className="steering-hub" />
+          </div>
         </div>
       </div>
         </div>

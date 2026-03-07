@@ -828,7 +828,7 @@
         0 2px 0 rgba(0, 0, 0, 0.2);
 }
 
-/* 3. 方向盘（最近，absolute，参考 3d_css Steering） */
+/* 3. 方向盘（三辐式，最近，absolute，rotateZ 随 steeringAngle 转动） */
 #cockpit-steering.ref-steering.cockpit-steering {
     position: absolute;
     top: 50%;
@@ -837,34 +837,95 @@
     height: var(--cockpit-steering-height, 450px);
     margin-left: -225px;
     margin-top: -100px;
-    transform: translateY(250px) translateZ(var(--cockpit-steering-translateZ, 300px)) rotateX(var(--cockpit-steering-rotateX, -10deg));
+    transform: translateY(250px) translateZ(var(--cockpit-steering-translateZ, 300px)) rotateX(var(--cockpit-steering-rotateX, -10deg)) rotateZ(var(--cockpit-steering-rotateZ, 0deg));
+    transform-origin: center center;
     transform-style: preserve-3d;
     z-index: 50;
     pointer-events: none;
 }
 
-#cockpit-steering.ref-steering::before {
-    content: '';
+/* 方向盘外圈（环形握把） */
+#cockpit-steering .steering-rim {
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    border: 30px solid #18181b;
+    border: 28px solid #18181b;
     box-shadow: 0 15px 30px rgba(0, 0, 0, 0.8),
-                inset 0 5px 15px rgba(255, 255, 255, 0.1);
+                inset 0 5px 15px rgba(255, 255, 255, 0.08);
+    background: transparent;
 }
 
-#cockpit-steering.ref-steering::after {
+/* 三辐式辐条 - 左（9 点钟） */
+#cockpit-steering .steering-spoke-left {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 130px;
+    height: 22px;
+    margin-left: -130px;
+    margin-top: -11px;
+    background: linear-gradient(90deg, #2a2a2e 0%, #18181b 100%);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* 三辐式辐条 - 右（3 点钟） */
+#cockpit-steering .steering-spoke-right {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 130px;
+    height: 22px;
+    margin-left: 0;
+    margin-top: -11px;
+    background: linear-gradient(270deg, #2a2a2e 0%, #18181b 100%);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* 三辐式辐条 - 下（6 点钟，较粗） */
+#cockpit-steering .steering-spoke-bottom {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 26px;
+    height: 160px;
+    margin-left: -13px;
+    margin-top: 0;
+    background: linear-gradient(180deg, #1e1e22 0%, #18181b 50%, #252528 100%);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6),
+                inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* 下辐条银色装饰 */
+#cockpit-steering .steering-spoke-bottom::before {
     content: '';
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 60px;
+    width: 8px;
     height: 60px;
+    background: linear-gradient(180deg, #3f3f46 0%, #52525b 50%, #3f3f46 100%);
+    border-radius: 2px;
+}
+
+/* 中心毂 */
+#cockpit-steering .steering-hub {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70px;
+    height: 70px;
     border-radius: 50%;
-    background: #0a0a0b;
+    background: radial-gradient(circle at 30% 30%, #252528, #0a0a0b);
     border: 4px solid #3f3f46;
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.8),
+                0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 /* 驾驶舱底部阴影渐变 */
