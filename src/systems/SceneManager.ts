@@ -4,9 +4,9 @@
  */
 
 import { ISceneManager } from '@/types/systems';
-import { 
-  SCENES, 
-  DISPLAY_MODES, 
+import {
+  SCENES,
+  DISPLAY_MODES,
   RADIO_STATE,
   SceneType,
   DisplayMode,
@@ -193,7 +193,7 @@ export class SceneManager implements ISceneManager {
       return;
     }
     
-    // 如果有过渡动画，应用过渡效果
+    // 如果有过渡动画，应用过渡效果（沿用原逻辑：progress 0→1 时 alpha 1→0，新场景先完全可见再淡出）
     if (this.isTransitioning && this.transitionType === 'fade') {
       ctx.save();
       ctx.globalAlpha = 1 - this.transitionProgress;

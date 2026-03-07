@@ -17,6 +17,7 @@
 
 import type { IGameState } from '@/types/game';
 import { lerp } from '@/utils/math';
+import { getEngineVibration } from '@/utils/perlinNoise';
 import { COCKPIT_CONFIG } from '@/config/gameConfig';
 
 const INVENTORY_TRANSITION = COCKPIT_CONFIG.inventoryTransition?.duration ?? 0.5;
@@ -62,6 +63,10 @@ export class CameraSystem {
   private containerTranslateX = 0;
   private pageMode: PageMode = 'drive';
   private pageTransitionDuration = INVENTORY_TRANSITION;
+
+  /** 引擎震动：引擎启动且在 drive/inventory 时生效 */
+  private engineVibrationTime = 0;
+  private engineVibration = { x: 0, y: 0, active: false };
 
   constructor() {
     this.cameras = {
@@ -145,8 +150,13 @@ export class CameraSystem {
     const rx = cam.rotateX ?? 0;
     const ry = cam.rotateY ?? 0;
     const ty = cam.translateY ?? 0;
-    const translatePart = ty !== 0 ? `translateY(${ty}px) ` : '';
-    return `${translatePart}translateZ(${z}px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+    let out = '';
+    if (this.engineVibration.active) {
+      out += `translate(${this.engineVibration.x}px, ${this.engineVibration.y}px) `;
+    }
+    if (ty !== 0) out += `translateY(${ty}px) `;
+    out += `translateZ(${z}px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+    return out;
   }
 
   /**
@@ -278,6 +288,18 @@ export class CameraSystem {
       targetContainerX,
       Math.min(1, (deltaTime / this.pageTransitionDuration) * 4)
     );
+
+    // 6. 引擎震动（drive/inventory 且引擎启动时）
+    const engineOn = gameState.vehicle?.engineOn ?? false;
+    const inCockpitView = this.pageMode === 'drive' || this.pageMode === 'inventory';
+    if (engineOn && inCockpitView) {
+      this.engineVibrationTime += deltaTime;
+      const amp = COCKPIT_CONFIG.engineVibrationAmplitude ?? 2;
+      const { x, y } = getEngineVibration(this.engineVibrationTime, amp);
+      this.engineVibration = { x, y, active: true };
+    } else {
+      this.engineVibration = { x: 0, y: 0, active: false };
+    }
   }
 
   /**

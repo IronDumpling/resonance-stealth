@@ -221,7 +221,7 @@ export class RadioControlRenderer {
   ): void {
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
-    const radius = 50;
+    const radius = Math.min(canvas.width, canvas.height) / 2 - 5;
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
@@ -282,8 +282,8 @@ export class RadioControlRenderer {
     meterNeedleAngle: number
   ): number {
     const cx = canvas.width / 2;
-    const cy = canvas.height - 10;
-    const radius = 70;
+    const cy = canvas.height - 6;
+    const radius = Math.min(canvas.width * 0.45, (canvas.height - 6) * 0.9);
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     

@@ -192,43 +192,66 @@
     height: 100%;
 }
 
-/* 2. 中控台基座（absolute，参考 3d_css Base） */
+/* 2. 中控台基座（absolute，参考 3d_css Base，下移避免遮挡 sonar） */
 #cockpit-bottom.cockpit-base {
     position: absolute;
     top: 50%;
     left: 50%;
     width: 800px;
-    height: 300px;
+    height: 320px;
     margin-left: -400px;
-    margin-top: -150px;
-    transform: translateY(100px) translateZ(0) rotateX(var(--cockpit-bottom-rotateX, -15deg));
+    margin-top: -160px;
+    transform: translateY(220px) translateZ(0) rotateX(var(--cockpit-bottom-rotateX, -15deg));
     transform-style: preserve-3d;
     z-index: 10;
 }
 
-/* 左侧：仪表盘（absolute，参考 3d_css StatusPanel） */
+/* 左侧：仪表盘（横向加宽，右侧天线+信号表） */
 #cockpit-dashboard.ref-dashboard {
     position: absolute;
     top: 0;
     left: 0;
-    width: 320px;
+    width: 480px;
     height: 280px;
     background: #27272a;
-    transform: translateX(-320px) translateZ(var(--cockpit-dashboard-translateZ, 40px)) rotateY(var(--cockpit-dashboard-rotateY, 18deg));
+    transform: translateX(var(--cockpit-dashboard-translateX, -360px)) translateZ(var(--cockpit-dashboard-translateZ, 40px)) rotateY(var(--cockpit-dashboard-rotateY, 18deg));
     transform-style: preserve-3d;
-    padding: 16px;
+    padding: 12px;
     border-right: 4px solid #0a0a0b;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: 1fr;
+    gap: 12px;
+    align-items: stretch;
+    box-shadow: inset -10px 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.ref-dashboard-left {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    justify-content: flex-start;
-    box-shadow: inset -10px 0 20px rgba(0, 0, 0, 0.5);
+    gap: 10px;
+    min-width: 0;
+}
+
+.ref-dashboard-left .ref-gauge {
+    padding: 8px;
+}
+
+.ref-dashboard-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+}
+
+.ref-dashboard-right .radio-controls-panel {
+    width: 100%;
 }
 
 /* 仪表盘三行布局：第1行 HULL+HP，第2行 THROTTLE+BRAKE，第3行 BATT+FUEL+速度 */
 .ref-dashboard-row {
     display: grid;
-    gap: 12px;
+    gap: 10px;
 }
 
 .ref-dashboard-row-1,
@@ -272,6 +295,15 @@
 .ref-gauge[data-color="orange"] .ref-gauge-icon,
 .ref-gauge[data-color="orange"] .ref-gauge-fill { color: #f97316; }
 .ref-gauge[data-color="orange"] .ref-gauge-fill { background: #f97316; }
+
+/* 熄火时 HULL/HP 仪表为灰色，不更新 */
+#cockpit-dashboard.engine-off .ref-gauge[data-gauge="hull"] .ref-gauge-icon,
+#cockpit-dashboard.engine-off .ref-gauge[data-gauge="hull"] .ref-gauge-fill,
+#cockpit-dashboard.engine-off .ref-gauge[data-gauge="hp"] .ref-gauge-icon,
+#cockpit-dashboard.engine-off .ref-gauge[data-gauge="hp"] .ref-gauge-fill {
+  color: #71717a !important;
+  background: #71717a !important;
+}
 
 .ref-gauge-bar {
     width: 100%;
@@ -441,29 +473,113 @@
     background: #ef4444;
 }
 
-/* 中部：车载收音机（absolute，参考 3d_css RadioPanel，最凸出） */
+/* 中部：车载收音机(左) + 引擎按钮(右) */
 #cockpit-console.ref-radio-wrap {
     position: absolute;
     top: 0;
     left: 50%;
-    width: 400px;
+    width: 480px;
     height: 250px;
-    margin-left: -200px;
+    margin-left: -240px;
     background: #27272a;
     transform: translateZ(var(--cockpit-radio-translateZ, 90px)) rotateY(var(--cockpit-radio-rotateY, 0deg));
     transform-style: preserve-3d;
     padding: 24px;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 16px;
     box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.6);
 }
 
-#cockpit-console.ref-radio-wrap #radio-transceiver {
-    flex: 1;
-    max-width: none;
-    min-height: 0;
+/* 引擎列：麦克风 + 启动按钮（垂直排列） */
+.ref-engine-column {
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+/* 实体麦克风 UI（黑色圆形，金属质感） */
+.ref-mic-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse 60% 40% at 50% 30%, #3a3a3a, #0a0a0a 60%);
+    box-shadow:
+        inset 0 -4px 12px rgba(0, 0, 0, 0.8),
+        inset 0 2px 4px rgba(255, 255, 255, 0.08),
+        0 4px 12px rgba(0, 0, 0, 0.5);
+    border: 2px solid #1a1a1a;
+    position: relative;
+}
+
+.ref-mic-icon::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 12px;
+    height: 12px;
+    margin: -6px 0 0 -6px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #555, #1a1a1a);
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.1);
+}
+
+.ref-mic-icon::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    width: 4px;
+    height: 8px;
+    margin-left: -2px;
+    background: linear-gradient(to bottom, #2a2a2a, #0a0a0a);
+    border-radius: 2px;
+}
+
+/* 引擎启动/熄火按钮（位于 radio 右侧） */
+.ref-engine-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: #18181b;
+    border: 2px solid #3f3f46;
+    border-radius: 6px;
+    color: var(--crt-green);
+    font-size: 12px;
+    font-weight: bold;
+    font-family: monospace;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.ref-engine-btn:hover {
+    background: #27272a;
+    border-color: #52525b;
+    color: #fff;
+}
+.ref-engine-btn.ref-engine-on {
+    border-color: #22c55e;
+    color: #22c55e;
+}
+.ref-engine-btn.ref-engine-on:hover {
+    background: rgba(34, 197, 94, 0.15);
+}
+.ref-engine-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #52525b;
+}
+.ref-engine-btn.ref-engine-on .ref-engine-indicator {
+    background: #22c55e;
+    box-shadow: 0 0 8px #22c55e;
 }
 
 /* 右侧面板内的收音机控制区（瀑布图在中间，控制移至此） */
@@ -481,15 +597,17 @@
     top: 0;
     right: 0;
     width: 300px;
-    height: 250px;
+    min-height: 320px;
+    height: auto;
     background: #27272a;
-    transform: translateX(320px) translateZ(var(--cockpit-driving-translateZ, 40px)) rotateY(var(--cockpit-driving-rotateY, -18deg));
+    transform: translateX(var(--cockpit-driving-translateX, 250px)) translateZ(var(--cockpit-driving-translateZ, 40px)) rotateY(var(--cockpit-driving-rotateY, -18deg));
     transform-style: preserve-3d;
     padding: 24px;
     border-left: 4px solid #0a0a0b;
     display: flex;
     flex-direction: column;
     box-shadow: inset 10px 0 20px rgba(0, 0, 0, 0.5);
+    overflow: visible;
 }
 
 .ref-drive-label {
@@ -619,13 +737,93 @@
     line-height: 1.2;
 }
 
-/* RX/TX 拨动开关 + 麦克风 */
+/* RX/TX 拨动开关 + 麦克风 + EMIT SONAR */
 .ref-comms-row {
     display: flex;
     gap: 12px;
     flex: 1;
     align-items: stretch;
     margin-top: 12px;
+}
+
+.ref-comms-row-square {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.ref-rxtx-toggle-horizontal {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #18181b;
+    border: 2px solid #3f3f46;
+    border-radius: 6px;
+    cursor: pointer;
+    min-width: 80px;
+}
+
+.ref-rxtx-track-h {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background: #0a0a0b;
+    border-radius: 4px;
+    border: 2px solid #27272a;
+}
+
+.ref-rxtx-knob-h {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    top: 1px;
+    left: 1px;
+    background: #22c55e;
+    border-radius: 3px;
+    transition: left 0.2s;
+}
+
+.ref-rxtx-knob-h.ref-rxtx-knob-h-tx {
+    left: 19px;
+    background: #ef4444;
+}
+
+.ref-comms-btn {
+    flex: 1;
+    min-width: 70px;
+    padding: 12px 8px;
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 2px solid;
+    transition: all 0.15s;
+}
+
+.ref-comms-btn-hold {
+    background: linear-gradient(to bottom, #dc2626, #b91c1c);
+    border-color: #7f1d1d;
+    color: #fff;
+}
+
+.ref-comms-btn-hold.ref-comms-btn-pressed {
+    background: #7f1d1d;
+    transform: translateY(1px);
+}
+
+.ref-comms-btn-emit {
+    background: linear-gradient(to bottom, #2563eb, #1d4ed8);
+    border-color: #1e40af;
+    color: #fff;
+}
+
+.ref-comms-btn-emit:hover {
+    background: linear-gradient(to bottom, #3b82f6, #2563eb);
 }
 
 .ref-rxtx-toggle {
@@ -944,43 +1142,29 @@
     z-index: 50;
 }
 
-/* 车载收音机容器（在 ref-radio-wrap 内） */
-#radio-transceiver {
+/* 车载收音机区域（完全透明，无边缘） */
+.cockpit-radio-area {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
     width: 100%;
     max-width: 480px;
     min-height: 220px;
-    background: linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%);
-    border: 3px solid #444;
-    box-shadow:
-        0 8px 24px rgba(0, 0, 0, 0.6),
-        inset 0 0 15px rgba(0, 0, 0, 0.4);
-    border-radius: 8px;
-    padding: 12px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
     box-sizing: border-box;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     position: relative;
     z-index: 20;
 }
 
-#radio-transceiver::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: 
-        repeating-linear-gradient(
-            0deg,
-            rgba(255, 255, 255, 0.02) 0px,
-            transparent 1px,
-            transparent 2px,
-            rgba(255, 255, 255, 0.02) 3px
-        );
-    pointer-events: none;
-    z-index: 1;
+.cockpit-radio-area::before {
+    display: none;
 }
 
 /* Radio Mode Display Overlay */
@@ -1284,7 +1468,7 @@
 
 /* Responsive adjustments */
 @media (max-width: 1200px) {
-    #radio-transceiver {
+    .cockpit-radio-area {
         max-width: 360px;
     }
 }

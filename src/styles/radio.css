@@ -3,8 +3,8 @@
  * Radio User Interface Styles - Realistic Instrument Style
  */
 
-/* 主容器 - 嵌入式版本 */
-#radio-interface {
+/* 主容器 - 嵌入式版本（cockpit-radio-content 替代原 radio-interface） */
+.cockpit-radio-content {
     width: 100%;
     height: 100%;
     font-family: 'Courier New', monospace;
@@ -15,16 +15,16 @@
 }
 
 /* 禁用状态 */
-#radio-interface.disabled {
+.cockpit-radio-content.disabled {
     pointer-events: none;
     opacity: 0.5;
 }
 
-#radio-interface.disabled .action-btn {
+.cockpit-radio-content.disabled .action-btn {
     opacity: 0.3;
 }
 
-#radio-interface.disabled .knob-btn {
+.cockpit-radio-content.disabled .knob-btn {
     opacity: 0.3;
 }
 
@@ -306,6 +306,11 @@
 
 #signal-freq {
     color: var(--crt-green);
+}
+
+.antenna-display-wrap {
+    margin-top: 8px;
+    text-align: center;
 }
 
 #antenna-display {
@@ -632,6 +637,18 @@
 
 .radio-controls-inner .control-row:last-of-type {
     margin-bottom: 0;
+}
+
+/* 仪表盘右侧：天线在上、信号表在下，垂直排列 */
+.radio-controls-inner.radio-controls-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+.radio-controls-inner.radio-controls-stack .instrument-group {
+    flex: none;
 }
 
 .radio-controls-inner .instrument-group,

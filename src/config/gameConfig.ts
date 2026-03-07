@@ -199,6 +199,8 @@ export const COCKPIT_CONFIG = {
   },
   /** 声纳相机跟随玩家（lerp 系数，越小延迟越明显） */
   sonarFollowLerp: 0.1,
+  /** 引擎启动时 page camera 震动振幅（像素） */
+  engineVibrationAmplitude: 2,
   /** 驾驶舱 UI 3D 分层（由远到近） */
   uiLayers: {
     sonar: {
@@ -210,6 +212,7 @@ export const COCKPIT_CONFIG = {
       rotateX: -15,
     },
     dashboard: {
+      translateX: -360,
       translateZ: 40,
       rotateY: 18,
     },
@@ -218,6 +221,7 @@ export const COCKPIT_CONFIG = {
       rotateY: 0,
     },
     driving: {
+      translateX: 250,
       translateZ: 40,
       rotateY: -18,
     },

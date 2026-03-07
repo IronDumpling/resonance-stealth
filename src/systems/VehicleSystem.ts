@@ -53,29 +53,33 @@ export class VehicleSystem {
 
     if (!v) return;
 
-    // 发动机：进入 Drive 时默认开启（后续可加点火键）
-    if (!v.engineOn) v.engineOn = true;
-
-    // 燃油耗尽禁止移动
-    if (this.survivalSystem?.isFuelEmpty(state)) {
+    // 熄火时：禁止油门、刹车、方向盘
+    if (!v.engineOn) {
       v.throttle = 0;
-      v.brake = 1;
-    }
+      v.brake = 0;
+      // 不更新 steeringAngle，保持当前值（或可归零）
+    } else {
+      // 燃油耗尽禁止移动
+      if (this.survivalSystem?.isFuelEmpty(state)) {
+        v.throttle = 0;
+        v.brake = 1;
+      } else {
+        // 油门刹车输入（档位由 UI 档位杆控制，此处仅更新油门刹车值）
+        v.throttle = keys.w ? 1 : 0;
+        v.brake = keys.s ? 1 : 0;
+      }
 
-    // 油门刹车输入（档位由 UI 档位杆控制，此处仅更新油门刹车值）
-    v.throttle = keys.w ? 1 : 0;
-    v.brake = keys.s ? 1 : 0;
+      // 转向：P 档锁死方向盘，其余档位可转动
+      if (v.gear !== 'P') {
+        const steerInput = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+        v.steeringAngle += steerInput * STEERING_WHEEL_RATE_DEG * deltaTime;
+        v.steeringAngle = Math.max(-STEERING_WHEEL_MAX_DEG, Math.min(STEERING_WHEEL_MAX_DEG, v.steeringAngle));
+      }
+    }
 
     // N 档：忽略油门刹车，仅惯性滑行
     const effectiveThrottle = v.gear === 'N' ? 0 : v.throttle;
     const effectiveBrake = v.gear === 'N' ? 0 : v.brake;
-
-    // 转向：P 档锁死方向盘，其余档位可转动
-    if (v.gear !== 'P') {
-      const steerInput = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
-      v.steeringAngle += steerInput * STEERING_WHEEL_RATE_DEG * deltaTime;
-      v.steeringAngle = Math.max(-STEERING_WHEEL_MAX_DEG, Math.min(STEERING_WHEEL_MAX_DEG, v.steeringAngle));
-    }
 
     // 速度更新（S 刹车始终向 0 减速；松油门缓慢滑行；踩刹车快速减速）
     v.speed = computeNextSpeed(
