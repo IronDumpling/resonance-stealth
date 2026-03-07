@@ -234,11 +234,15 @@ const AppInternal: React.FC = () => {
     }
   }, [inputManager, sceneManager, gameState, gameSystem, cameraSystem]);
 
-  // 旋钮显示刷新（radioSystem 状态变化时）
+  // 旋钮显示刷新（radioSystem 状态变化时）；INVENTORY 场景下暂停，避免 React 重渲染清空 TrunkUI 手动添加的 DOM
   useEffect(() => {
-    const id = setInterval(() => setKnobRefresh((c) => c + 1), 100);
+    const id = setInterval(() => {
+      const scene = sceneManager?.getCurrentScene();
+      if (scene === SCENES.INVENTORY) return;
+      setKnobRefresh((c) => c + 1);
+    }, 100);
     return () => clearInterval(id);
-  }, []);
+  }, [sceneManager]);
 
   // 初始化RadioControlPanel
   useEffect(() => {
@@ -367,9 +371,10 @@ const AppInternal: React.FC = () => {
       if (cockpitGimbalRef.current && cameraSystem) {
         cockpitGimbalRef.current.style.transform = cameraSystem.getGimbalTransform();
       }
-      // inventory 面板的鼠标视角轻微转动（与 cockpit 共用同一套 gimbal 值）
-      if (inventoryGimbalRef.current && cameraSystem) {
-        inventoryGimbalRef.current.style.transform = cameraSystem.getGimbalTransform();
+      // inventory 面板的鼠标视角轻微转动；inventory 时禁用 gimbal 避免 3D 变换导致点击失效
+      if (inventoryGimbalRef.current && cameraSystem && sceneManager) {
+        const isInv = sceneManager.getCurrentScene() === SCENES.INVENTORY;
+        inventoryGimbalRef.current.style.transform = isInv ? 'none' : cameraSystem.getGimbalTransform();
       }
       // 页面滑块 translateX（cockpit/inventory 滑动，slider 200% 宽，-50% 显示 inventory）
       if (cockpitInventorySliderRef.current && cameraSystem) {

@@ -83,7 +83,8 @@ export class InputManager implements IInputManager {
       'a': 'inv_move_left',
       's': 'inv_move_down',
       'd': 'inv_move_right',
-      'q': 'inv_rotate_left'
+      'q': 'inv_rotate_left',
+      'e': 'inv_rotate_right'
     });
 
     // 通用无线电控制上下文（频率调整、天线旋转、发射波）
@@ -272,9 +273,9 @@ export class InputManager implements IInputManager {
    * 绑定DOM事件监听器
    */
   bindEventListeners(): void {
-    // 键盘事件
-    window.addEventListener('keydown', (e) => this.handleKeyDown(e));
-    window.addEventListener('keyup', (e) => this.handleKeyUp(e));
+    // 键盘事件：使用捕获阶段确保在其它处理器之前接收（避免 Q/E 等被拦截）
+    window.addEventListener('keydown', (e) => this.handleKeyDown(e), true);
+    window.addEventListener('keyup', (e) => this.handleKeyUp(e), true);
     
     // 鼠标事件
     window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
@@ -285,20 +286,35 @@ export class InputManager implements IInputManager {
     console.log('Input event listeners bound');
   }
 
-  /** 标准化按键名（空格键 ' ' -> 'space'，与绑定一致） */
-  private normalizeKey(key: string): string {
-    const k = key.toLowerCase();
-    return k === ' ' ? 'space' : k;
+  /** 标准化按键名（空格键 ' ' -> 'space'，与绑定一致；支持 event.code 如 KeyQ->q） */
+  private normalizeKey(key: string, code?: string): string {
+    const k = (key || '').toLowerCase();
+    if (k === ' ' || k === 'space') return 'space';
+    if (k === 'keyq' || k === 'q') return 'q';
+    if (k === 'keye' || k === 'e') return 'e';
+    if (k) return k;
+    if (code) {
+      const c = code.toLowerCase();
+      if (c === 'keyq') return 'q';
+      if (c === 'keye') return 'e';
+      if (c === 'keyw') return 'w';
+      if (c === 'keya') return 'a';
+      if (c === 'keys') return 's';
+      if (c === 'keyd') return 'd';
+    }
+    return k || '';
   }
 
   /**
    * 处理键盘按下
    */
   handleKeyDown(event: KeyboardEvent): void {
-    const key = this.normalizeKey(event.key);
-    
-    // 防止重复触发
-    if (this.activeKeys.has(key)) return;
+    if (event.repeat) return; // 忽略按键重复，避免 WASD 等每次移动两格
+    const key = this.normalizeKey(event.key, event.code);
+
+    // 防止重复触发（INVENTORY 下 Q/E 不跳过，避免 activeKeys 残留导致旋转失效）
+    const skipDedup = this.currentContext === INPUT_CONTEXTS.INVENTORY && (key === 'q' || key === 'e');
+    if (!skipDedup && this.activeKeys.has(key)) return;
     
     this.activeKeys.add(key);
     
@@ -315,7 +331,7 @@ export class InputManager implements IInputManager {
       action: action || undefined,
       context: this.currentContext
     };
-    
+
     // 触发当前上下文的回调
     this.trigger('onKeyDown', this.currentContext, enhancedEvent);
     
@@ -337,7 +353,7 @@ export class InputManager implements IInputManager {
    * 处理键盘释放
    */
   handleKeyUp(event: KeyboardEvent): void {
-    const key = this.normalizeKey(event.key);
+    const key = this.normalizeKey(event.key, event.code);
     
     this.activeKeys.delete(key);
     
@@ -464,6 +480,11 @@ export class InputManager implements IInputManager {
     
     // 阻止方向键的默认行为
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
+      return true;
+    }
+    
+    // 后备箱场景下阻止 Q/E 默认行为，确保旋转响应
+    if (this.currentContext === INPUT_CONTEXTS.INVENTORY && ['q', 'e'].includes(key)) {
       return true;
     }
     

@@ -64,7 +64,7 @@ export class InventorySystem {
   /** 检查物品能否放置在 (gx, gy)，考虑旋转 */
   canPlaceAt(items: ITrunkItem[], item: ITrunkItem, gx: number, gy: number): boolean {
     const { width, height } = this.getRotatedDimensions(item);
-    if (gx + width > this.trunkWidth || gy + height > this.trunkHeight) return false;
+    if (gx < 0 || gy < 0 || gx + width > this.trunkWidth || gy + height > this.trunkHeight) return false;
     const occupied = this.getOccupiedCells(items.filter(i => i !== item));
     for (let dy = 0; dy < height; dy++) {
       for (let dx = 0; dx < width; dx++) {
@@ -98,9 +98,9 @@ export class InventorySystem {
   /** 旋转物品，dir: 1=顺时针90°，-1=逆时针90° */
   rotateItem(item: ITrunkItem, dir: 1 | -1): boolean {
     if (!this.trunkItems.includes(item)) return false;
-    const r = (item.rotation ?? 0) + dir * 90;
-    const newRotation = ((r % 360) + 360) % 360;
     const prevRotation = item.rotation ?? 0;
+    const r = prevRotation + dir * 90;
+    const newRotation = ((r % 360) + 360) % 360;
     item.rotation = newRotation;
     if (!this.canPlaceAt(this.trunkItems, item, item.gridX, item.gridY)) {
       item.rotation = prevRotation;

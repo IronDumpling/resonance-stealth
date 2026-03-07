@@ -15,6 +15,8 @@ import { CameraSystem } from '@/systems/CameraSystem';
 import type { InventorySystem } from '@/systems/InventorySystem';
 import { TrunkUI } from '@/ui/TrunkUI';
 
+const MOVE_DEBOUNCE_MS = 120; // 短按防抖，避免一次按键触发两次移动
+
 export class InventoryScene extends Scene {
   inputManager: InputManager | null = null;
   sceneManager: SceneManager | null = null;
@@ -22,6 +24,9 @@ export class InventoryScene extends Scene {
   cameraSystem: CameraSystem | null = null;
   inventorySystem: InventorySystem | null = null;
   trunkUI: TrunkUI | null = null;
+  private captureHandler: ((e: MouseEvent) => void) | null = null;
+  private lastMoveAction: string = '';
+  private lastMoveTime: number = 0;
 
   constructor(
     inputManager?: InputManager,
@@ -54,16 +59,27 @@ export class InventoryScene extends Scene {
 
     // 显示 gameCanvas（可用于未来在后视镜/后备箱上画东西）
     const gameCanvas = document.getElementById('gameCanvas');
-    if (gameCanvas) {
-      gameCanvas.style.display = 'block';
-    }
+    if (gameCanvas) gameCanvas.style.display = 'block';
+    // 3D 透视下 cockpit 可能渲染在 inventory 前方，整块禁用 pointer-events 让点击穿透
+    const cockpitPanel = document.getElementById('cockpit-panel');
+    if (cockpitPanel) cockpitPanel.style.pointerEvents = 'none';
 
     // 显示并初始化后备箱 UI
     const inventoryContainer = document.getElementById('inventory-container');
     if (inventoryContainer && this.inventorySystem) {
       inventoryContainer.style.display = 'flex';
+      inventoryContainer.tabIndex = -1;
+      inventoryContainer.focus();
+
       this.trunkUI = new TrunkUI();
       this.trunkUI.init(inventoryContainer, this.inventorySystem);
+      this.captureHandler = (e: MouseEvent) => {
+        if (this.trunkUI?.handleGridClick(e.clientX, e.clientY)) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      };
+      document.addEventListener('mousedown', this.captureHandler, true);
     }
 
     // 切换显示模式为 MENU（或单独的 INVENTORY_DISPLAY，后续可细化）
@@ -81,7 +97,10 @@ export class InventoryScene extends Scene {
 
   override exit(): void {
     super.exit();
-
+    if (this.captureHandler) {
+      document.removeEventListener('mousedown', this.captureHandler, true);
+      this.captureHandler = null;
+    }
     if (this.trunkUI) {
       this.trunkUI.destroy();
       this.trunkUI = null;
@@ -90,7 +109,11 @@ export class InventoryScene extends Scene {
     const inventoryContainer = document.getElementById('inventory-container');
     if (inventoryContainer) {
       inventoryContainer.style.display = 'none';
+      inventoryContainer.removeAttribute('tabindex');
     }
+
+    const cockpitPanel = document.getElementById('cockpit-panel');
+    if (cockpitPanel) cockpitPanel.style.pointerEvents = 'auto';
   }
 
   override update(_deltaTime: number): void {
@@ -121,8 +144,29 @@ export class InventoryScene extends Scene {
       return true;
     }
 
-    // WASD/QE 移动与旋转选中物品
+    // QE 旋转选中物品（优先于移动处理）
     if (this.trunkUI?.getSelectedItem()) {
+      if (action === 'inv_rotate_left' || key === 'q') {
+        this.trunkUI.handleRotate(-1);
+        return true;
+      }
+      if (action === 'inv_rotate_right' || key === 'e') {
+        this.trunkUI.handleRotate(1);
+        return true;
+      }
+    }
+
+    // WASD 移动选中物品
+    if (this.trunkUI?.getSelectedItem()) {
+      const now = Date.now();
+      const moveActions = ['inv_move_up', 'inv_move_down', 'inv_move_left', 'inv_move_right'] as const;
+      if (moveActions.includes(action as any)) {
+        if (this.lastMoveAction === action && now - this.lastMoveTime < MOVE_DEBOUNCE_MS) {
+          return true; // 防抖：忽略短时间内的重复移动
+        }
+        this.lastMoveAction = action ?? '';
+        this.lastMoveTime = now;
+      }
       if (action === 'inv_move_up') {
         this.trunkUI.handleMove(0, -1);
         return true;
@@ -137,10 +181,6 @@ export class InventoryScene extends Scene {
       }
       if (action === 'inv_move_right') {
         this.trunkUI.handleMove(1, 0);
-        return true;
-      }
-      if (action === 'inv_rotate_left' || key === 'q') {
-        this.trunkUI.handleRotate(-1);
         return true;
       }
     }

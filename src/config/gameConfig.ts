@@ -222,7 +222,7 @@ export const COCKPIT_CONFIG = {
 /** 后备箱 UI 3D 分层 */
 export const INVENTORY_UI_LAYERS = {
   panel: { translateZ: 0, rotateX: 0, rotateY: 0 },
-  trunkGrid: { translateZ: 20, rotateY: 0 },
+  trunkGrid: { translateZ: 0, rotateY: 0 },
   warehousePanel: { translateZ: 10, rotateY: -5 },
 };
 

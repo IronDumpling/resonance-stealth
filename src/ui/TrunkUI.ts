@@ -18,6 +18,7 @@ export class TrunkUI {
   container: HTMLElement | null = null;
   inventorySystem: InventorySystem | null = null;
   gridEl: HTMLElement | null = null;
+  gridWrap: HTMLElement | null = null;
   selectedItem: ITrunkItem | null = null;
 
   init(container: HTMLElement, inventorySystem: InventorySystem): void {
@@ -40,6 +41,39 @@ export class TrunkUI {
     return ok;
   }
 
+  /** 按屏幕坐标处理 grid 点击（供 capture 监听器调用） */
+  handleGridClick(clientX: number, clientY: number): boolean {
+    const wrap = this.gridWrap;
+    if (!wrap || !this.inventorySystem) return false;
+    const rect = wrap.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    if (x < 0 || y < 0 || x >= rect.width || y >= rect.height) return false;
+    const r = this.container!.getBoundingClientRect();
+    const scale = r.width > 0 ? Math.min(1, Math.max(0.5, r.width / 600)) : 1;
+    const cellSize = Math.round(CELL_SIZE * scale);
+    const gridGap = Math.round(GRID_GAP * scale);
+    const gridPadding = 8;
+    const wrapPadding = 24;
+    const gx = Math.floor((x - wrapPadding - gridPadding) / (cellSize + gridGap));
+    const gy = Math.floor((y - wrapPadding - gridPadding) / (cellSize + gridGap));
+    if (gx < 0 || gx >= this.inventorySystem.trunkWidth || gy < 0 || gy >= this.inventorySystem.trunkHeight) return false;
+    const items = this.inventorySystem.getTrunkItems();
+    const cellOwner = new Map<string, { item: ITrunkItem; isOrigin: boolean }>();
+    for (const item of items) {
+      const { width, height } = this.inventorySystem.getRotatedDimensions(item);
+      for (let dy = 0; dy < height; dy++) {
+        for (let dx = 0; dx < width; dx++) {
+          cellOwner.set(`${item.gridX + dx},${item.gridY + dy}`, { item, isOrigin: dx === 0 && dy === 0 });
+        }
+      }
+    }
+    const info = cellOwner.get(`${gx},${gy}`);
+    this.selectedItem = info ? info.item : null;
+    this.render();
+    return true;
+  }
+
   /** QE 旋转选中物品，dir: -1=左 1=右 */
   handleRotate(dir: -1 | 1): boolean {
     const item = this.selectedItem;
@@ -51,6 +85,7 @@ export class TrunkUI {
 
   render(): void {
     if (!this.container || !this.inventorySystem) return;
+    const allItems = this.inventorySystem.getTrunkItems();
 
     // 根据容器尺寸缩放格子（页面较小时缩小，参考宽度 600px）
     const rect = this.container.getBoundingClientRect();
@@ -96,10 +131,9 @@ export class TrunkUI {
       box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
     `;
 
-    const items = this.inventorySystem.getTrunkItems();
     const cellOwner = new Map<string, { item: ITrunkItem; isOrigin: boolean }>();
 
-    for (const item of items) {
+    for (const item of allItems) {
       const { width, height } = this.inventorySystem.getRotatedDimensions(item);
       for (let dy = 0; dy < height; dy++) {
         for (let dx = 0; dx < width; dx++) {
@@ -143,7 +177,11 @@ export class TrunkUI {
             cell.style.borderColor = isSelected ? '#00ff00' : def.color;
             cell.style.color = def.color;
             cell.style.fontSize = `${Math.min(cellW, cellH) * 0.5}px`;
-            cell.textContent = def.icon;
+            const iconSpan = document.createElement('span');
+            iconSpan.textContent = def.icon;
+            iconSpan.style.display = 'inline-block';
+            iconSpan.style.transform = `rotate(${(item.rotation ?? 0)}deg)`;
+            cell.appendChild(iconSpan);
             if (item.count > 1) {
               const countEl = document.createElement('span');
               countEl.textContent = String(item.count);
@@ -183,6 +221,7 @@ export class TrunkUI {
     }
 
     gridWrap.appendChild(this.gridEl);
+    this.gridWrap = gridWrap;
     this.container.appendChild(gridWrap);
 
     // 右侧：CRT 物品信息检视屏（始终显示，在格子系统背景之外）
@@ -279,6 +318,7 @@ export class TrunkUI {
     this.container = null;
     this.inventorySystem = null;
     this.gridEl = null;
+    this.gridWrap = null;
     this.selectedItem = null;
   }
 }

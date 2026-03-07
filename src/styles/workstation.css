@@ -1247,7 +1247,7 @@
 }
 
 #inventory-container {
-  pointer-events: none;
+  pointer-events: auto;
   position: absolute;
   inset: 0;
   display: flex;
