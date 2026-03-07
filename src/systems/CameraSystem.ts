@@ -58,7 +58,7 @@ export class CameraSystem {
   private mouseLookX = 0;
   private mouseLookY = 0;
 
-  /** 页面面板平移：整个容器 translateX，0=drive -100=inventory（左移以显示右侧 inventory） */
+  /** 页面滑块平移：slider 200% 宽，0=drive -50=inventory（-50% 左移一屏显示 inventory） */
   private containerTranslateX = 0;
   private pageMode: PageMode = 'drive';
   private pageTransitionDuration = INVENTORY_TRANSITION;
@@ -168,7 +168,7 @@ export class CameraSystem {
   }
 
   /**
-   * 获取 cockpit-inventory-view 容器的 translateX 百分比（0=drive, -100=inventory）
+   * 获取 cockpit-inventory-slider 的 translateX 百分比（0=drive, -50=inventory）
    */
   getContainerTranslateX(): number {
     return this.containerTranslateX;
@@ -263,8 +263,8 @@ export class CameraSystem {
     gameState.camera.x = worldCam.x;
     gameState.camera.y = worldCam.y;
 
-    // 5. 页面容器 translateX 插值（整体左移以显示 inventory）
-    const targetContainerX = this.pageMode === 'drive' ? 0 : -100;
+    // 5. 页面滑块 translateX 插值（slider 200% 宽，-50% 左移一屏显示 inventory）
+    const targetContainerX = this.pageMode === 'drive' ? 0 : -50;
     this.containerTranslateX = lerp(
       this.containerTranslateX,
       targetContainerX,

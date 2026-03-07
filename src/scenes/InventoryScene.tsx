@@ -139,12 +139,8 @@ export class InventoryScene extends Scene {
         this.trunkUI.handleMove(1, 0);
         return true;
       }
-      if (action === 'inv_rotate_left') {
+      if (action === 'inv_rotate_left' || key === 'q') {
         this.trunkUI.handleRotate(-1);
-        return true;
-      }
-      if (action === 'inv_rotate_right') {
-        this.trunkUI.handleRotate(1);
         return true;
       }
     }

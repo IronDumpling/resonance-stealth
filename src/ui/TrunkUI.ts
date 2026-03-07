@@ -10,8 +10,9 @@ import type { ITrunkItem } from '@/types/entities';
 import { getItemDef } from '@/config/itemDefs';
 import type { ItemType } from '@/types/entities';
 
-const CELL_SIZE = 48;
-const GRID_GAP = 4;
+/** 格子基础尺寸（2x 原 48px），可根据容器缩放 */
+const CELL_SIZE = 96;
+const GRID_GAP = 8;
 
 export class TrunkUI {
   container: HTMLElement | null = null;
@@ -51,6 +52,12 @@ export class TrunkUI {
   render(): void {
     if (!this.container || !this.inventorySystem) return;
 
+    // 根据容器尺寸缩放格子（页面较小时缩小，参考宽度 600px）
+    const rect = this.container.getBoundingClientRect();
+    const scale = rect.width > 0 ? Math.min(1, Math.max(0.5, rect.width / 600)) : 1;
+    const cellSize = Math.round(CELL_SIZE * scale);
+    const gridGap = Math.round(GRID_GAP * scale);
+
     this.container.innerHTML = '';
     this.container.style.cssText = `
       display: flex;
@@ -76,9 +83,9 @@ export class TrunkUI {
     this.gridEl.className = 'inventory-trunk-grid';
     this.gridEl.style.cssText = `
       display: grid;
-      grid-template-columns: repeat(${this.inventorySystem.trunkWidth}, ${CELL_SIZE}px);
-      grid-template-rows: repeat(${this.inventorySystem.trunkHeight}, ${CELL_SIZE}px);
-      gap: ${GRID_GAP}px;
+      grid-template-columns: repeat(${this.inventorySystem.trunkWidth}, ${cellSize}px);
+      grid-template-rows: repeat(${this.inventorySystem.trunkHeight}, ${cellSize}px);
+      gap: ${gridGap}px;
     `;
 
     const items = this.inventorySystem.getTrunkItems();
@@ -105,9 +112,13 @@ export class TrunkUI {
           const def = getItemDef(item.type as ItemType);
           const cell = document.createElement('div');
           const isSelected = this.selectedItem === item;
+          const cellW = width * cellSize;
+          const cellH = height * cellSize;
           cell.style.cssText = `
-            width: ${CELL_SIZE}px;
-            height: ${CELL_SIZE}px;
+            width: ${cellW}px;
+            height: ${cellH}px;
+            min-width: ${cellW}px;
+            min-height: ${cellH}px;
             border: 2px solid ${isSelected ? '#00ff00' : '#333'};
             background: ${isSelected ? 'rgba(0,255,0,0.2)' : 'rgba(0,20,0,0.5)'};
             display: flex;
@@ -121,12 +132,12 @@ export class TrunkUI {
             if (!isSelected) cell.style.background = `rgba(0,80,0,0.4)`;
             cell.style.borderColor = isSelected ? '#00ff00' : def.color;
             cell.style.color = def.color;
-            cell.style.fontSize = '24px';
+            cell.style.fontSize = `${Math.min(cellW, cellH) * 0.5}px`;
             cell.textContent = def.icon;
             if (item.count > 1) {
               const countEl = document.createElement('span');
               countEl.textContent = String(item.count);
-              countEl.style.cssText = 'position:absolute;bottom:2px;right:4px;font-size:12px;';
+              countEl.style.cssText = `position:absolute;bottom:4px;right:8px;font-size:${cellSize * 0.2}px;`;
               cell.style.position = 'relative';
               cell.appendChild(countEl);
             }
@@ -141,8 +152,10 @@ export class TrunkUI {
         } else if (!info) {
           const cell = document.createElement('div');
           cell.style.cssText = `
-            width: ${CELL_SIZE}px;
-            height: ${CELL_SIZE}px;
+            width: ${cellSize}px;
+            height: ${cellSize}px;
+            min-width: ${cellSize}px;
+            min-height: ${cellSize}px;
             border: 1px solid #333;
             background: rgba(0,20,0,0.5);
             cursor: pointer;

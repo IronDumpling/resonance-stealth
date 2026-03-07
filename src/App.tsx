@@ -111,7 +111,7 @@ const AppInternal: React.FC = () => {
   const radioControlsRef = useRef<HTMLDivElement | null>(null);
   const pageRootRef = useRef<HTMLDivElement | null>(null);
   const cockpitGimbalRef = useRef<HTMLDivElement | null>(null);
-  const cockpitInventoryViewRef = useRef<HTMLDivElement | null>(null);
+  const cockpitInventorySliderRef = useRef<HTMLDivElement | null>(null);
 
   const [sceneManager] = useState<SceneManager | null>(() => {
     const sm = new SceneManager();
@@ -366,9 +366,9 @@ const AppInternal: React.FC = () => {
       if (cockpitGimbalRef.current && cameraSystem) {
         cockpitGimbalRef.current.style.transform = cameraSystem.getGimbalTransform();
       }
-      // 页面容器 translateX（cockpit/inventory 滑动）
-      if (cockpitInventoryViewRef.current && cameraSystem) {
-        cockpitInventoryViewRef.current.style.transform = `translateX(${cameraSystem.getContainerTranslateX()}%)`;
+      // 页面滑块 translateX（cockpit/inventory 滑动，slider 200% 宽，-50% 显示 inventory）
+      if (cockpitInventorySliderRef.current && cameraSystem) {
+        cockpitInventorySliderRef.current.style.transform = `translateX(${cameraSystem.getContainerTranslateX()}%)`;
       }
       // 同步生存状态到仪表盘（含油门刹车条）
       if (gameState?.survival && gameState?.vehicle) {
@@ -467,11 +467,22 @@ const AppInternal: React.FC = () => {
           transformStyle: 'preserve-3d',
         }}
       >
-      <div ref={cockpitInventoryViewRef} id="cockpit-inventory-view">
+      <div id="cockpit-inventory-view">
+        <div
+          ref={cockpitInventorySliderRef}
+          id="cockpit-inventory-slider"
+          style={{
+            display: 'flex',
+            width: '200%',
+            flexShrink: 0,
+            height: '100%',
+            transformStyle: 'preserve-3d',
+          }}
+        >
         <div
           id="cockpit-panel"
           style={{
-            width: '100%',
+            width: '50%',
             flexShrink: 0,
             transformStyle: 'preserve-3d',
           }}
@@ -679,19 +690,13 @@ const AppInternal: React.FC = () => {
           <div id="cockpit-steering" className="ref-steering cockpit-layer cockpit-steering" style={{ display: 'none' }} />
         </div>
       </div>
-
-      {/* Edge Glow Effect (for low energy/grabbed state) */}
-      <div id="edge-glow" />
-
-      {/* World UI Container (for in-game overlays) */}
-      <div id="world-ui-container" />
         </div>
 
         {/* Inventory Panel */}
         <div
           id="inventory-panel"
           style={{
-            width: '100%',
+            width: '50%',
             flexShrink: 0,
             transformStyle: 'preserve-3d',
             ['--inv-trunk-translateZ' as string]: `${INVENTORY_UI_LAYERS.trunkGrid.translateZ}px`,
@@ -703,6 +708,13 @@ const AppInternal: React.FC = () => {
       {/* Inventory UI */}
       <div id="inventory-container" style={{ display: 'none' }} />
         </div>
+        </div>
+
+      {/* Edge Glow Effect (for low energy/grabbed state) */}
+      <div id="edge-glow" />
+
+      {/* World UI Container (for in-game overlays) */}
+      <div id="world-ui-container" />
       </div>
       </div>
     </div>

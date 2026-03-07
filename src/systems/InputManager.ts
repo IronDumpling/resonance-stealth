@@ -83,8 +83,7 @@ export class InputManager implements IInputManager {
       'a': 'inv_move_left',
       's': 'inv_move_down',
       'd': 'inv_move_right',
-      'q': 'inv_rotate_left',
-      'e': 'inv_rotate_right',
+      'q': 'inv_rotate_left'
     });
 
     // 通用无线电控制上下文（频率调整、天线旋转、发射波）
