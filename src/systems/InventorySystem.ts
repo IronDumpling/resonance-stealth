@@ -10,8 +10,8 @@ import type { IGameState } from '@/types/game';
 import type { IItem, ITrunkItem, IGroundItem, ItemType } from '@/types/entities';
 import { getItemDef } from '@/config/itemDefs';
 
-const TRUNK_WIDTH = 4;
-const TRUNK_HEIGHT = 6;
+const TRUNK_WIDTH = 5;
+const TRUNK_HEIGHT = 7;
 
 export interface IInventoryCallbacks {
   onInventoryUpdate?: () => void;

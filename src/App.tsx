@@ -112,6 +112,7 @@ const AppInternal: React.FC = () => {
   const pageRootRef = useRef<HTMLDivElement | null>(null);
   const cockpitGimbalRef = useRef<HTMLDivElement | null>(null);
   const cockpitInventorySliderRef = useRef<HTMLDivElement | null>(null);
+  const inventoryGimbalRef = useRef<HTMLDivElement | null>(null);
 
   const [sceneManager] = useState<SceneManager | null>(() => {
     const sm = new SceneManager();
@@ -365,6 +366,10 @@ const AppInternal: React.FC = () => {
       // 云台 transform（光标跟随）也需每帧更新，否则 React 不重渲染时 gimbal 不随鼠标动
       if (cockpitGimbalRef.current && cameraSystem) {
         cockpitGimbalRef.current.style.transform = cameraSystem.getGimbalTransform();
+      }
+      // inventory 面板的鼠标视角轻微转动（与 cockpit 共用同一套 gimbal 值）
+      if (inventoryGimbalRef.current && cameraSystem) {
+        inventoryGimbalRef.current.style.transform = cameraSystem.getGimbalTransform();
       }
       // 页面滑块 translateX（cockpit/inventory 滑动，slider 200% 宽，-50% 显示 inventory）
       if (cockpitInventorySliderRef.current && cameraSystem) {
@@ -705,8 +710,18 @@ const AppInternal: React.FC = () => {
             ['--inv-warehouse-rotateY' as string]: `${INVENTORY_UI_LAYERS.warehousePanel.rotateY}deg`,
           }}
         >
-      {/* Inventory UI */}
+      {/* Inventory 云台：鼠标移动时 UI 轻微转动 */}
+      <div
+        ref={inventoryGimbalRef}
+        style={{
+          width: '100%',
+          height: '100%',
+          transformStyle: 'preserve-3d',
+          transformOrigin: 'center center',
+        }}
+      >
       <div id="inventory-container" style={{ display: 'none' }} />
+      </div>
         </div>
         </div>
 

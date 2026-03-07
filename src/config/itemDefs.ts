@@ -30,7 +30,7 @@ export const ITEM_DEFS: Record<ItemType, IItemDef> = {
     useEffect: 'fuel_medium',
     useAmount: 40,
   },
-  // 小修复材料：高1格宽1格，最多堆叠10，用于修复车辆完整度
+  // 小修复材料：高1格宽1格，最多堆叠10，用于修复车辆完整度（蓝色避免与选中绿色混淆）
   repair_kit_small: {
     id: 'repair_kit_small',
     name: '小修复材料',
@@ -38,7 +38,7 @@ export const ITEM_DEFS: Record<ItemType, IItemDef> = {
     height: 1,
     stackMax: 10,
     icon: '🔧',
-    color: '#22c55e',
+    color: '#3b82f6',
     useEffect: 'repair',
     useAmount: 10,
   },

@@ -64,20 +64,22 @@ export class TrunkUI {
       flex-direction: row;
       align-items: stretch;
       gap: 24px;
-      padding: 20px;
-      background: rgba(0,0,0,0.85);
-      border: 2px solid #00ff00;
-      border-radius: 8px;
-      box-shadow: 0 0 20px rgba(0,255,0,0.2);
+      padding: 24px;
       pointer-events: auto;
     `;
 
-    const left = document.createElement('div');
-    left.style.cssText = 'display: flex; flex-direction: column; align-items: center;';
-    const title = document.createElement('div');
-    title.textContent = 'TRUNK';
-    title.style.cssText = 'color: #00ff00; font-size: 18px; margin-bottom: 12px; font-family: monospace;';
-    left.appendChild(title);
+    // 左侧：实体格子网格区，背景尺寸与格子严格匹配（无多余空白）
+    const gridWrap = document.createElement('div');
+    gridWrap.style.cssText = `
+      width: fit-content;
+      height: fit-content;
+      background: #151515;
+      border: 16px solid #18181b;
+      border-radius: 12px;
+      box-shadow: -20px 20px 50px rgba(0,0,0,1), inset 0 0 50px rgba(0,0,0,0.5);
+      padding: 24px;
+      position: relative;
+    `;
 
     this.gridEl = document.createElement('div');
     this.gridEl.className = 'inventory-trunk-grid';
@@ -86,6 +88,12 @@ export class TrunkUI {
       grid-template-columns: repeat(${this.inventorySystem.trunkWidth}, ${cellSize}px);
       grid-template-rows: repeat(${this.inventorySystem.trunkHeight}, ${cellSize}px);
       gap: ${gridGap}px;
+      width: fit-content;
+      background: rgba(0,0,0,0.8);
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #27272a;
+      box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
     `;
 
     const items = this.inventorySystem.getTrunkItems();
@@ -114,17 +122,19 @@ export class TrunkUI {
           const isSelected = this.selectedItem === item;
           const cellW = width * cellSize;
           const cellH = height * cellSize;
+          const itemShadow = '2px 2px 5px rgba(0,0,0,0.8), inset 2px 2px 5px rgba(255,255,255,0.15), inset -2px -2px 5px rgba(0,0,0,0.5)';
+          const selectedShadow = '0 0 12px rgba(0,255,0,0.6), ' + itemShadow;
           cell.style.cssText = `
             width: ${cellW}px;
             height: ${cellH}px;
             min-width: ${cellW}px;
             min-height: ${cellH}px;
-            border: 2px solid ${isSelected ? '#00ff00' : '#333'};
-            background: ${isSelected ? 'rgba(0,255,0,0.2)' : 'rgba(0,20,0,0.5)'};
+            border: 2px solid ${isSelected ? '#00ff00' : (def?.color ?? '#333')};
+            background: ${isSelected ? 'rgba(0,255,0,0.25)' : (def ? `rgba(0,80,0,0.4)` : 'rgba(0,20,0,0.5)')};
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: ${isSelected ? '0 0 8px rgba(0,255,0,0.5)' : 'none'};
+            box-shadow: ${isSelected ? selectedShadow : itemShadow};
           `;
           if (def) {
             cell.style.gridColumn = `span ${width}`;
@@ -156,8 +166,11 @@ export class TrunkUI {
             height: ${cellSize}px;
             min-width: ${cellSize}px;
             min-height: ${cellSize}px;
-            border: 1px solid #333;
-            background: rgba(0,20,0,0.5);
+            border: 1px solid rgba(39,39,42,0.5);
+            background: #1a1a1a;
+            box-shadow: inset 2px 2px 4px rgba(0,0,0,0.6);
+            margin: 1px;
+            border-radius: 2px;
             cursor: pointer;
           `;
           cell.addEventListener('click', () => {
@@ -169,45 +182,72 @@ export class TrunkUI {
       }
     }
 
-    left.appendChild(this.gridEl);
-    this.container.appendChild(left);
+    gridWrap.appendChild(this.gridEl);
+    this.container.appendChild(gridWrap);
 
-    // 右侧详情面板
+    // 右侧：CRT 物品信息检视屏（始终显示，在格子系统背景之外）
+    const slotCount = this.inventorySystem.trunkWidth * this.inventorySystem.trunkHeight;
+    const panel = document.createElement('div');
+    panel.className = 'inventory-details-panel';
+    panel.style.cssText = `
+      width: 280px;
+      min-width: 280px;
+      background: #27272a;
+      border: 12px solid #18181b;
+      border-radius: 8px;
+      box-shadow: 20px 20px 50px rgba(0,0,0,1);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+    `;
+    const label = document.createElement('div');
+    label.style.cssText = 'background: rgba(0,0,0,0.5); padding: 8px; border: 1px solid #3f3f46; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); margin-bottom: 8px;';
+    label.innerHTML = `
+      <div style="color: #71717a; font-family: monospace; font-size: 10px; font-weight: bold; letter-spacing: 0.1em;">CARGO HOLD // A.E.S</div>
+      <div style="color: #52525b; font-family: monospace; font-size: 10px;">CAPACITY: ${slotCount} SLOTS</div>
+    `;
+    panel.appendChild(label);
+    const crtScreen = document.createElement('div');
+    crtScreen.style.cssText = `
+      min-height: 180px;
+      background: #0a150a;
+      border: 4px solid #09090b;
+      border-radius: 8px;
+      box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    `;
     if (this.selectedItem) {
       const def = getItemDef(this.selectedItem.type as ItemType);
       if (def) {
-        const panel = document.createElement('div');
-        panel.className = 'inventory-details-panel';
-        panel.style.cssText = `
-          min-width: 200px;
-          padding: 16px;
-          background: rgba(0,30,0,0.6);
-          border: 1px solid #00ff00;
-          border-radius: 6px;
-          color: #00ff00;
-          font-family: monospace;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        `;
-        panel.innerHTML = `
-          <div style="font-size: 16px; font-weight: bold;">${def.name}</div>
-          <div>尺寸: ${this.inventorySystem.getRotatedDimensions(this.selectedItem).width}×${this.inventorySystem.getRotatedDimensions(this.selectedItem).height}</div>
-          <div>数量: ${this.selectedItem.count}${def.stackMax > 1 ? ` / ${def.stackMax}` : ''}</div>
-          <div style="font-size: 12px; opacity: 0.8;">${def.useEffect ? `使用: ${def.useEffect} +${def.useAmount ?? 0}` : '不可使用'}</div>
+        crtScreen.innerHTML = `
+          <div style="position: absolute; inset: 0; background: linear-gradient(rgba(0,255,0,0.03) 50%, rgba(0,0,0,0.2) 50%); background-size: 100% 4px; pointer-events: none;"></div>
+          <div style="color: #22c55e; font-family: monospace; font-size: 12px; border-bottom: 1px solid rgba(0,100,0,0.5); padding-bottom: 8px; margin-bottom: 12px; font-weight: bold;">&gt; SELECT ITEM</div>
+          <div style="color: rgba(34,197,94,0.8); font-family: monospace; font-size: 11px; line-height: 1.6;">
+            <div style="font-weight: bold; margin-bottom: 4px;">${def.name}</div>
+            <div>尺寸: ${this.inventorySystem.getRotatedDimensions(this.selectedItem).width}×${this.inventorySystem.getRotatedDimensions(this.selectedItem).height}</div>
+            <div>数量: ${this.selectedItem.count}${def.stackMax > 1 ? ` / ${def.stackMax}` : ''}</div>
+            <div style="font-size: 10px; opacity: 0.9; margin-top: 8px;">${def.useEffect ? `使用: ${def.useEffect} +${def.useAmount ?? 0}` : '不可使用'}</div>
+          </div>
+          <div style="position: absolute; bottom: 16px; right: 16px; width: 32px; height: 32px; border-radius: 50%; background: #27272a; border: 2px solid #09090b; box-shadow: 0 2px 8px rgba(0,0,0,0.5);"></div>
         `;
         if (def.useEffect) {
           const useBtn = document.createElement('button');
           useBtn.textContent = '使用';
           useBtn.style.cssText = `
-            padding: 8px 16px;
-            background: #00ff00;
+            padding: 10px 20px;
+            background: #22c55e;
             color: #000;
-            border: none;
+            border: 2px solid #16a34a;
             border-radius: 4px;
             cursor: pointer;
             font-family: monospace;
             font-weight: bold;
+            margin-top: 8px;
+            box-shadow: 0 4px 0 #15803d, 0 6px 10px rgba(0,0,0,0.4);
           `;
           useBtn.addEventListener('click', () => {
             this.inventorySystem?.useItem(this.selectedItem!);
@@ -216,9 +256,20 @@ export class TrunkUI {
           });
           panel.appendChild(useBtn);
         }
-        this.container.appendChild(panel);
       }
+    } else {
+      crtScreen.innerHTML = `
+        <div style="position: absolute; inset: 0; background: linear-gradient(rgba(0,255,0,0.03) 50%, rgba(0,0,0,0.2) 50%); background-size: 100% 4px; pointer-events: none;"></div>
+        <div style="color: #22c55e; font-family: monospace; font-size: 12px; border-bottom: 1px solid rgba(0,100,0,0.5); padding-bottom: 8px; margin-bottom: 12px; font-weight: bold;">&gt; SELECT ITEM</div>
+        <div style="color: rgba(34,197,94,0.8); font-family: monospace; font-size: 11px; line-height: 1.6; margin-top: 16px;">
+          <p>NO ITEM SELECTED FOR INSPECTION.</p>
+          <p>AWAITING INPUT...</p>
+        </div>
+        <div style="position: absolute; bottom: 16px; right: 16px; width: 32px; height: 32px; border-radius: 50%; background: #27272a; border: 2px solid #09090b; box-shadow: 0 2px 8px rgba(0,0,0,0.5);"></div>
+      `;
     }
+    panel.appendChild(crtScreen);
+    this.container.appendChild(panel);
   }
 
   destroy(): void {
