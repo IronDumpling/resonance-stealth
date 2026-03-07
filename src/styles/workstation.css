@@ -1,0 +1,1532 @@
+/**
+ * Workstation / Cockpit Layout - First-Person View
+ */
+
+/* 3D 透视容器（配合 CameraSystem 的页面级 3D 镜头） */
+#perspective-root {
+  width: 100%;
+  height: 100%;
+  perspective: 1200px;
+  perspective-origin: center center;
+  overflow: hidden;
+}
+
+#page-root {
+  transform-style: preserve-3d;
+}
+
+/* Cockpit + Inventory：外层 100vw 视口，内层 slider 200% 滑动 */
+#cockpit-inventory-view {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+}
+
+#cockpit-inventory-slider {
+  display: flex;
+  width: 200%;
+  flex-shrink: 0;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+
+#cockpit-panel,
+#inventory-panel {
+  width: 50%;
+  min-width: 50%;
+  flex-shrink: 0;
+  height: 100%;
+}
+
+/* Main Workstation / Cockpit Container（需 preserve-3d 以保持子元素 3D 视差） */
+#workstation-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 100vh;
+    background: #000;
+    overflow: hidden;
+    transform-style: preserve-3d;
+}
+
+/* 云台：仅 rotateX/rotateY 光标跟随，transform 由 CameraSystem.getGimbalTransform 注入 */
+/* 子元素全为 absolute 时父级会塌陷，需 min-height 保证尺寸 */
+#cockpit-gimbal {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 100vh;
+    transform-style: preserve-3d;
+    transform-origin: center center;
+}
+
+/* 1. 挡风玻璃声纳（最远，absolute，参考 3d_css） */
+#cockpit-sonar-wrap.cockpit-sonar {
+    position: absolute;
+    top: 5%;
+    left: 50%;
+    width: 100%;
+    max-width: 1200px;
+    height: 55vh;
+    transform: translateX(-50%) translateZ(var(--cockpit-sonar-translateZ, -280px)) translateY(0) rotateX(var(--cockpit-sonar-rotateX, 5deg)) rotateY(var(--cockpit-sonar-rotateY, 0deg));
+    transform-style: preserve-3d;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+}
+
+/* 声纳显示屏容器 */
+#crt-monitor-container {
+    flex: 1;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    min-width: 0;
+}
+
+/* Monitor Frame - 声纳挡风玻璃（参考 reference） */
+#monitor-frame {
+    width: 100%;
+    height: 100%;
+    background: #0a0a0b;
+    border-bottom: 8px solid #18181b;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Monitor Screen - 仅包含 SONAR 显示，浅灰宽边隔绝外界 */
+#monitor-screen {
+    width: 100%;
+    height: 100%;
+    background: #0a0a0b;
+    position: relative;
+    overflow: hidden;
+    box-sizing: border-box;
+    border: 12px solid #a0a0a0;
+    box-shadow: inset 0 0 0 4px rgba(160, 160, 160, 0.4), 0 0 24px rgba(160, 160, 160, 0.2);
+}
+
+/* CRT 扫描线 / 屏幕效果 */
+#monitor-screen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.25) 50%),
+                linear-gradient(90deg, rgba(255,0,0,0.06), rgba(0,255,0,0.02), rgba(0,0,255,0.06));
+    background-size: 100% 4px, 3px 100%;
+    pointer-events: none;
+    z-index: 20;
+    opacity: 0.5;
+}
+
+/* 屏幕暗角 Vignette */
+#monitor-screen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.8) 100%);
+    pointer-events: none;
+    z-index: 10;
+}
+
+#monitor-screen canvas#gameCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 5;
+}
+
+/* 声纳 HUD 提示 */
+#sonar-hud {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    color: #22c55e;
+    font-family: monospace;
+    font-size: 11px;
+    opacity: 0.7;
+    z-index: 30;
+    line-height: 1.5;
+}
+
+/* 声纳同心网格（静态） */
+#sonar-grid {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.2;
+    pointer-events: none;
+    z-index: 6;
+}
+
+.sonar-circle {
+    position: absolute;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: 50%;
+}
+
+.sonar-circle:nth-child(1) { width: 60%; height: 60%; max-width: 400px; max-height: 400px; }
+.sonar-circle:nth-child(2) { width: 45%; height: 45%; max-width: 300px; max-height: 300px; }
+.sonar-circle:nth-child(3) { width: 30%; height: 30%; max-width: 200px; max-height: 200px; }
+
+.sonar-line {
+    position: absolute;
+    background: rgba(34, 197, 94, 0.3);
+}
+
+.sonar-line-h {
+    width: 100%;
+    height: 1px;
+}
+
+.sonar-line-v {
+    width: 1px;
+    height: 100%;
+}
+
+/* 2. 中控台基座（absolute，参考 3d_css Base，下移避免遮挡 sonar） */
+#cockpit-bottom.cockpit-base {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 800px;
+    height: 320px;
+    margin-left: -400px;
+    margin-top: -160px;
+    transform: translateY(220px) translateZ(0) rotateX(var(--cockpit-bottom-rotateX, -15deg));
+    transform-style: preserve-3d;
+    z-index: 10;
+}
+
+/* 左侧：仪表盘（横向加宽，右侧天线+信号表） */
+#cockpit-dashboard.ref-dashboard {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 480px;
+    height: 280px;
+    background: #27272a;
+    transform: translateX(var(--cockpit-dashboard-translateX, -360px)) translateZ(var(--cockpit-dashboard-translateZ, 40px)) rotateY(var(--cockpit-dashboard-rotateY, 18deg));
+    transform-style: preserve-3d;
+    padding: 12px;
+    border-right: 4px solid #0a0a0b;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: 1fr;
+    gap: 12px;
+    align-items: stretch;
+    box-shadow: inset -10px 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.ref-dashboard-left {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.ref-dashboard-left .ref-gauge {
+    padding: 8px;
+}
+
+.ref-dashboard-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+}
+
+.ref-dashboard-right .radio-controls-panel {
+    width: 100%;
+}
+
+/* 仪表盘三行布局：第1行 HULL+HP，第2行 THROTTLE+BRAKE，第3行 BATT+FUEL+速度 */
+.ref-dashboard-row {
+    display: grid;
+    gap: 10px;
+}
+
+.ref-dashboard-row-1,
+.ref-dashboard-row-2 {
+    grid-template-columns: 1fr 1fr;
+}
+
+.ref-dashboard-row-3 {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+.ref-gauge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #18181b;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #3f3f46;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5);
+    min-width: 96px;
+}
+
+.ref-gauge-icon {
+    font-size: 18px;
+    margin-bottom: 8px;
+}
+
+.ref-gauge[data-color="blue"] .ref-gauge-icon,
+.ref-gauge[data-color="blue"] .ref-gauge-fill { color: #60a5fa; }
+.ref-gauge[data-color="blue"] .ref-gauge-fill { background: #60a5fa; }
+
+.ref-gauge[data-color="red"] .ref-gauge-icon,
+.ref-gauge[data-color="red"] .ref-gauge-fill { color: #ef4444; }
+.ref-gauge[data-color="red"] .ref-gauge-fill { background: #ef4444; }
+
+.ref-gauge[data-color="yellow"] .ref-gauge-icon,
+.ref-gauge[data-color="yellow"] .ref-gauge-fill { color: #eab308; }
+.ref-gauge[data-color="yellow"] .ref-gauge-fill { background: #eab308; }
+
+.ref-gauge[data-color="orange"] .ref-gauge-icon,
+.ref-gauge[data-color="orange"] .ref-gauge-fill { color: #f97316; }
+.ref-gauge[data-color="orange"] .ref-gauge-fill { background: #f97316; }
+
+/* 熄火时 HULL/HP 仪表为灰色，不更新 */
+#cockpit-dashboard.engine-off .ref-gauge[data-gauge="hull"] .ref-gauge-icon,
+#cockpit-dashboard.engine-off .ref-gauge[data-gauge="hull"] .ref-gauge-fill,
+#cockpit-dashboard.engine-off .ref-gauge[data-gauge="hp"] .ref-gauge-icon,
+#cockpit-dashboard.engine-off .ref-gauge[data-gauge="hp"] .ref-gauge-fill {
+  color: #71717a !important;
+  background: #71717a !important;
+}
+
+.ref-gauge-bar {
+    width: 100%;
+    height: 8px;
+    background: #27272a;
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.ref-gauge-fill {
+    height: 100%;
+    border-radius: 9999px;
+    transition: width 0.2s;
+}
+
+.ref-gauge-label {
+    font-size: 10px;
+    color: #a1a1aa;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+}
+
+.ref-gauge-value {
+    font-size: 12px;
+    color: #fff;
+    font-family: monospace;
+}
+
+/* 表盘仪表（BATT, FUEL, 速度） */
+.ref-dial-gauge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #18181b;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #3f3f46;
+    min-width: 72px;
+}
+
+.ref-dial-face {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #0a0a0b;
+    border: 3px solid #3f3f46;
+    position: relative;
+    overflow: hidden;
+}
+
+.ref-dial-needle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 2px;
+    height: 50%;
+    margin-left: -1px;
+    margin-top: -50%;
+    background: #ef4444;
+    transform-origin: center bottom;
+    transform: rotate(-135deg);
+    transition: transform 0.1s;
+}
+
+.ref-dial-label {
+    font-size: 9px;
+    color: #a1a1aa;
+    margin-top: 4px;
+}
+
+.ref-dial-value {
+    font-size: 11px;
+    color: #fff;
+    font-family: monospace;
+}
+
+.ref-speedometer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 96px;
+    height: 96px;
+    margin-left: auto;
+    margin-right: auto;
+    background: #18181b;
+    border-radius: 50%;
+    border: 4px solid #3f3f46;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+    position: relative;
+}
+
+.ref-speedometer .ref-dial-face {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+}
+
+.ref-speedometer .ref-dial-needle {
+    height: 45%;
+    background: #22c55e;
+}
+
+.ref-speed-label {
+    position: absolute;
+    top: 4px;
+    font-size: 9px;
+    color: #71717a;
+}
+
+.ref-speed-value {
+    position: absolute;
+    bottom: 20px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #fff;
+    font-family: monospace;
+}
+
+.ref-speed-max {
+    position: absolute;
+    bottom: 4px;
+    right: 8px;
+    font-size: 9px;
+    color: #71717a;
+    font-family: monospace;
+}
+
+/* 油门刹车条（第2行，左侧仪表盘） */
+.ref-throttle-bar,
+.ref-brake-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ref-bar-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #a1a1aa;
+    font-family: monospace;
+}
+
+.ref-bar-track {
+    width: 100%;
+    height: 12px;
+    background: #18181b;
+    border-radius: 9999px;
+    border: 1px solid #3f3f46;
+    overflow: hidden;
+}
+
+.ref-bar-fill {
+    height: 100%;
+    border-radius: 9999px;
+    transition: width 0.1s;
+}
+
+.ref-throttle-fill {
+    background: #3b82f6;
+}
+
+.ref-brake-fill {
+    background: #ef4444;
+}
+
+/* 中部：车载收音机(左) + 引擎按钮(右) */
+#cockpit-console.ref-radio-wrap {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 480px;
+    height: 250px;
+    margin-left: -240px;
+    background: #27272a;
+    transform: translateZ(var(--cockpit-radio-translateZ, 90px)) rotateY(var(--cockpit-radio-rotateY, 0deg));
+    transform-style: preserve-3d;
+    padding: 24px;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 16px;
+    box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.6);
+}
+
+/* 引擎列：麦克风 + 启动按钮（垂直排列） */
+.ref-engine-column {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+/* 实体麦克风 UI（黑色圆形，金属质感） */
+.ref-mic-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse 60% 40% at 50% 30%, #3a3a3a, #0a0a0a 60%);
+    box-shadow:
+        inset 0 -4px 12px rgba(0, 0, 0, 0.8),
+        inset 0 2px 4px rgba(255, 255, 255, 0.08),
+        0 4px 12px rgba(0, 0, 0, 0.5);
+    border: 2px solid #1a1a1a;
+    position: relative;
+}
+
+.ref-mic-icon::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 12px;
+    height: 12px;
+    margin: -6px 0 0 -6px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #555, #1a1a1a);
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.1);
+}
+
+.ref-mic-icon::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    width: 4px;
+    height: 8px;
+    margin-left: -2px;
+    background: linear-gradient(to bottom, #2a2a2a, #0a0a0a);
+    border-radius: 2px;
+}
+
+/* 引擎启动/熄火按钮（位于 radio 右侧） */
+.ref-engine-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: #18181b;
+    border: 2px solid #3f3f46;
+    border-radius: 6px;
+    color: var(--crt-green);
+    font-size: 12px;
+    font-weight: bold;
+    font-family: monospace;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.ref-engine-btn:hover {
+    background: #27272a;
+    border-color: #52525b;
+    color: #fff;
+}
+.ref-engine-btn.ref-engine-on {
+    border-color: #22c55e;
+    color: #22c55e;
+}
+.ref-engine-btn.ref-engine-on:hover {
+    background: rgba(34, 197, 94, 0.15);
+}
+.ref-engine-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #52525b;
+}
+.ref-engine-btn.ref-engine-on .ref-engine-indicator {
+    background: #22c55e;
+    box-shadow: 0 0 8px #22c55e;
+}
+
+/* 右侧面板内的收音机控制区（瀑布图在中间，控制移至此） */
+.ref-radio-controls {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+}
+
+/* 右侧：驾驶系统（absolute，参考 3d_css DrivePanel，向驾驶员倾斜） */
+#cockpit-driving-ui.ref-driving {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 300px;
+    min-height: 320px;
+    height: auto;
+    background: #27272a;
+    transform: translateX(var(--cockpit-driving-translateX, 250px)) translateZ(var(--cockpit-driving-translateZ, 40px)) rotateY(var(--cockpit-driving-rotateY, -18deg));
+    transform-style: preserve-3d;
+    padding: 24px;
+    border-left: 4px solid #0a0a0b;
+    display: flex;
+    flex-direction: column;
+    box-shadow: inset 10px 0 20px rgba(0, 0, 0, 0.5);
+    overflow: visible;
+}
+
+.ref-drive-label {
+    flex-shrink: 0;
+    color: #71717a;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    margin-bottom: 16px;
+}
+
+/* 档位杆 */
+.ref-gear-lever-wrap {
+    flex-shrink: 0;
+    background: #18181b;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #3f3f46;
+    margin-bottom: 16px;
+}
+
+.ref-gear-labels {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 12px 8px;
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 12px;
+    color: #71717a;
+}
+
+.ref-gear-label {
+    flex: 1;
+    text-align: center;
+}
+
+.ref-gear-track {
+    position: relative;
+    height: 24px;
+    background: #000;
+    border-radius: 9999px;
+    border: 2px solid #27272a;
+    margin: 0 8px;
+    cursor: pointer;
+}
+
+.ref-gear-track-slot {
+    position: absolute;
+    top: 50%;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    margin-top: -1px;
+    background: #18181b;
+    border-radius: 9999px;
+}
+
+.ref-gear-knob {
+    position: absolute;
+    top: 50%;
+    width: 40px;
+    height: 40px;
+    margin-top: -20px;
+    margin-left: -20px;
+    left: 0;
+    background: linear-gradient(to bottom, #d4d4d8, #71717a);
+    border-radius: 50%;
+    border: 3px solid #52525b;
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.9);
+    cursor: pointer;
+    transition: left 0.15s ease-out;
+    z-index: 20;
+}
+
+/* 旋钮行 */
+.ref-knobs-row {
+    display: flex;
+    justify-content: space-between;
+    background: #18181b;
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px solid #3f3f46;
+    margin-bottom: 12px;
+}
+
+.ref-control-knob {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.ref-knob-disk {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(to bottom right, #71717a, #27272a);
+    border: 2px solid #0a0a0b;
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.8), inset 0 2px 2px rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.05s;
+}
+
+.ref-knob-disk:active {
+    transform: scale(0.95);
+}
+
+.ref-knob-indicator {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    width: 2px;
+    height: 12px;
+    margin-left: -1px;
+    background: #e4e4e7;
+    border-radius: 2px;
+    box-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
+}
+
+.ref-knob-label {
+    font-size: 9px;
+    color: #a1a1aa;
+    margin-top: 8px;
+    font-family: monospace;
+    text-align: center;
+    max-width: 56px;
+    line-height: 1.2;
+}
+
+/* RX/TX 拨动开关 + 麦克风 + EMIT SONAR */
+.ref-comms-row {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+    align-items: stretch;
+    margin-top: 12px;
+}
+
+.ref-comms-row-square {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.ref-rxtx-toggle-horizontal {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #18181b;
+    border: 2px solid #3f3f46;
+    border-radius: 6px;
+    cursor: pointer;
+    min-width: 80px;
+}
+
+.ref-rxtx-track-h {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background: #0a0a0b;
+    border-radius: 4px;
+    border: 2px solid #27272a;
+}
+
+.ref-rxtx-knob-h {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    top: 1px;
+    left: 1px;
+    background: #22c55e;
+    border-radius: 3px;
+    transition: left 0.2s;
+}
+
+.ref-rxtx-knob-h.ref-rxtx-knob-h-tx {
+    left: 19px;
+    background: #ef4444;
+}
+
+.ref-comms-btn {
+    flex: 1;
+    min-width: 70px;
+    padding: 12px 8px;
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 2px solid;
+    transition: all 0.15s;
+}
+
+.ref-comms-btn-hold {
+    background: linear-gradient(to bottom, #dc2626, #b91c1c);
+    border-color: #7f1d1d;
+    color: #fff;
+}
+
+.ref-comms-btn-hold.ref-comms-btn-pressed {
+    background: #7f1d1d;
+    transform: translateY(1px);
+}
+
+.ref-comms-btn-emit {
+    background: linear-gradient(to bottom, #2563eb, #1d4ed8);
+    border-color: #1e40af;
+    color: #fff;
+}
+
+.ref-comms-btn-emit:hover {
+    background: linear-gradient(to bottom, #3b82f6, #2563eb);
+}
+
+.ref-rxtx-toggle {
+    width: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #18181b;
+    border-radius: 4px;
+    border: 1px solid #3f3f46;
+    cursor: pointer;
+}
+
+.ref-rxtx-label {
+    font-size: 10px;
+    font-family: monospace;
+    font-weight: bold;
+    color: #52525b;
+}
+
+.ref-rxtx-label.ref-rxtx-active {
+    color: #22c55e;
+    text-shadow: 0 0 5px #22c55e;
+}
+
+.ref-rxtx-toggle .ref-rxtx-label:last-of-type.ref-rxtx-active {
+    color: #ef4444;
+    text-shadow: 0 0 5px #ef4444;
+}
+
+.ref-rxtx-track {
+    width: 32px;
+    height: 48px;
+    background: #000;
+    border-radius: 9999px;
+    border: 2px solid #27272a;
+    position: relative;
+    box-shadow: inset 0 5px 10px rgba(0, 0, 0, 0.8);
+}
+
+.ref-rxtx-knob {
+    position: absolute;
+    left: 2px;
+    top: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #d4d4d8;
+    box-shadow: 0 5px 5px rgba(0, 0, 0, 0.9), inset 0 2px 2px rgba(255, 255, 255, 0.4);
+    transition: top 0.2s, bottom 0.2s, background 0.2s;
+}
+
+.ref-rxtx-knob.ref-rxtx-tx-knob {
+    top: auto;
+    bottom: 2px;
+    background: #ef4444;
+}
+
+.ref-mic-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ref-mic-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border: 2px solid #b91c1c;
+    border-radius: 8px;
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 12px;
+    color: #fff;
+    background: linear-gradient(to bottom, #dc2626, #b91c1c);
+    box-shadow: 0 8px 0 #7f1d1d, 0 15px 20px rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    position: relative;
+    padding: 12px;
+}
+
+.ref-mic-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 4px 0 #7f1d1d, 0 8px 12px rgba(0, 0, 0, 0.5);
+}
+
+.ref-mic-btn.ref-mic-pressed {
+    background: linear-gradient(to bottom, #991b1b, #7f1d1d);
+    color: #fecaca;
+    transform: translateY(2px);
+    box-shadow: inset 0 10px 20px rgba(0, 0, 0, 0.8);
+}
+
+.ref-mic-led {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #7f1d1d;
+}
+
+.ref-mic-btn.ref-mic-pressed .ref-mic-led {
+    background: #fca5a5;
+    box-shadow: 0 0 10px #fca5a5;
+}
+
+.ref-mic-text {
+    font-size: 11px;
+}
+
+.ref-mic-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ref-mic-icon .ref-mic-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #0a0a0b;
+    border: 3px solid #27272a;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), inset 0 1px 2px rgba(255, 255, 255, 0.05);
+}
+
+/* RX/TX 与实体按钮 3D 风格 */
+.ref-sonar-btn,
+.ref-rxtx-btn {
+    flex-shrink: 0;
+    margin-top: 24px;
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(180deg, #7f1d1d 0%, #5c1515 100%);
+    border: 3px solid #450a0a;
+    border-top-color: #b91c1c;
+    border-left-color: #991b1b;
+    color: #fecaca;
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow:
+        0 4px 0 #450a0a,
+        0 6px 12px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    font-family: monospace;
+    transition: transform 0.1s, box-shadow 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.ref-sonar-btn:hover,
+.ref-rxtx-btn:hover {
+    background: linear-gradient(180deg, #991b1b 0%, #7f1d1d 100%);
+    color: #fff;
+}
+
+.ref-sonar-btn:active,
+.ref-rxtx-btn:active {
+    transform: translateY(2px);
+    box-shadow:
+        0 2px 0 #450a0a,
+        0 4px 8px rgba(0, 0, 0, 0.5),
+        inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.ref-rxtx-led {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 6px #22c55e;
+}
+
+.ref-rxtx-btn.ref-rxtx-tx .ref-rxtx-led {
+    background: #ef4444;
+    box-shadow: 0 0 6px #ef4444;
+}
+
+.ref-gear {
+    box-shadow:
+        inset 0 2px 4px rgba(255, 255, 255, 0.05),
+        0 2px 0 rgba(0, 0, 0, 0.3);
+    border: 1px solid #27272a;
+}
+
+.ref-gear:active {
+    transform: translateY(1px);
+}
+
+.ref-gear-active {
+    box-shadow:
+        inset 0 0 10px rgba(0, 0, 0, 0.5),
+        0 2px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* 3. 方向盘（三辐式，最近，absolute，rotateZ 随 steeringAngle 转动） */
+#cockpit-steering.ref-steering.cockpit-steering {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--cockpit-steering-width, 450px);
+    height: var(--cockpit-steering-height, 450px);
+    margin-left: -225px;
+    margin-top: -100px;
+    transform: translateY(250px) translateZ(var(--cockpit-steering-translateZ, 300px)) rotateX(var(--cockpit-steering-rotateX, -10deg)) rotateZ(var(--cockpit-steering-rotateZ, 0deg));
+    transform-origin: center center;
+    transform-style: preserve-3d;
+    z-index: 50;
+    pointer-events: none;
+}
+
+/* 方向盘外圈（环形握把） */
+#cockpit-steering .steering-rim {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 28px solid #18181b;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.8),
+                inset 0 5px 15px rgba(255, 255, 255, 0.08);
+    background: transparent;
+}
+
+/* 三辐式辐条 - 左（9 点钟） */
+#cockpit-steering .steering-spoke-left {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 130px;
+    height: 22px;
+    margin-left: -130px;
+    margin-top: -11px;
+    background: linear-gradient(90deg, #2a2a2e 0%, #18181b 100%);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* 三辐式辐条 - 右（3 点钟） */
+#cockpit-steering .steering-spoke-right {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 130px;
+    height: 22px;
+    margin-left: 0;
+    margin-top: -11px;
+    background: linear-gradient(270deg, #2a2a2e 0%, #18181b 100%);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* 三辐式辐条 - 下（6 点钟，较粗） */
+#cockpit-steering .steering-spoke-bottom {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 26px;
+    height: 160px;
+    margin-left: -13px;
+    margin-top: 0;
+    background: linear-gradient(180deg, #1e1e22 0%, #18181b 50%, #252528 100%);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6),
+                inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* 下辐条银色装饰 */
+#cockpit-steering .steering-spoke-bottom::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 60px;
+    background: linear-gradient(180deg, #3f3f46 0%, #52525b 50%, #3f3f46 100%);
+    border-radius: 2px;
+}
+
+/* 中心毂 */
+#cockpit-steering .steering-hub {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #252528, #0a0a0b);
+    border: 4px solid #3f3f46;
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.8),
+                0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* 驾驶舱底部阴影渐变 */
+#cockpit-bottom::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 48px;
+    background: linear-gradient(to top, #000, transparent);
+    pointer-events: none;
+    z-index: 50;
+}
+
+/* 车载收音机区域（完全透明，无边缘） */
+.cockpit-radio-area {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    width: 100%;
+    max-width: 480px;
+    min-height: 220px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 20;
+}
+
+.cockpit-radio-area::before {
+    display: none;
+}
+
+/* Radio Mode Display Overlay */
+#radio-mode-display {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    display: none; /* Shown when in radio mode */
+    background: #000;
+    color: var(--crt-green);
+    font-family: 'Courier New', monospace;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+#radio-mode-display.active {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 15px;
+}
+
+/* Morse Code Reference */
+#morse-reference {
+    grid-row: 1;
+    border: 3px solid var(--crt-green);
+    padding: 20px;
+    overflow-y: auto;
+    background: rgba(0, 30, 0, 0.9);
+    box-shadow: 0 0 30px rgba(var(--crt-green-rgb), 0.4), inset 0 0 40px rgba(var(--crt-green-rgb), 0.15);
+}
+
+#morse-reference h3 {
+    margin: 0 0 20px 0;
+    font-size: 22px;
+    font-weight: bold;
+    text-align: center;
+    color: var(--crt-green);
+    border-bottom: 3px solid var(--crt-green);
+    padding-bottom: 12px;
+}
+
+.morse-columns {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.morse-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.morse-entry {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    border: 1px solid rgba(var(--crt-green-rgb), 0.3);
+    background: rgba(0, 0, 0, 0.95);
+    border-radius: 4px;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+.morse-entry:hover {
+    background: rgba(0, 50, 0, 0.95);
+    border-color: rgba(var(--crt-green-rgb), 0.5);
+    box-shadow: 0 0 10px rgba(var(--crt-green-rgb), 0.3), inset 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+.morse-char {
+    font-weight: bold;
+    color: var(--crt-green) !important;
+    font-size: 18px;
+    min-width: 25px;
+}
+
+.morse-code {
+    color: var(--crt-green) !important;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* Decode Input Box */
+#decode-input {
+    grid-row: 2;
+    border: 2px solid var(--crt-green);
+    padding: 15px;
+    background: rgba(0, 20, 0, 0.8);
+    box-shadow: inset 0 0 20px rgba(var(--crt-green-rgb), 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#decode-input label {
+    font-size: 12px;
+    margin-bottom: 0;
+    color: var(--crt-green);
+    text-shadow: 0 0 3px var(--crt-green);
+}
+
+.decode-input-row {
+    display: flex;
+    gap: 10px;
+}
+
+#decode-input input {
+    flex: 1;
+    background: #000;
+    border: 1px solid var(--crt-green);
+    color: var(--crt-green);
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    padding: 8px;
+    outline: none;
+}
+
+#decode-input input:focus {
+    box-shadow: 0 0 10px rgba(var(--crt-green-rgb), 0.5);
+}
+
+.decode-submit-btn {
+    background: #001100;
+    border: 2px solid var(--crt-green);
+    color: var(--crt-green);
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 8px 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.decode-submit-btn:hover {
+    background: #003300;
+    box-shadow: 0 0 15px rgba(var(--crt-green-rgb), 0.5);
+}
+
+.decode-submit-btn:active {
+    background: #005500;
+}
+
+.decode-feedback {
+    font-size: 14px;
+    padding: 5px;
+    text-align: center;
+    min-height: 20px;
+}
+
+.decode-feedback.success {
+    color: var(--crt-green);
+    text-shadow: 0 0 5px var(--crt-green);
+}
+
+.decode-feedback.partial {
+    color: #ffff00;
+}
+
+.decode-feedback.error {
+    color: #ff0000;
+}
+
+.decoded-history {
+    margin-top: 10px;
+    border: 1px solid rgba(var(--crt-green-rgb), 0.3);
+    background: #000;
+    padding: 8px;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.history-label {
+    font-size: 11px;
+    color: var(--crt-green);
+    margin-bottom: 5px;
+    border-bottom: 1px solid rgba(var(--crt-green-rgb), 0.3);
+    padding-bottom: 3px;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.history-entry {
+    font-size: 12px;
+    color: var(--crt-green);
+    font-family: 'Courier New', monospace;
+    padding: 3px;
+    background: rgba(var(--crt-green-rgb), 0.05);
+    border-left: 2px solid var(--crt-green);
+    padding-left: 5px;
+}
+
+.history-time {
+    color: #00aa00;
+    margin-right: 5px;
+}
+
+.history-text {
+    color: var(--crt-green);
+}
+
+.signal-label {
+    color: var(--crt-green);
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.morse-display {
+    color: #00aa00;
+    font-family: monospace;
+    font-size: 14px;
+    letter-spacing: 2px;
+    margin: 5px 0;
+}
+
+.signal-strength {
+    color: #00aa00;
+    font-size: 11px;
+    margin-top: 5px;
+}
+
+/* Power Indicator */
+.power-indicator {
+    position: absolute;
+    bottom: 15px;
+    right: 20px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #333;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+}
+
+.power-indicator.on {
+    background: var(--crt-green);
+    box-shadow: 
+        0 0 10px var(--crt-green),
+        0 0 20px rgba(var(--crt-green-rgb), 0.5),
+        inset 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+.power-indicator.off {
+    background: #1a1a1a;
+}
+
+/* CRT Effects (applied to monitor only) */
+.crt-glare {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.05) 0%,
+        transparent 40%,
+        transparent 100%
+    );
+    pointer-events: none;
+    z-index: 100;
+}
+
+.crt-phosphor {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.1) 0px,
+        transparent 1px,
+        transparent 2px,
+        rgba(0, 0, 0, 0.1) 3px
+    );
+    pointer-events: none;
+    z-index: 101;
+    animation: scanline 8s linear infinite;
+}
+
+@keyframes scanline {
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(100%);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .cockpit-radio-area {
+        max-width: 360px;
+    }
+}
+
+/* Ensure UI containers work with new layout */
+#world-ui-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+/* Allow child elements to receive pointer events */
+#world-ui-container > * {
+    pointer-events: auto;
+}
+
+#inventory-panel {
+  transform-style: preserve-3d;
+  perspective: 800px;
+}
+
+#inventory-container {
+  pointer-events: auto;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  transform-style: preserve-3d;
+}
+
+#inventory-container > * {
+  pointer-events: auto;
+  transform-style: preserve-3d;
+}
+
+.inventory-trunk-grid {
+  transform: translateZ(var(--inv-trunk-translateZ, 20px)) rotateY(var(--inv-trunk-rotateY, 5deg));
+  transform-style: preserve-3d;
+}
+
+.inventory-warehouse {
+  transform: translateZ(var(--inv-warehouse-translateZ, 10px)) rotateY(var(--inv-warehouse-rotateY, -5deg));
+  transform-style: preserve-3d;
+}
+
+#edge-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 300;
+}
+
