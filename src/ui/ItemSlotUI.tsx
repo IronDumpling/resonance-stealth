@@ -3,6 +3,8 @@
  * Item Slot UI Component (unified item icon display)
  */
 
+import { CRT_GREEN, CRT_GREEN_RGB } from '@/config/gameConfig';
+
 interface InventoryItem {
   type: string;
   coreType?: string;
@@ -47,10 +49,10 @@ export class ItemSlotUI {
     const { icon, color } = this.getItemIcon(item);
     
     // 核心槽位（index 0）使用特殊边框颜色
-    const borderColor = index === 0 ? '#ff6600' : (item ? '#00ff00' : '#333333');
+    const borderColor = index === 0 ? '#ff6600' : (item ? CRT_GREEN : '#333333');
     const boxShadow = index === 0 
       ? 'inset 0 0 10px rgba(255, 102, 0, 0.5), 0 0 5px rgba(255, 102, 0, 0.3)' 
-      : 'inset 0 0 10px rgba(0, 255, 0, 0.3)';
+      : `inset 0 0 10px rgba(${CRT_GREEN_RGB[0]}, ${CRT_GREEN_RGB[1]}, ${CRT_GREEN_RGB[2]}, 0.3)`;
     
     slot.style.cssText = `
       width: 50px;
@@ -185,7 +187,7 @@ export class ItemSlotUI {
     if (isCoreSlot) {
       slot.style.borderColor = '#ff6600';
     } else {
-      slot.style.borderColor = item ? '#00ff00' : '#333333';
+      slot.style.borderColor = item ? CRT_GREEN : '#333333';
     }
   }
 

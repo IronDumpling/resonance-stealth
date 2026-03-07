@@ -9,6 +9,7 @@ import { InputManager } from '@/systems/InputManager';
 import { SceneManager } from '@/systems/SceneManager';
 import { INPUT_CONTEXTS } from '@/types/systems';
 import { logMsg } from '@/utils';
+import { CRT_GREEN_RGB } from '@/config/gameConfig';
 
 export class CrtOffScene extends Scene {
   // 依赖注入
@@ -53,7 +54,7 @@ export class CrtOffScene extends Scene {
     // 显示微弱的待机指示灯
     const time = Date.now() / 1000;
     const pulse = Math.sin(time * 2) * 0.5 + 0.5;
-    ctx.fillStyle = `rgba(0, 255, 0, ${pulse * 0.3})`;
+    ctx.fillStyle = `rgba(${CRT_GREEN_RGB[0]}, ${CRT_GREEN_RGB[1]}, ${CRT_GREEN_RGB[2]}, ${pulse * 0.3})`;
     ctx.beginPath();
     ctx.arc(20, 20, 5, 0, Math.PI * 2);
     ctx.fill();

@@ -5,7 +5,7 @@
 
 import { BaseEntity } from '../Base';
 import { IEnergyBottle } from '@/types/entities';
-import { CFG } from '@/config/gameConfig';
+import { CFG, CRT_GREEN } from '@/config/gameConfig';
 
 export class EnergyBottle extends BaseEntity implements IEnergyBottle {
   type: 'energy_bottle' = 'energy_bottle';
@@ -51,9 +51,9 @@ export class EnergyBottle extends BaseEntity implements IEnergyBottle {
     const div = document.createElement('div');
     div.className = 'interact-hint item-hint';
     div.innerHTML = '[E] ENERGY PACK';
-    div.style.color = '#00ff00';
-    div.style.borderColor = '#00ff00';
-    div.style.textShadow = '0 0 5px #00ff00';
+    div.style.color = CRT_GREEN;
+    div.style.borderColor = CRT_GREEN;
+    div.style.textShadow = `0 0 5px ${CRT_GREEN}`;
     div.style.display = 'none';
 
     if (container) {

@@ -14,6 +14,7 @@ import { IGameState } from '@/types/game';
 import { CameraSystem } from '@/systems/CameraSystem';
 import type { InventorySystem } from '@/systems/InventorySystem';
 import { TrunkUI } from '@/ui/TrunkUI';
+import { CRT_GREEN } from '@/config/gameConfig';
 
 const MOVE_DEBOUNCE_MS = 120; // 短按防抖，避免一次按键触发两次移动
 
@@ -125,7 +126,7 @@ export class InventoryScene extends Scene {
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = '#00ff00';
+    ctx.fillStyle = CRT_GREEN;
     ctx.font = '20px monospace';
     ctx.textAlign = 'center';
     ctx.fillText('TRUNK / INVENTORY', canvas.width / 2, canvas.height / 2);

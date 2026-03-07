@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
+import { CRT_GREEN, CRT_GREEN_RGB } from '@/config/gameConfig';
 
 interface CrtEffects {
   scanlines: boolean;
@@ -320,7 +321,7 @@ export class CrtRenderer {
       const dotSize = 3 * dotProgress;
       const brightness = dotProgress;
       
-      this.ctx.fillStyle = `rgba(0, 204, 0, ${brightness})`;
+      this.ctx.fillStyle = `rgba(${CRT_GREEN_RGB[0]}, ${CRT_GREEN_RGB[1]}, ${CRT_GREEN_RGB[2]}, ${brightness})`;
       this.ctx.beginPath();
       this.ctx.arc(centerX, centerY, dotSize, 0, Math.PI * 2);
       this.ctx.fill();
@@ -331,7 +332,7 @@ export class CrtRenderer {
       const lineHeight = height * lineProgress;
       const lineWidth = 2;
       
-      this.ctx.fillStyle = '#00cc00';
+      this.ctx.fillStyle = CRT_GREEN;
       this.ctx.fillRect(centerX - lineWidth / 2, centerY - lineHeight / 2, lineWidth, lineHeight);
     }
     // 阶段3: 水平展开 (0.4-0.9s)
@@ -343,7 +344,7 @@ export class CrtRenderer {
       const finalWidth = width * eased;
       const rectHeight = height;
       
-      this.ctx.fillStyle = '#00cc00';
+      this.ctx.fillStyle = CRT_GREEN;
       this.ctx.fillRect(centerX - finalWidth / 2, 0, finalWidth, rectHeight);
     }
     // 阶段4: 亮度稳定 (0.9-1.2s)
@@ -351,7 +352,7 @@ export class CrtRenderer {
       const fadeProgress = (progress - 0.75) / 0.25;
       const brightness = 1 - fadeProgress * 0.2; // 从100%降到80%
       
-      this.ctx.fillStyle = `rgba(0, 204, 0, ${brightness})`;
+      this.ctx.fillStyle = `rgba(${CRT_GREEN_RGB[0]}, ${CRT_GREEN_RGB[1]}, ${CRT_GREEN_RGB[2]}, ${brightness})`;
       this.ctx.fillRect(0, 0, width, height);
       
       // 抖动效果
@@ -381,7 +382,7 @@ export class CrtRenderer {
       const flicker = Math.sin(progress * 50);
       const brightness = 0.5 + flicker * 0.5;
       
-      this.ctx.fillStyle = `rgba(0, 204, 0, ${brightness})`;
+      this.ctx.fillStyle = `rgba(${CRT_GREEN_RGB[0]}, ${CRT_GREEN_RGB[1]}, ${CRT_GREEN_RGB[2]}, ${brightness})`;
       this.ctx.fillRect(0, 0, width, height);
     }
     // 阶段2: 水平收缩 (0.2-0.4s)
@@ -392,7 +393,7 @@ export class CrtRenderer {
       this.ctx.fillStyle = '#000000';
       this.ctx.fillRect(0, 0, width, height);
       
-      this.ctx.fillStyle = '#00cc00';
+      this.ctx.fillStyle = CRT_GREEN;
       this.ctx.fillRect(centerX - rectWidth / 2, 0, rectWidth, height);
     }
     // 阶段3: 垂直收缩 (0.4-0.6s)
@@ -404,7 +405,7 @@ export class CrtRenderer {
       this.ctx.fillStyle = '#000000';
       this.ctx.fillRect(0, 0, width, height);
       
-      this.ctx.fillStyle = '#00cc00';
+      this.ctx.fillStyle = CRT_GREEN;
       this.ctx.fillRect(centerX - lineWidth / 2, centerY - lineHeight / 2, lineWidth, lineHeight);
     }
     // 阶段4: 绿点消失 (0.6-1.0s)
@@ -417,7 +418,7 @@ export class CrtRenderer {
       this.ctx.fillRect(0, 0, width, height);
       
       if (dotSize > 0) {
-        this.ctx.fillStyle = `rgba(0, 204, 0, ${brightness})`;
+        this.ctx.fillStyle = `rgba(${CRT_GREEN_RGB[0]}, ${CRT_GREEN_RGB[1]}, ${CRT_GREEN_RGB[2]}, ${brightness})`;
         this.ctx.beginPath();
         this.ctx.arc(centerX, centerY, dotSize, 0, Math.PI * 2);
         this.ctx.fill();

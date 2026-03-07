@@ -8,6 +8,7 @@
 import type { InventorySystem } from '@/systems/InventorySystem';
 import type { ITrunkItem } from '@/types/entities';
 import { getItemDef } from '@/config/itemDefs';
+import { CRT_GREEN, CRT_GREEN_RGB } from '@/config/gameConfig';
 import type { ItemType } from '@/types/entities';
 
 /** 格子基础尺寸（2x 原 48px），可根据容器缩放 */
@@ -157,14 +158,14 @@ export class TrunkUI {
           const cellW = width * cellSize;
           const cellH = height * cellSize;
           const itemShadow = '2px 2px 5px rgba(0,0,0,0.8), inset 2px 2px 5px rgba(255,255,255,0.15), inset -2px -2px 5px rgba(0,0,0,0.5)';
-          const selectedShadow = '0 0 12px rgba(0,255,0,0.6), ' + itemShadow;
+          const selectedShadow = `0 0 12px rgba(${CRT_GREEN_RGB[0]},${CRT_GREEN_RGB[1]},${CRT_GREEN_RGB[2]},0.6), ` + itemShadow;
           cell.style.cssText = `
             width: ${cellW}px;
             height: ${cellH}px;
             min-width: ${cellW}px;
             min-height: ${cellH}px;
-            border: 2px solid ${isSelected ? '#00ff00' : (def?.color ?? '#333')};
-            background: ${isSelected ? 'rgba(0,255,0,0.25)' : (def ? `rgba(0,80,0,0.4)` : 'rgba(0,20,0,0.5)')};
+            border: 2px solid ${isSelected ? CRT_GREEN : (def?.color ?? '#333')};
+            background: ${isSelected ? `rgba(${CRT_GREEN_RGB[0]},${CRT_GREEN_RGB[1]},${CRT_GREEN_RGB[2]},0.25)` : (def ? `rgba(0,80,0,0.4)` : 'rgba(0,20,0,0.5)')};
             display: flex;
             align-items: center;
             justify-content: center;
@@ -174,7 +175,7 @@ export class TrunkUI {
             cell.style.gridColumn = `span ${width}`;
             cell.style.gridRow = `span ${height}`;
             if (!isSelected) cell.style.background = `rgba(0,80,0,0.4)`;
-            cell.style.borderColor = isSelected ? '#00ff00' : def.color;
+            cell.style.borderColor = isSelected ? CRT_GREEN : def.color;
             cell.style.color = def.color;
             cell.style.fontSize = `${Math.min(cellW, cellH) * 0.5}px`;
             const iconSpan = document.createElement('span');

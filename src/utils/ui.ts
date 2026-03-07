@@ -3,6 +3,8 @@
  * UI Utility Functions
  */
 
+import { CRT_GREEN_RGB } from '@/config/gameConfig';
+
 /**
  * 显示消息（需要传入state）
  */
@@ -37,7 +39,7 @@ export function flashEdgeGlow(
   } else if (color === 'red') {
     edgeGlowElement.style.boxShadow = 'inset 0 0 20px 8px rgba(255, 0, 0, 0.8)';
   } else if (color === 'green') {
-    edgeGlowElement.style.boxShadow = 'inset 0 0 20px 8px rgba(0, 255, 0, 0.8)';
+    edgeGlowElement.style.boxShadow = `inset 0 0 20px 8px rgba(${CRT_GREEN_RGB[0]}, ${CRT_GREEN_RGB[1]}, ${CRT_GREEN_RGB[2]}, 0.8)`;
   } else if (color === 'cyan') {
     edgeGlowElement.style.boxShadow = 'inset 0 0 20px 8px rgba(0, 255, 255, 0.8)';
   } else if (color === 'blue') {

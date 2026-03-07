@@ -97,13 +97,16 @@
     overflow: hidden;
 }
 
-/* Monitor Screen - 仅包含 SONAR 显示 */
+/* Monitor Screen - 仅包含 SONAR 显示，浅灰宽边隔绝外界 */
 #monitor-screen {
     width: 100%;
     height: 100%;
     background: #0a0a0b;
     position: relative;
     overflow: hidden;
+    box-sizing: border-box;
+    border: 12px solid #a0a0a0;
+    box-shadow: inset 0 0 0 4px rgba(160, 160, 160, 0.4), 0 0 24px rgba(160, 160, 160, 0.2);
 }
 
 /* CRT 扫描线 / 屏幕效果 */
@@ -990,7 +993,7 @@
     z-index: 2;
     display: none; /* Shown when in radio mode */
     background: #000;
-    color: #00ff00;
+    color: var(--crt-green);
     font-family: 'Courier New', monospace;
     padding: 20px;
     box-sizing: border-box;
@@ -1006,11 +1009,11 @@
 /* Morse Code Reference */
 #morse-reference {
     grid-row: 1;
-    border: 3px solid #00ff00;
+    border: 3px solid var(--crt-green);
     padding: 20px;
     overflow-y: auto;
     background: rgba(0, 30, 0, 0.9);
-    box-shadow: 0 0 30px rgba(0, 255, 0, 0.4), inset 0 0 40px rgba(0, 255, 0, 0.15);
+    box-shadow: 0 0 30px rgba(var(--crt-green-rgb), 0.4), inset 0 0 40px rgba(var(--crt-green-rgb), 0.15);
 }
 
 #morse-reference h3 {
@@ -1018,8 +1021,8 @@
     font-size: 22px;
     font-weight: bold;
     text-align: center;
-    color: #00ff00;
-    border-bottom: 3px solid #00ff00;
+    color: var(--crt-green);
+    border-bottom: 3px solid var(--crt-green);
     padding-bottom: 12px;
 }
 
@@ -1041,7 +1044,7 @@
     justify-content: space-between;
     padding: 6px 10px;
     margin-bottom: 4px;
-    border: 1px solid rgba(0, 255, 0, 0.3);
+    border: 1px solid rgba(var(--crt-green-rgb), 0.3);
     background: rgba(0, 0, 0, 0.95);
     border-radius: 4px;
     box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
@@ -1049,19 +1052,19 @@
 
 .morse-entry:hover {
     background: rgba(0, 50, 0, 0.95);
-    border-color: rgba(0, 255, 0, 0.5);
-    box-shadow: 0 0 10px rgba(0, 255, 0, 0.3), inset 0 0 10px rgba(0, 0, 0, 0.8);
+    border-color: rgba(var(--crt-green-rgb), 0.5);
+    box-shadow: 0 0 10px rgba(var(--crt-green-rgb), 0.3), inset 0 0 10px rgba(0, 0, 0, 0.8);
 }
 
 .morse-char {
     font-weight: bold;
-    color: #00ff00 !important;
+    color: var(--crt-green) !important;
     font-size: 18px;
     min-width: 25px;
 }
 
 .morse-code {
-    color: #00ff00 !important;
+    color: var(--crt-green) !important;
     font-family: 'Courier New', monospace;
     letter-spacing: 1px;
     font-size: 18px;
@@ -1071,10 +1074,10 @@
 /* Decode Input Box */
 #decode-input {
     grid-row: 2;
-    border: 2px solid #00ff00;
+    border: 2px solid var(--crt-green);
     padding: 15px;
     background: rgba(0, 20, 0, 0.8);
-    box-shadow: inset 0 0 20px rgba(0, 255, 0, 0.1);
+    box-shadow: inset 0 0 20px rgba(var(--crt-green-rgb), 0.1);
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -1083,8 +1086,8 @@
 #decode-input label {
     font-size: 12px;
     margin-bottom: 0;
-    color: #00ff00;
-    text-shadow: 0 0 3px #00ff00;
+    color: var(--crt-green);
+    text-shadow: 0 0 3px var(--crt-green);
 }
 
 .decode-input-row {
@@ -1095,8 +1098,8 @@
 #decode-input input {
     flex: 1;
     background: #000;
-    border: 1px solid #00ff00;
-    color: #00ff00;
+    border: 1px solid var(--crt-green);
+    color: var(--crt-green);
     font-family: 'Courier New', monospace;
     font-size: 16px;
     padding: 8px;
@@ -1104,13 +1107,13 @@
 }
 
 #decode-input input:focus {
-    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    box-shadow: 0 0 10px rgba(var(--crt-green-rgb), 0.5);
 }
 
 .decode-submit-btn {
     background: #001100;
-    border: 2px solid #00ff00;
-    color: #00ff00;
+    border: 2px solid var(--crt-green);
+    color: var(--crt-green);
     font-family: 'Courier New', monospace;
     font-size: 14px;
     font-weight: bold;
@@ -1121,7 +1124,7 @@
 
 .decode-submit-btn:hover {
     background: #003300;
-    box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+    box-shadow: 0 0 15px rgba(var(--crt-green-rgb), 0.5);
 }
 
 .decode-submit-btn:active {
@@ -1136,8 +1139,8 @@
 }
 
 .decode-feedback.success {
-    color: #00ff00;
-    text-shadow: 0 0 5px #00ff00;
+    color: var(--crt-green);
+    text-shadow: 0 0 5px var(--crt-green);
 }
 
 .decode-feedback.partial {
@@ -1150,7 +1153,7 @@
 
 .decoded-history {
     margin-top: 10px;
-    border: 1px solid rgba(0, 255, 0, 0.3);
+    border: 1px solid rgba(var(--crt-green-rgb), 0.3);
     background: #000;
     padding: 8px;
     max-height: 120px;
@@ -1159,9 +1162,9 @@
 
 .history-label {
     font-size: 11px;
-    color: #00ff00;
+    color: var(--crt-green);
     margin-bottom: 5px;
-    border-bottom: 1px solid rgba(0, 255, 0, 0.3);
+    border-bottom: 1px solid rgba(var(--crt-green-rgb), 0.3);
     padding-bottom: 3px;
 }
 
@@ -1173,11 +1176,11 @@
 
 .history-entry {
     font-size: 12px;
-    color: #00ff00;
+    color: var(--crt-green);
     font-family: 'Courier New', monospace;
     padding: 3px;
-    background: rgba(0, 255, 0, 0.05);
-    border-left: 2px solid #00ff00;
+    background: rgba(var(--crt-green-rgb), 0.05);
+    border-left: 2px solid var(--crt-green);
     padding-left: 5px;
 }
 
@@ -1187,11 +1190,11 @@
 }
 
 .history-text {
-    color: #00ff00;
+    color: var(--crt-green);
 }
 
 .signal-label {
-    color: #00ff00;
+    color: var(--crt-green);
     font-weight: bold;
     margin-bottom: 5px;
 }
@@ -1224,10 +1227,10 @@
 }
 
 .power-indicator.on {
-    background: #00ff00;
+    background: var(--crt-green);
     box-shadow: 
-        0 0 10px #00ff00,
-        0 0 20px rgba(0, 255, 0, 0.5),
+        0 0 10px var(--crt-green),
+        0 0 20px rgba(var(--crt-green-rgb), 0.5),
         inset 0 1px 2px rgba(255, 255, 255, 0.3);
 }
 

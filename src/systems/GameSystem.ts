@@ -358,19 +358,21 @@ export class GameSystem implements IGameSystem {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     
-    // Get monitor screen container for sizing
+    // Get monitor screen container for sizing（若尺寸为 0 则回退到 window，避免地图生成失败）
     const monitorScreen = document.getElementById('monitor-screen');
-    
-    if (monitorScreen) {
-      // Size canvas to fit monitor (60% of screen)
-      canvas.width = monitorScreen.clientWidth;
-      canvas.height = monitorScreen.clientHeight;
-    } else {
-      // Fallback to full screen
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+    let w = 0;
+    let h = 0;
+    if (monitorScreen && monitorScreen.clientWidth > 0 && monitorScreen.clientHeight > 0) {
+      w = monitorScreen.clientWidth;
+      h = monitorScreen.clientHeight;
     }
-    
+    if (w <= 0 || h <= 0) {
+      w = window.innerWidth || 1920;
+      h = window.innerHeight || 1080;
+    }
+    canvas.width = w;
+    canvas.height = h;
+
     console.log(`Canvas sized: ${canvas.width}x${canvas.height}`);
   }
 

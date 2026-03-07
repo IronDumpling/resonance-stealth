@@ -145,7 +145,7 @@
     border-radius: 4px;
     padding: 10px;
     text-align: center;
-    box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.2);
+    box-shadow: inset 0 0 10px rgba(var(--crt-green-rgb), 0.2);
 }
 
 .display-label {
@@ -155,10 +155,10 @@
 }
 
 .display-value {
-    color: #00ff00;
+    color: var(--crt-green);
     font-size: 24px;
     font-weight: bold;
-    text-shadow: 0 0 10px #00ff00;
+    text-shadow: 0 0 10px var(--crt-green);
     letter-spacing: 2px;
 }
 
@@ -305,11 +305,11 @@
 }
 
 #signal-freq {
-    color: #00ff00;
+    color: var(--crt-green);
 }
 
 #antenna-display {
-    color: #00ff00;
+    color: var(--crt-green);
     font-weight: bold;
     min-width: 40px;
     display: inline-block;
@@ -330,7 +330,7 @@
     border: 3px solid #1a3a1b;
     border-top-color: #3a7a3c;
     border-left-color: #2c5f2d;
-    color: #00ff00;
+    color: var(--crt-green);
     padding: 12px 8px;
     border-radius: 4px;
     cursor: pointer;
@@ -374,8 +374,8 @@
 }
 
 .btn-led.active {
-    background: #00ff00;
-    box-shadow: 0 0 10px #00ff00;
+    background: var(--crt-green);
+    box-shadow: 0 0 10px var(--crt-green);
 }
 
 /* 纸带容器 */

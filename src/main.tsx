@@ -8,7 +8,14 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { CRT_GREEN, CRT_GREEN_RGB } from '@/config/gameConfig';
 import './styles/index.css';
+
+// 注入 CRT 绿色到 CSS 变量（在样式应用前设置）
+if (typeof document !== 'undefined' && document.documentElement) {
+  document.documentElement.style.setProperty('--crt-green', CRT_GREEN);
+  document.documentElement.style.setProperty('--crt-green-rgb', CRT_GREEN_RGB.join(', '));
+}
 
 // 初始化应用
 function initApplication() {

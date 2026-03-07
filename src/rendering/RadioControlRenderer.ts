@@ -8,7 +8,7 @@
  * - 信号表（信号强度表盘）
  */
 
-import { CFG } from '@/config/gameConfig';
+import { CFG, CRT_GREEN_RGB } from '@/config/gameConfig';
 
 // 扩展 IRadioSystem 以包含渲染需要的属性和方法
 export interface RadioSystemForRendering {
@@ -167,7 +167,7 @@ export class RadioControlRenderer {
           // 根据来源选择颜色
           let baseColor: [number, number, number];
           if (isReflected || source === 'reflection') {
-            baseColor = [0, 255, 0];  // 反弹波：绿色
+            baseColor = [...CRT_GREEN_RGB];  // 反弹波：CRT 标准绿色
           } else if (source === 'player') {
             baseColor = [0, 255, 255];  // 玩家波：青色
           } else if (source === 'enemy') {

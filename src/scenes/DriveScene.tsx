@@ -14,7 +14,7 @@ import { INPUT_CONTEXTS } from '@/types/systems';
 import { IGameState } from '@/types/game';
 import { CameraSystem } from '@/systems/CameraSystem';
 import { InventorySystem } from '@/systems/InventorySystem';
-import { CFG, STEERING_RATIO } from '@/config/gameConfig';
+import { CFG, STEERING_RATIO, CRT_GREEN } from '@/config/gameConfig';
 
 const PICKUP_RANGE = 80;
 
@@ -124,31 +124,30 @@ export class DriveScene extends Scene {
     ctx.translate(canvas.width / 2 - camX * scale, canvas.height / 2 - camY * scale);
     ctx.scale(scale, scale);
 
-    // 明亮模式：绘制障碍物与物资
+    // 明亮模式：绘制障碍物与物资（绿色边缘高亮）；迷雾模式：不绘制
     if (viewMode === 'bright' && entities) {
-      // 障碍物
-      ctx.fillStyle = '#444444';
-      ctx.strokeStyle = '#666666';
       ctx.lineWidth = 2 / scale;
+      ctx.strokeStyle = CRT_GREEN;
+      ctx.fillStyle = '#1a1a1a';
+      // 障碍物
       for (const obs of entities.obstacles) {
         ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
         ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
       }
-      // 物资点
+      // 物资点（圆形，较小）
       for (const item of entities.groundItems) {
-        ctx.fillStyle = '#888888';
         ctx.beginPath();
-        ctx.arc(item.x, item.y, 12, 0, Math.PI * 2);
+        ctx.arc(item.x, item.y, 6, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#aaaaaa';
         ctx.stroke();
-        // 玩家靠近时显示 E
+        // 玩家靠近时显示 E（标准绿色）
         const dist = Math.hypot(item.x - p.x, item.y - p.y);
         if (dist < PICKUP_RANGE) {
-          ctx.fillStyle = '#00ff00';
+          ctx.fillStyle = CRT_GREEN;
           ctx.font = `${24 / scale}px monospace`;
           ctx.textAlign = 'center';
           ctx.fillText('E', item.x, item.y - 28);
+          ctx.fillStyle = '#1a1a1a';
         }
       }
     }
@@ -166,9 +165,9 @@ export class DriveScene extends Scene {
     ctx.lineTo(-size * 0.6, size);
     ctx.lineTo(size * 0.6, size);
     ctx.closePath();
-    ctx.fillStyle = '#00ff00';
+    ctx.fillStyle = CRT_GREEN;
     ctx.fill();
-    ctx.strokeStyle = '#00cc00';
+    ctx.strokeStyle = CRT_GREEN;
     ctx.lineWidth = 2 / scale;
     ctx.stroke();
     ctx.restore();
@@ -189,10 +188,12 @@ export class DriveScene extends Scene {
       return true;
     }
 
-    // L 键：明亮/迷雾模式切换（开发者专用）
+    // L 键：明亮/迷雾模式切换（使用与渲染相同的 state 引用）
     if (action === 'toggle_map_visibility' || key === 'l') {
-      if (this.gameState) {
-        this.gameState.sonarViewMode = this.gameState.sonarViewMode === 'bright' ? 'fog' : 'bright';
+      const state = (this.sceneManager as { gameState?: IGameState | null })?.gameState ?? this.gameState;
+      const prev = state?.sonarViewMode ?? 'fog';
+      if (state) {
+        state.sonarViewMode = prev === 'bright' ? 'fog' : 'bright';
       }
       return true;
     }

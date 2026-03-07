@@ -4,6 +4,7 @@
  */
 
 import { IUIManager, UIElementOptions } from '@/types/systems';
+import { CRT_GREEN } from '@/config/gameConfig';
 
 // UI层级定义
 export const UI_LAYERS = {
@@ -311,7 +312,7 @@ export class UIManager implements IUIManager {
     const id = `notification-${Date.now()}`;
     const colors: Record<string, string> = {
       info: '#33ccff',
-      success: '#00ff00',
+      success: CRT_GREEN,
       warning: '#ffaa00',
       error: '#ff0000'
     };

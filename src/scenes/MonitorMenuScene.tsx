@@ -10,6 +10,7 @@ import { SceneManager } from '@/systems/SceneManager';
 import { CrtRenderer } from '@/rendering/CrtRenderer';
 import { INPUT_CONTEXTS } from '@/types/systems';
 import { logMsg } from '@/utils';
+import { CRT_GREEN } from '@/config/gameConfig';
 
 interface MenuOption {
   id: string;
@@ -94,13 +95,13 @@ export class MonitorMenuScene extends Scene {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Draw title
-    ctx.fillStyle = '#00ff00';
+    ctx.fillStyle = CRT_GREEN;
     ctx.font = 'bold 28px monospace';
     ctx.textAlign = 'center';
     ctx.fillText('ARC_OS v4.0.2', canvas.width / 2, canvas.height * 0.25);
     
     // Draw separator
-    ctx.strokeStyle = '#00ff00';
+    ctx.strokeStyle = CRT_GREEN;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(canvas.width * 0.3, canvas.height * 0.3);
@@ -120,14 +121,14 @@ export class MonitorMenuScene extends Scene {
       
       // Draw cursor for selected option
       if (isSelected && this.showCursor) {
-        ctx.fillStyle = '#00ff00';
+        ctx.fillStyle = CRT_GREEN;
         ctx.fillText('>', canvas.width * 0.3 - 30, y);
       }
       
       // Draw option text
-      ctx.fillStyle = isSelected ? '#00ff00' : '#00aa00';
+      ctx.fillStyle = isSelected ? CRT_GREEN : '#00aa00';
       if (isSelected) {
-        ctx.shadowColor = '#00ff00';
+        ctx.shadowColor = CRT_GREEN;
         ctx.shadowBlur = 10;
       }
       ctx.fillText(option.label, canvas.width * 0.3, y);

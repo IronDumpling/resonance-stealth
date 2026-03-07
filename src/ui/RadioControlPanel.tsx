@@ -5,7 +5,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { IRadioSystem } from '@/types/systems';
-import { MORSE_CODE } from '@/config/gameConfig';
+import { MORSE_CODE, CRT_GREEN } from '@/config/gameConfig';
 import { RadioControlRenderer } from '@/rendering/RadioControlRenderer';
 
 // 扩展 IRadioSystem 以包含 RadioControlPanel 需要的属性和方法
@@ -560,7 +560,7 @@ export class RadioControlPanel {
         callsignEl.textContent = degradedInfo.callsign;
         // 根据信号质量设置颜色
         if (degradedInfo.quality === 'clear') {
-          callsignEl.style.color = '#00ff00';
+          callsignEl.style.color = CRT_GREEN;
         } else if (degradedInfo.quality === 'noisy') {
           callsignEl.style.color = '#ffff00';
         } else if (degradedInfo.quality === 'poor') {
@@ -594,7 +594,7 @@ export class RadioControlPanel {
     } else {
       if (callsignEl) {
         callsignEl.textContent = '--';
-        callsignEl.style.color = '#00ff00';
+        callsignEl.style.color = CRT_GREEN;
       }
       if (freqEl) freqEl.textContent = '-- MHz';
     }

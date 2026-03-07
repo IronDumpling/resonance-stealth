@@ -129,7 +129,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       antennaSystem: null,
       survival: { life: 0, integrity: 0, armorDropped: false, fuel: 0, battery: 0 },
       vehicle: { gear: 'P', speed: 0, steeringAngle: 0, engineOn: false, throttle: 0, brake: 0 },
-      sonarViewMode: 'fog',
+      sonarViewMode: 'bright',
     };
 
     // 生存系统（初始化 survival 状态，碰撞时触发 edge glow）
@@ -189,11 +189,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
           if (initialState?.survival) {
             initialState.survival.battery = Math.min(100, initialState.survival.battery + amount);
           }
+          flashEdgeGlow('green', 300, edgeGlowElement ?? null);
         },
         onAddIntegrity: (amount: number) => {
           if (initialState?.survival) {
             initialState.survival.integrity = Math.min(100, initialState.survival.integrity + amount);
           }
+          flashEdgeGlow('green', 300, edgeGlowElement ?? null);
         },
       }
     );

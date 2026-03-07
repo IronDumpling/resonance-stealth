@@ -97,7 +97,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 255, 0, 0.02);
+    background: rgba(var(--crt-green-rgb), 0.02);
     pointer-events: none;
     z-index: 997;
     mix-blend-mode: screen;
@@ -111,8 +111,8 @@
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: #00ff00;
-    box-shadow: 0 0 10px #00ff00;
+    background: var(--crt-green);
+    box-shadow: 0 0 10px var(--crt-green);
     animation: power-pulse 2s ease-in-out infinite;
     z-index: 1001;
 }
@@ -144,8 +144,8 @@
 /* CRT文本样式 */
 .crt-text {
     font-family: 'Courier New', 'Consolas', monospace;
-    color: #00ff00;
-    text-shadow: 0 0 5px #00ff00;
+    color: var(--crt-green);
+    text-shadow: 0 0 5px var(--crt-green);
     letter-spacing: 0.05em;
 }
 
@@ -156,7 +156,7 @@
 
 .crt-text-bright {
     color: #88ff88;
-    text-shadow: 0 0 8px #00ff00;
+    text-shadow: 0 0 8px var(--crt-green);
 }
 
 /* CRT闪烁效果 */

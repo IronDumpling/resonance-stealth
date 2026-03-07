@@ -63,10 +63,11 @@ export function generateWorld(params: Partial<WorldGenParams> & { canvasWidth: n
     return dist < clearRadius + Math.max(w, h) / 2;
   };
 
-  // 生成障碍物
+  // 生成障碍物（方形，比玩家三角形更大，边长 60–100）
   for (let i = 0; i < numObstacles; i++) {
-    const width = 40 + Math.floor(rng() * 80);
-    const height = 40 + Math.floor(rng() * 80);
+    const size = 60 + Math.floor(rng() * 41);
+    const width = size;
+    const height = size;
     let x = Math.floor(rng() * (mapW - width));
     let y = Math.floor(rng() * (mapH - height));
 
@@ -93,7 +94,7 @@ export function generateWorld(params: Partial<WorldGenParams> & { canvasWidth: n
   // 生成物资点
   for (let i = 0; i < numItems; i++) {
     const type = ITEM_TYPES[Math.floor(rng() * ITEM_TYPES.length)];
-    const size = 40;
+    const size = 24;
     let x = Math.floor(rng() * (mapW - size));
     let y = Math.floor(rng() * (mapH - size));
 
@@ -107,7 +108,7 @@ export function generateWorld(params: Partial<WorldGenParams> & { canvasWidth: n
       }
     }
     for (const item of groundItems) {
-      if (Math.hypot(item.x - x, item.y - y) < 60) {
+      if (Math.hypot(item.x - (x + size / 2), item.y - (y + size / 2)) < 36) {
         overlap = true;
         break;
       }

@@ -10,6 +10,7 @@ import { InputManager } from '@/systems/InputManager';
 import { SceneManager } from '@/systems/SceneManager';
 import { CrtRenderer } from '@/rendering/CrtRenderer';
 import { INPUT_CONTEXTS } from '@/types/systems';
+import { CRT_GREEN } from '@/config/gameConfig';
 
 export class BootScene extends Scene {
   bootTimer: number = 0;
@@ -81,7 +82,7 @@ export class BootScene extends Scene {
     if (this.showPrompt) {
       const blink = Math.sin(this.bootTimer * 3) * 0.5 + 0.5;
       ctx.globalAlpha = this.promptFadeIn * blink;
-      ctx.fillStyle = '#00ff00';
+      ctx.fillStyle = CRT_GREEN;
       ctx.font = 'bold 20px "Courier New"';
       ctx.fillText('PRESS ANY KEY TO POWER ON', canvas.width / 2, canvas.height / 2 + 40);
       ctx.globalAlpha = 1;
